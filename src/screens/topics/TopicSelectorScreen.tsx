@@ -15,25 +15,24 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface ExamBoard {
   id: string;
-  name: string;
+  code: string;
+  full_name: string;
 }
 
 interface Subject {
   id: string;
-  name: string;
+  subject_code: string;
+  subject_name: string;
   exam_board_id: string;
-}
-
-interface Module {
-  id: string;
-  name: string;
-  subject_id: string;
 }
 
 interface Topic {
   id: string;
-  name: string;
-  module_id: string;
+  topic_name: string;
+  topic_code: string;
+  topic_level: number;
+  parent_topic_id: string | null;
+  exam_board_subject_id: string;
 }
 
 export default function TopicSelectorScreen({ navigation }: any) {
@@ -41,12 +40,10 @@ export default function TopicSelectorScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [examBoards, setExamBoards] = useState<ExamBoard[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   
   const [selectedExamBoard, setSelectedExamBoard] = useState<string | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -57,31 +54,23 @@ export default function TopicSelectorScreen({ navigation }: any) {
     if (selectedExamBoard) {
       fetchSubjects(selectedExamBoard);
       setSelectedSubject(null);
-      setSelectedModule(null);
       setSelectedTopics(new Set());
     }
   }, [selectedExamBoard]);
 
   useEffect(() => {
     if (selectedSubject) {
-      fetchModules(selectedSubject);
-      setSelectedModule(null);
-      setSelectedTopics(new Set());
+      fetchTopics(selectedSubject);
     }
   }, [selectedSubject]);
-
-  useEffect(() => {
-    if (selectedModule) {
-      fetchTopics(selectedModule);
-    }
-  }, [selectedModule]);
 
   const fetchExamBoards = async () => {
     try {
       const { data, error } = await supabase
         .from('exam_boards')
         .select('*')
-        .order('name');
+        .eq('active', true)
+        .order('full_name');
 
       if (error) throw error;
       setExamBoards(data || []);
@@ -96,10 +85,11 @@ export default function TopicSelectorScreen({ navigation }: any) {
   const fetchSubjects = async (examBoardId: string) => {
     try {
       const { data, error } = await supabase
-        .from('subjects')
+        .from('exam_board_subjects')
         .select('*')
         .eq('exam_board_id', examBoardId)
-        .order('name');
+        .eq('is_current', true)
+        .order('subject_name');
 
       if (error) throw error;
       setSubjects(data || []);
@@ -109,29 +99,16 @@ export default function TopicSelectorScreen({ navigation }: any) {
     }
   };
 
-  const fetchModules = async (subjectId: string) => {
+  const fetchTopics = async (subjectId: string) => {
     try {
+      // Fetch only top-level topics (where parent_topic_id is null)
       const { data, error } = await supabase
-        .from('modules')
+        .from('curriculum_topics')
         .select('*')
-        .eq('subject_id', subjectId)
-        .order('name');
-
-      if (error) throw error;
-      setModules(data || []);
-    } catch (error) {
-      console.error('Error fetching modules:', error);
-      Alert.alert('Error', 'Failed to load modules');
-    }
-  };
-
-  const fetchTopics = async (moduleId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('module_id', moduleId)
-        .order('name');
+        .eq('exam_board_subject_id', subjectId)
+        .is('parent_topic_id', null)
+        .order('sort_order')
+        .order('topic_name');
 
       if (error) throw error;
       setTopics(data || []);
@@ -228,7 +205,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
                     selectedExamBoard === board.id && styles.chipTextSelected,
                   ]}
                 >
-                  {board.name}
+                  {board.full_name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -255,35 +232,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
                       selectedSubject === subject.id && styles.chipTextSelected,
                     ]}
                   >
-                    {subject.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Module Selection */}
-        {selectedSubject && modules.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Module</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {modules.map((module) => (
-                <TouchableOpacity
-                  key={module.id}
-                  style={[
-                    styles.chip,
-                    selectedModule === module.id && styles.chipSelected,
-                  ]}
-                  onPress={() => setSelectedModule(module.id)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      selectedModule === module.id && styles.chipTextSelected,
-                    ]}
-                  >
-                    {module.name}
+                    {subject.subject_name}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -292,7 +241,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
         )}
 
         {/* Topic Selection */}
-        {selectedModule && topics.length > 0 && (
+        {selectedSubject && topics.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               Topics ({selectedTopics.size} selected)
@@ -306,14 +255,19 @@ export default function TopicSelectorScreen({ navigation }: any) {
                 ]}
                 onPress={() => toggleTopic(topic.id)}
               >
-                <Text
-                  style={[
-                    styles.topicText,
-                    selectedTopics.has(topic.id) && styles.topicTextSelected,
-                  ]}
-                >
-                  {topic.name}
-                </Text>
+                <View style={styles.topicContent}>
+                  <Text
+                    style={[
+                      styles.topicText,
+                      selectedTopics.has(topic.id) && styles.topicTextSelected,
+                    ]}
+                  >
+                    {topic.topic_name}
+                  </Text>
+                  {topic.topic_code && (
+                    <Text style={styles.topicCode}>{topic.topic_code}</Text>
+                  )}
+                </View>
                 {selectedTopics.has(topic.id) && (
                   <Ionicons name="checkmark-circle" size={24} color="#007AFF" />
                 )}
@@ -402,13 +356,21 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
     backgroundColor: '#f0f8ff',
   },
+  topicContent: {
+    flex: 1,
+    marginRight: 10,
+  },
   topicText: {
     fontSize: 16,
     color: '#333',
-    flex: 1,
   },
   topicTextSelected: {
     color: '#007AFF',
     fontWeight: '500',
+  },
+  topicCode: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
   },
 }); 
