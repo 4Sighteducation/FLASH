@@ -113,4 +113,4 @@ This is a commercial project. Please contact the team for contribution guideline
 
 ## 📧 Contact
 
-For support or inquiries: support@4sighteducation.com 
+For support or inquiries: support@4sighteducation.com
