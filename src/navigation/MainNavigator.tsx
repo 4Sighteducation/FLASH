@@ -1,11 +1,46 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/main/HomeScreen';
 import StudyScreen from '../screens/main/StudyScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
+import TopicSelectorScreen from '../screens/topics/TopicSelectorScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+// Home Stack
+function HomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen 
+        name="TopicSelector" 
+        component={TopicSelectorScreen}
+        options={{ headerShown: true, headerTitle: '' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// Study Stack
+function StudyStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="StudyMain" component={StudyScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Profile Stack
+function ProfileStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+    </Stack.Navigator>
+  );
+}
 
 export default function MainNavigator() {
   return (
@@ -31,9 +66,9 @@ export default function MainNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Study" component={StudyScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="Study" component={StudyStack} />
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 } 
