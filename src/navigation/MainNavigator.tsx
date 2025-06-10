@@ -7,6 +7,8 @@ import StudyScreen from '../screens/main/StudyScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import TopicSelectorScreen from '../screens/topics/TopicSelectorScreen';
 import TopicListScreen from '../screens/topics/TopicListScreen';
+import CreateCardScreen from '../screens/cards/CreateCardScreen';
+import AIGeneratorScreen from '../screens/cards/AIGeneratorScreen';
 import TopicEditModal from '../components/TopicEditModal';
 
 const Tab = createBottomTabNavigator();
@@ -26,6 +28,22 @@ function HomeStack() {
         name="TopicList" 
         component={TopicListScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="CreateCard" 
+        component={CreateCardScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="AIGenerator" 
+        component={AIGeneratorScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
       />
     </Stack.Navigator>
   );
