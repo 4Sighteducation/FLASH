@@ -1,4 +1,4 @@
-const OpenAI = require("openai");
+import OpenAI from 'openai';
 
 // Initialize OpenAI with your API key from environment variables
 const openai = new OpenAI({
@@ -14,18 +14,16 @@ const examComplexityGuidance = {
   "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
 };
 
-// CORS headers for browser requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 // Main handler function
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return res.status(200).setHeaders(corsHeaders).end();
+    return res.status(200).end();
   }
 
   // Only allow POST requests
@@ -34,6 +32,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Check if API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error',
+        message: 'OpenAI API key not configured'
+      });
+    }
+
     const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance } = req.body;
 
     // Validate required fields
@@ -230,7 +236,7 @@ CONTENT GUIDANCE:
           return processedCard;
         });
 
-        return res.status(200).setHeaders(corsHeaders).json({ 
+        return res.status(200).json({ 
           success: true,
           cards: processedCards 
         });
@@ -240,7 +246,7 @@ CONTENT GUIDANCE:
     throw new Error('Invalid response format from AI');
   } catch (error) {
     console.error('Error generating cards:', error);
-    return res.status(500).setHeaders(corsHeaders).json({ 
+    return res.status(500).json({ 
       error: 'Failed to generate cards',
       message: error.message 
     });
