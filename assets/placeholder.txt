@@ -1,0 +1,13 @@
+This folder needs the following image files:
+
+1. icon.png - App icon (1024x1024px recommended)
+2. splash.png - Splash screen image (1242x2436px recommended)
+3. adaptive-icon.png - Android adaptive icon (1024x1024px)
+4. favicon.png - Web favicon (48x48px)
+
+For now, you can use any placeholder images or generate them using:
+- https://placeholder.com/
+- https://via.placeholder.com/
+- Or create simple colored squares in any image editor
+
+The app will run without these, but you'll see warnings. 
