@@ -30,14 +30,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-notifications",
-      "expo-secure-store"
-    ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "9bc8cac1-4205-4936-8f04-1834449f28a5"
       }
-    }
+    },
+    "owner": "tonydennis"
   }
-} 
+}
