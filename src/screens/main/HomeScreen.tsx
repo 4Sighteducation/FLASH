@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,47 +6,119 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../../services/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
+
+interface UserSubject {
+  id: string;
+  subject_id: string;
+  exam_board: string;
+  color: string;
+  subject: {
+    name: string;
+  };
+}
+
+interface UserData {
+  exam_type: string;
+  username: string;
+}
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const quickActions = [
-    {
-      title: 'Select Topics',
-      icon: 'school-outline' as keyof typeof Ionicons.glyphMap,
-      color: '#007AFF',
-      onPress: () => navigation.navigate('TopicSelector'),
-    },
-    {
-      title: 'Create Flashcard',
-      icon: 'add-circle-outline' as keyof typeof Ionicons.glyphMap,
-      color: '#34C759',
-      onPress: () => navigation.navigate('CreateCard'),
-    },
-    {
-      title: 'Study Now',
-      icon: 'play-circle-outline' as keyof typeof Ionicons.glyphMap,
-      color: '#FF9500',
-      onPress: () => navigation.navigate('Study'),
-    },
-    {
-      title: 'Progress',
-      icon: 'stats-chart-outline' as keyof typeof Ionicons.glyphMap,
-      color: '#AF52DE',
-      onPress: () => navigation.navigate('Progress'),
-    },
-  ];
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      // Fetch user data
+      const { data: userInfo, error: userError } = await supabase
+        .from('users')
+        .select('exam_type, username')
+        .eq('id', user?.id)
+        .single();
+
+      if (userError) throw userError;
+      setUserData(userInfo);
+
+      // Fetch user subjects with subject details
+      const { data: subjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select(`
+          id,
+          subject_id,
+          exam_board,
+          color,
+          subject:exam_board_subjects!subject_id(name)
+        `)
+        .eq('user_id', user?.id);
+
+      if (subjectsError) throw subjectsError;
+      setUserSubjects(subjects || []);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getExamTypeDisplay = (examType: string) => {
+    const types: { [key: string]: string } = {
+      gcse: 'GCSE',
+      alevel: 'A-Level',
+      btec: 'BTEC / Vocational',
+      ib: 'International Baccalaureate',
+      igcse: 'iGCSE',
+    };
+    return types[examType] || examType;
+  };
+
+  const handleSubjectPress = (subject: UserSubject) => {
+    navigation.navigate('TopicList', { 
+      subjectId: subject.subject_id,
+      subjectName: subject.subject.name,
+      subjectColor: subject.color,
+    });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6366F1" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome back!</Text>
-          <Text style={styles.username}>{user?.user_metadata?.username || 'Student'}</Text>
-        </View>
+        <LinearGradient
+          colors={['#6366F1', '#8B5CF6']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Welcome back!</Text>
+            <Text style={styles.username}>{userData?.username || 'Student'}</Text>
+            {userData?.exam_type && (
+              <View style={styles.examTypeBadge}>
+                <Text style={styles.examTypeText}>
+                  {getExamTypeDisplay(userData.exam_type)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
 
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
@@ -63,25 +135,55 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
 
+        <Text style={styles.sectionTitle}>Your Subjects</Text>
+        {userSubjects.length > 0 ? (
+          <View style={styles.subjectsGrid}>
+            {userSubjects.map((subject) => (
+              <TouchableOpacity
+                key={subject.id}
+                style={[
+                  styles.subjectCard,
+                  { borderLeftColor: subject.color || '#6366F1' }
+                ]}
+                onPress={() => handleSubjectPress(subject)}
+              >
+                <View style={styles.subjectContent}>
+                  <Text style={styles.subjectName}>{subject.subject.name}</Text>
+                  <Text style={styles.examBoard}>{subject.exam_board}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="school-outline" size={48} color="#ccc" />
+            <Text style={styles.emptyText}>No subjects added yet</Text>
+            <TouchableOpacity
+              style={styles.addSubjectButton}
+              onPress={() => navigation.navigate('SubjectSelection')}
+            >
+              <Text style={styles.addSubjectText}>Add Subjects</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          {quickActions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.actionCard}
-              onPress={action.onPress}
-            >
-              <Ionicons name={action.icon} size={32} color={action.color} />
-              <Text style={styles.actionText}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <View style={styles.emptyState}>
-          <Ionicons name="book-outline" size={48} color="#ccc" />
-          <Text style={styles.emptyText}>No recent activity</Text>
-          <Text style={styles.emptySubtext}>Start studying to see your progress here</Text>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Study')}
+          >
+            <Ionicons name="play-circle-outline" size={32} color="#FF9500" />
+            <Text style={styles.actionText}>Study Now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CreateCard')}
+          >
+            <Ionicons name="add-circle-outline" size={32} color="#34C759" />
+            <Text style={styles.actionText}>Create Card</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -93,25 +195,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f0f0',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollContent: {
-    padding: 20,
+    paddingBottom: 20,
+  },
+  headerGradient: {
+    paddingTop: 20,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    marginBottom: -10,
   },
   header: {
-    marginBottom: 30,
+    marginBottom: 10,
   },
   greeting: {
     fontSize: 24,
-    color: '#666',
+    color: '#E0E7FF',
   },
   username: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
+  },
+  examTypeBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  examTypeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 30,
+    paddingHorizontal: 20,
+    marginTop: 20,
   },
   statBox: {
     flex: 1,
@@ -129,7 +257,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#007AFF',
+    color: '#6366F1',
   },
   statLabel: {
     fontSize: 12,
@@ -141,11 +269,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 15,
+    paddingHorizontal: 20,
+  },
+  subjectsGrid: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+  },
+  subjectCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  subjectContent: {
+    flex: 1,
+  },
+  subjectName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  examBoard: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   actionsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
     marginBottom: 30,
   },
   actionCard: {
@@ -154,7 +315,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -172,15 +332,23 @@ const styles = StyleSheet.create({
     padding: 40,
     backgroundColor: '#fff',
     borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 30,
   },
   emptyText: {
     fontSize: 16,
     color: '#666',
     marginTop: 15,
   },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 5,
+  addSubjectButton: {
+    marginTop: 15,
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  addSubjectText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 }); 

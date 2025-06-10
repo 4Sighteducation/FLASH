@@ -6,6 +6,8 @@ import HomeScreen from '../screens/main/HomeScreen';
 import StudyScreen from '../screens/main/StudyScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import TopicSelectorScreen from '../screens/topics/TopicSelectorScreen';
+import TopicListScreen from '../screens/topics/TopicListScreen';
+import TopicEditModal from '../components/TopicEditModal';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -19,6 +21,11 @@ function HomeStack() {
         name="TopicSelector" 
         component={TopicSelectorScreen}
         options={{ headerShown: true, headerTitle: '' }}
+      />
+      <Stack.Screen 
+        name="TopicList" 
+        component={TopicListScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -45,8 +52,8 @@ function ProfileStack() {
 export default function MainNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+      screenOptions={({ route }: any) => ({
+        tabBarIcon: ({ focused, color, size }: any) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           if (route.name === 'Home') {
@@ -61,7 +68,7 @@ export default function MainNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#007AFF',
+        tabBarActiveTintColor: '#6366F1',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
       })}
