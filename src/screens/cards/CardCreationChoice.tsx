@@ -34,6 +34,16 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
     });
   };
 
+  const handleImageCreate = () => {
+    navigation.replace('ImageCardGenerator', {
+      topicId,
+      topicName,
+      subjectName,
+      examBoard,
+      examType,
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -70,6 +80,19 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
             <Text style={styles.optionTitle}>Create Manually</Text>
             <Text style={styles.optionDescription}>
               Write your own custom flashcards for this topic
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#666" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.optionCard} onPress={handleImageCreate}>
+          <View style={[styles.iconContainer, { backgroundColor: '#E8F5E9' }]}>
+            <Ionicons name="camera" size={32} color="#4CAF50" />
+          </View>
+          <View style={styles.optionContent}>
+            <Text style={styles.optionTitle}>From Image</Text>
+            <Text style={styles.optionDescription}>
+              Take a photo of notes or textbook and generate cards with AI
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#666" />

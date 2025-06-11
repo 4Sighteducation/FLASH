@@ -55,6 +55,12 @@ next-env.d.ts
 # OS
 Thumbs.db
 
+# Google Cloud credentials
+*.json
+google-credentials.json
+flash-*.json
+*-gserviceaccount.json
+
 # Temporary files
 *.log
 tmp/

@@ -23,6 +23,8 @@
     "expo": "~53.0.0",
     "expo-constants": "~17.0.3",
     "expo-device": "~7.0.2",
+    "expo-image-manipulator": "^13.1.7",
+    "expo-image-picker": "^16.1.4",
     "expo-linear-gradient": "^14.1.5",
     "expo-notifications": "~0.29.13",
     "expo-secure-store": "~14.2.3",

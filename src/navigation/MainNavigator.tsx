@@ -21,6 +21,7 @@ import CardSubjectSelector from '../screens/cards/CardSubjectSelector';
 import CardTopicSelector from '../screens/cards/CardTopicSelector';
 import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
 import TopicHubScreen from '../screens/topics/TopicHubScreen';
+import ImageCardGeneratorScreen from '../screens/cards/ImageCardGeneratorScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -128,6 +129,14 @@ function HomeStack() {
       <Stack.Screen 
         name="ColorPicker" 
         component={ColorPickerScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="ImageCardGenerator" 
+        component={ImageCardGeneratorScreen}
         options={{ 
           headerShown: false,
           presentation: 'modal'
