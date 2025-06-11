@@ -1,0 +1,6 @@
+{
+  "name": "flash-api-functions",
+  "version": "1.0.0",
+  "description": "API functions for FLASH app - all dependencies are in root package.json",
+  "private": true
+} 
