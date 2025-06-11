@@ -19,7 +19,7 @@ interface UserSubject {
   exam_board: string;
   color: string;
   subject: {
-    name: string;
+    subject_name: string;
   };
 }
 
@@ -58,7 +58,7 @@ export default function HomeScreen({ navigation }: any) {
           subject_id,
           exam_board,
           color,
-          subject:exam_board_subjects!subject_id(name)
+          subject:exam_board_subjects!subject_id(subject_name)
         `)
         .eq('user_id', user?.id);
 
@@ -85,7 +85,7 @@ export default function HomeScreen({ navigation }: any) {
   const handleSubjectPress = (subject: UserSubject) => {
     navigation.navigate('TopicList', { 
       subjectId: subject.subject_id,
-      subjectName: subject.subject.name,
+      subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
     });
   };
@@ -137,31 +137,53 @@ export default function HomeScreen({ navigation }: any) {
 
         <Text style={styles.sectionTitle}>Your Subjects</Text>
         {userSubjects.length > 0 ? (
-          <View style={styles.subjectsGrid}>
-            {userSubjects.map((subject) => (
-              <TouchableOpacity
-                key={subject.id}
-                style={[
-                  styles.subjectCard,
-                  { borderLeftColor: subject.color || '#6366F1' }
-                ]}
-                onPress={() => handleSubjectPress(subject)}
-              >
-                <View style={styles.subjectContent}>
-                  <Text style={styles.subjectName}>{subject.subject.name}</Text>
-                  <Text style={styles.examBoard}>{subject.exam_board}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            ))}
-          </View>
+          <>
+            <View style={styles.subjectsGrid}>
+              {userSubjects.map((subject) => (
+                <TouchableOpacity
+                  key={subject.id}
+                  style={[
+                    styles.subjectCard,
+                    { borderLeftColor: subject.color || '#6366F1' }
+                  ]}
+                  onPress={() => handleSubjectPress(subject)}
+                >
+                  <View style={styles.subjectContent}>
+                    <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
+                    <Text style={styles.examBoard}>{subject.exam_board}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.addMoreButton}
+              onPress={() => {
+                if (userData?.exam_type) {
+                  navigation.navigate('SubjectSelection', { examType: userData.exam_type });
+                } else {
+                  navigation.navigate('ExamTypeSelection');
+                }
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#6366F1" />
+              <Text style={styles.addMoreText}>Add More Subjects</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="school-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No subjects added yet</Text>
             <TouchableOpacity
               style={styles.addSubjectButton}
-              onPress={() => navigation.navigate('SubjectSelection')}
+              onPress={() => {
+                if (userData?.exam_type) {
+                  navigation.navigate('SubjectSelection', { examType: userData.exam_type });
+                } else {
+                  // If no exam type, go to exam type selection first
+                  navigation.navigate('ExamTypeSelection');
+                }
+              }}
             >
               <Text style={styles.addSubjectText}>Add Subjects</Text>
             </TouchableOpacity>
@@ -350,5 +372,23 @@ const styles = StyleSheet.create({
   addSubjectText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  addMoreButton: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  addMoreText: {
+    color: '#6366F1',
+    fontWeight: '600',
+    marginLeft: 8,
   },
 }); 

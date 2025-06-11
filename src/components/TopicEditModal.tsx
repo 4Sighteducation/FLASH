@@ -47,6 +47,8 @@ export default function TopicEditModal({
     try {
       setLoading(true);
       
+      console.log('🔍 Loading topics for subject:', subject.subjectName, subject.subjectId);
+      
       // First check if user already has custom topics for this subject
       const { data: customTopics, error: customError } = await supabase
         .from('user_custom_topics')
@@ -56,6 +58,8 @@ export default function TopicEditModal({
         .order('sort_order');
 
       if (customError) throw customError;
+
+      console.log('📚 Custom topics found:', customTopics?.length || 0);
 
       if (customTopics && customTopics.length > 0) {
         // User already has custom topics
@@ -77,19 +81,24 @@ export default function TopicEditModal({
 
         if (curriculumError) throw curriculumError;
 
+        console.log('📚 Curriculum topics found:', curriculumTopics?.length || 0);
+        if (curriculumTopics && curriculumTopics.length > 0) {
+          console.log('📋 Sample topic:', curriculumTopics[0]);
+        }
+
         // Convert to our Topic format
         const formattedTopics = curriculumTopics?.map((t: any, index: number) => ({
           id: t.id,
-          title: t.name,
-          parentId: t.parent_id,
+          title: t.topic_name,
+          parentId: t.parent_topic_id,
           isCustom: false,
-          sortOrder: index,
+          sortOrder: t.sort_order || index,
         })) || [];
 
         setTopics(formattedTopics);
       }
     } catch (error) {
-      console.error('Error loading topics:', error);
+      console.error('❌ Error loading topics:', error);
       Alert.alert('Error', 'Failed to load topics');
     } finally {
       setLoading(false);

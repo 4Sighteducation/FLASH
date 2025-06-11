@@ -14,13 +14,22 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
-interface Topic {
+interface CurriculumTopic {
   id: string;
-  title: string;
+  topic_name: string;
+  topic_level: number;
   parent_topic_id: string | null;
-  color: string;
-  is_deleted: boolean;
+  exam_board_subject_id: string;
   sort_order: number;
+}
+
+interface TopicNode {
+  id: string;
+  name: string;
+  level: number;
+  children: TopicNode[];
+  isCollapsed?: boolean; // For cases where module = topic
+  originalLevel: number;
 }
 
 export default function TopicListScreen() {
@@ -33,31 +42,92 @@ export default function TopicListScreen() {
     subjectColor: string;
   };
 
-  const [topics, setTopics] = useState<Topic[]>([]);
+  const [topics, setTopics] = useState<CurriculumTopic[]>([]);
+  const [topicTree, setTopicTree] = useState<TopicNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchTopics();
+    fetchCurriculumTopics();
   }, []);
 
-  const fetchTopics = async () => {
+  const fetchCurriculumTopics = async () => {
     try {
+      // Fetch all curriculum topics for this subject
       const { data, error } = await supabase
-        .from('user_custom_topics')
+        .from('curriculum_topics')
         .select('*')
-        .eq('user_id', user?.id)
-        .eq('subject_id', subjectId)
-        .eq('is_deleted', false)
+        .eq('exam_board_subject_id', subjectId)
+        .order('topic_level')
         .order('sort_order');
 
       if (error) throw error;
-      setTopics(data || []);
+      
+      if (data) {
+        setTopics(data);
+        const tree = buildTopicTree(data);
+        setTopicTree(tree);
+      }
     } catch (error) {
-      console.error('Error fetching topics:', error);
+      console.error('Error fetching curriculum topics:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const buildTopicTree = (topics: CurriculumTopic[]): TopicNode[] => {
+    const topicMap = new Map<string, TopicNode>();
+    const rootNodes: TopicNode[] = [];
+
+    // First, create all nodes
+    topics.forEach(topic => {
+      topicMap.set(topic.id, {
+        id: topic.id,
+        name: topic.topic_name,
+        level: topic.topic_level,
+        originalLevel: topic.topic_level,
+        children: [],
+      });
+    });
+
+    // Then, build the tree structure
+    topics.forEach(topic => {
+      const node = topicMap.get(topic.id)!;
+      
+      if (topic.parent_topic_id) {
+        const parent = topicMap.get(topic.parent_topic_id);
+        if (parent) {
+          // Check if parent has same name (module = topic case)
+          if (parent.name === node.name && parent.level === 1 && node.level === 2) {
+            // Collapse this level - move children up
+            node.isCollapsed = true;
+            parent.isCollapsed = true;
+          } else {
+            parent.children.push(node);
+          }
+        }
+      } else {
+        rootNodes.push(node);
+      }
+    });
+
+    // Handle collapsed nodes - promote grandchildren
+    const processCollapsedNodes = (nodes: TopicNode[]): TopicNode[] => {
+      return nodes.map(node => {
+        if (node.isCollapsed && node.children.length > 0) {
+          // Find the child with same name
+          const collapsedChild = node.children.find(child => child.name === node.name);
+          if (collapsedChild && collapsedChild.children.length > 0) {
+            // Replace children with grandchildren
+            node.children = collapsedChild.children;
+          }
+        }
+        node.children = processCollapsedNodes(node.children);
+        return node;
+      });
+    };
+
+    return processCollapsedNodes(rootNodes);
   };
 
   const toggleExpanded = (topicId: string) => {
@@ -70,28 +140,38 @@ export default function TopicListScreen() {
     setExpandedTopics(newExpanded);
   };
 
-  const handleCreateFlashcards = (topic: Topic) => {
+  const handleCreateFlashcards = (topic: TopicNode) => {
     navigation.navigate('CreateCard' as never, {
       topicId: topic.id,
-      topicName: topic.title,
+      topicName: topic.name,
       subjectName,
     } as never);
   };
 
-  const renderTopic = (topic: Topic, level: number = 0) => {
-    const childTopics = topics.filter(t => t.parent_topic_id === topic.id);
-    const hasChildren = childTopics.length > 0;
-    const isExpanded = expandedTopics.has(topic.id);
+  const handleAIGenerate = (topic: TopicNode) => {
+    navigation.navigate('AIGenerator' as never, {
+      subject: subjectName,
+      topic: topic.name,
+      topicId: topic.id,
+      examBoard: route.params.examBoard || 'AQA', // Default exam board
+      examType: route.params.examType || 'GCSE', // Default exam type
+    } as never);
+  };
+
+  const renderTopicNode = (node: TopicNode, depth: number = 0) => {
+    const hasChildren = node.children.length > 0;
+    const isExpanded = expandedTopics.has(node.id);
 
     return (
-      <View key={topic.id}>
+      <View key={node.id}>
         <TouchableOpacity
           style={[
             styles.topicItem,
-            { marginLeft: level * 20 },
-            level === 0 && styles.parentTopic,
+            { marginLeft: depth * 20 },
+            depth === 0 && styles.parentTopic,
+            depth === 1 && styles.midLevelTopic,
           ]}
-          onPress={() => hasChildren ? toggleExpanded(topic.id) : handleCreateFlashcards(topic)}
+          onPress={() => hasChildren ? toggleExpanded(node.id) : handleCreateFlashcards(node)}
         >
           <View style={styles.topicContent}>
             {hasChildren && (
@@ -102,22 +182,48 @@ export default function TopicListScreen() {
                 style={styles.expandIcon}
               />
             )}
-            <Text style={[styles.topicTitle, level === 0 && styles.parentTopicTitle]}>
-              {topic.title}
-            </Text>
+            <View style={styles.topicTextContainer}>
+              <Text style={[
+                styles.topicTitle, 
+                depth === 0 && styles.moduleTitle,
+                depth === 1 && styles.topicTitleText,
+                depth === 2 && styles.subTopicTitle,
+              ]}>
+                {node.name}
+              </Text>
+              {depth === 0 && hasChildren && (
+                <Text style={styles.childCount}>
+                  {node.children.length} {node.children.length === 1 ? 'topic' : 'topics'}
+                </Text>
+              )}
+            </View>
           </View>
           {!hasChildren && (
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => handleCreateFlashcards(topic)}
-            >
-              <Ionicons name="add-circle" size={24} color={subjectColor || '#6366F1'} />
-            </TouchableOpacity>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleAIGenerate(node)}
+              >
+                <Ionicons name="sparkles" size={20} color="#FF6B6B" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => handleCreateFlashcards(node)}
+              >
+                <Ionicons name="add-circle" size={24} color={subjectColor || '#6366F1'} />
+              </TouchableOpacity>
+            </View>
           )}
         </TouchableOpacity>
-        {isExpanded && childTopics.map(child => renderTopic(child, level + 1))}
+        {isExpanded && node.children.map(child => renderTopicNode(child, depth + 1))}
       </View>
     );
+  };
+
+  const getTotalTopicCount = (nodes: TopicNode[]): number => {
+    return nodes.reduce((count, node) => {
+      return count + 1 + getTotalTopicCount(node.children);
+    }, 0);
   };
 
   if (loading) {
@@ -129,6 +235,8 @@ export default function TopicListScreen() {
       </SafeAreaView>
     );
   }
+
+  const totalCount = getTotalTopicCount(topicTree);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -142,7 +250,7 @@ export default function TopicListScreen() {
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.subjectName}>{subjectName}</Text>
-            <Text style={styles.topicCount}>{topics.length} topics</Text>
+            <Text style={styles.topicCount}>{totalCount} topics</Text>
           </View>
           <TouchableOpacity
             onPress={() => navigation.navigate('TopicEdit' as never, {
@@ -156,23 +264,12 @@ export default function TopicListScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.scrollView}>
-        {topics.filter(t => !t.parent_topic_id).length > 0 ? (
-          topics
-            .filter(t => !t.parent_topic_id)
-            .map(topic => renderTopic(topic))
+        {topicTree.length > 0 ? (
+          topicTree.map(node => renderTopicNode(node))
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="list-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No topics added yet</Text>
-            <TouchableOpacity
-              style={styles.addTopicButton}
-              onPress={() => navigation.navigate('TopicEdit' as never, {
-                subjectId,
-                subjectName,
-              } as never)}
-            >
-              <Text style={styles.addTopicText}>Customize Topics</Text>
-            </TouchableOpacity>
+            <Text style={styles.emptyText}>No topics available</Text>
           </View>
         )}
       </ScrollView>
@@ -245,6 +342,11 @@ const styles = StyleSheet.create({
   parentTopic: {
     borderLeftWidth: 4,
     borderLeftColor: '#6366F1',
+    backgroundColor: '#F3F4F6',
+  },
+  midLevelTopic: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B5CF6',
   },
   topicContent: {
     flex: 1,
@@ -254,14 +356,42 @@ const styles = StyleSheet.create({
   expandIcon: {
     marginRight: 8,
   },
+  topicTextContainer: {
+    flex: 1,
+  },
   topicTitle: {
     fontSize: 16,
     color: '#1F2937',
   },
-  parentTopicTitle: {
+  moduleTitle: {
+    fontWeight: '700',
+    fontSize: 17,
+    color: '#111827',
+  },
+  topicTitleText: {
     fontWeight: '600',
+    fontSize: 16,
+    color: '#374151',
+  },
+  subTopicTitle: {
+    fontWeight: '400',
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  childCount: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   createButton: {
+    padding: 4,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
     padding: 4,
   },
   emptyState: {
@@ -275,17 +405,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 15,
-  },
-  addTopicButton: {
-    marginTop: 15,
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-  },
-  addTopicText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
   fab: {
     position: 'absolute',

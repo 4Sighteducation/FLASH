@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,19 +7,41 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
+interface ExamBoard {
+  id: string;
+  code: string;
+  full_name: string;
+}
+
 interface Subject {
   id: string;
-  name: string;
-  exam_board: string;
+  subject_name: string;
+  exam_board_id: string;
 }
 
 interface SelectedSubject {
   subjectId: string;
   subjectName: string;
-  examBoard: string;
+  examBoardId: string;
+  examBoardCode: string;
 }
 
-const examBoards = ['AQA', 'Edexcel', 'OCR', 'WJEC', 'CCEA', 'Other'];
+// Map exam type display names to database codes
+const examTypeToCode: { [key: string]: string } = {
+  'gcse': 'GCSE',
+  'alevel': 'A_LEVEL',
+  'aslevel': 'AS_LEVEL',
+  'btec': 'BTEC',
+  'ib': 'IB',
+  'igcse': 'IGCSE',
+  // Also support the display names just in case
+  'GCSE': 'GCSE',
+  'A-Level': 'A_LEVEL',
+  'AS-Level': 'AS_LEVEL',
+  'BTEC': 'BTEC',
+  'IB': 'IB',
+  'iGCSE': 'IGCSE'
+};
 
 export default function SubjectSelectionScreen() {
   const navigation = useNavigation();
@@ -27,60 +49,120 @@ export default function SubjectSelectionScreen() {
   const { user } = useAuth();
   const { examType } = route.params as { examType: string };
   
+  const [examBoards, setExamBoards] = useState<ExamBoard[]>([]);
+  const [selectedExamBoard, setSelectedExamBoard] = useState<ExamBoard | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<SelectedSubject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchSubjects();
+    fetchExamBoards();
   }, []);
 
-  const fetchSubjects = async () => {
+  useEffect(() => {
+    if (selectedExamBoard) {
+      fetchSubjectsForExamBoard(selectedExamBoard.id);
+    }
+  }, [selectedExamBoard]);
+
+  useEffect(() => {
+    // Filter subjects based on search query
+    if (searchQuery.trim() === '') {
+      setFilteredSubjects(subjects);
+    } else {
+      const filtered = subjects.filter(subject =>
+        subject.subject_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredSubjects(filtered);
+    }
+  }, [searchQuery, subjects]);
+
+  const fetchExamBoards = async () => {
     try {
-      // Fetch unique subjects from exam_board_subjects
       const { data, error } = await supabase
-        .from('exam_board_subjects')
-        .select('id, name')
-        .order('name');
+        .from('exam_boards')
+        .select('id, code, full_name')
+        .eq('active', true)
+        .order('code');
 
       if (error) throw error;
 
-      // Get unique subject names
-      const uniqueSubjects = data?.reduce((acc: Subject[], curr: any) => {
-        if (!acc.find(s => s.name === curr.name)) {
-          acc.push({ id: curr.id, name: curr.name, exam_board: '' });
-        }
-        return acc;
-      }, []) || [];
-
-      setSubjects(uniqueSubjects);
+      setExamBoards(data || []);
     } catch (error) {
-      console.error('Error fetching subjects:', error);
+      console.error('Error fetching exam boards:', error);
+      Alert.alert('Error', 'Failed to load exam boards');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleSubject = (subject: Subject) => {
-    const existingIndex = selectedSubjects.findIndex(s => s.subjectName === subject.name);
-    
-    if (existingIndex >= 0) {
-      // Remove subject
-      setSelectedSubjects(selectedSubjects.filter((_, index) => index !== existingIndex));
-    } else {
-      // Add subject with default exam board
-      setSelectedSubjects([...selectedSubjects, {
-        subjectId: subject.id,
-        subjectName: subject.name,
-        examBoard: 'AQA', // Default exam board
-      }]);
+  const fetchSubjectsForExamBoard = async (examBoardId: string) => {
+    try {
+      setLoadingSubjects(true);
+      setSubjects([]);
+      setFilteredSubjects([]);
+      
+      // Map exam type to database code
+      const examTypeCode = examTypeToCode[examType] || examType;
+      console.log(`🔍 Fetching subjects for exam type: ${examType} (code: ${examTypeCode})`);
+      
+      // Get qualification type ID
+      const { data: qualTypeData, error: qualTypeError } = await supabase
+        .from('qualification_types')
+        .select('id')
+        .eq('code', examTypeCode)
+        .maybeSingle();
+
+      if (qualTypeError) {
+        console.error('Error fetching qualification type:', qualTypeError);
+        throw qualTypeError;
+      }
+
+      if (!qualTypeData) {
+        console.error('No qualification type found for:', examTypeCode);
+        Alert.alert('Error', `No qualification type found for ${examType}`);
+        return;
+      }
+
+      // Fetch subjects for this exam board and qualification type
+      const { data, error } = await supabase
+        .from('exam_board_subjects')
+        .select('id, subject_name, exam_board_id')
+        .eq('exam_board_id', examBoardId)
+        .eq('qualification_type_id', qualTypeData.id)
+        .eq('is_current', true)
+        .order('subject_name');
+
+      if (error) throw error;
+
+      console.log(`📚 Found ${data?.length || 0} subjects for ${selectedExamBoard?.code}`);
+      
+      setSubjects(data || []);
+      setFilteredSubjects(data || []);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+      Alert.alert('Error', 'Failed to load subjects');
+    } finally {
+      setLoadingSubjects(false);
     }
   };
 
-  const updateExamBoard = (subjectName: string, examBoard: string) => {
-    setSelectedSubjects(selectedSubjects.map(s => 
-      s.subjectName === subjectName ? { ...s, examBoard } : s
-    ));
+  const toggleSubject = (subject: Subject) => {
+    const existingIndex = selectedSubjects.findIndex(s => s.subjectId === subject.id);
+    
+    if (existingIndex >= 0) {
+      setSelectedSubjects(selectedSubjects.filter((_, index) => index !== existingIndex));
+    } else {
+      setSelectedSubjects([...selectedSubjects, {
+        subjectId: subject.id,
+        subjectName: subject.subject_name,
+        examBoardId: subject.exam_board_id,
+        examBoardCode: selectedExamBoard!.code,
+      }]);
+    }
   };
 
   const handleContinue = async () => {
@@ -99,7 +181,7 @@ export default function SubjectSelectionScreen() {
       const subjectsToInsert = selectedSubjects.map(s => ({
         user_id: user?.id,
         subject_id: s.subjectId,
-        exam_board: s.examBoard,
+        exam_board: s.examBoardCode,
       }));
 
       const { error: subjectsError } = await supabase
@@ -115,6 +197,7 @@ export default function SubjectSelectionScreen() {
       } as never);
     } catch (error) {
       console.error('Error saving subjects:', error);
+      Alert.alert('Error', 'Failed to save subjects');
     }
   };
 
@@ -140,72 +223,128 @@ export default function SubjectSelectionScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.title}>Select your subjects</Text>
-            <Text style={styles.subtitle}>Choose subjects and their exam boards</Text>
-          </View>
-
-          <View style={styles.subjectsContainer}>
-            {subjects.map((subject) => {
-              const isSelected = selectedSubjects.some(s => s.subjectName === subject.name);
-              const selectedSubject = selectedSubjects.find(s => s.subjectName === subject.name);
-              
-              return (
-                <View key={subject.id} style={styles.subjectWrapper}>
-                  <TouchableOpacity
-                    style={[styles.subjectCard, isSelected && styles.selectedCard]}
-                    onPress={() => toggleSubject(subject)}
-                  >
-                    <Text style={[styles.subjectName, isSelected && styles.selectedText]}>
-                      {subject.name}
-                    </Text>
-                    <Ionicons 
-                      name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
-                      size={24} 
-                      color={isSelected ? "#6366F1" : "#9CA3AF"} 
-                    />
-                  </TouchableOpacity>
-                  
-                  {isSelected && (
-                    <View style={styles.examBoardContainer}>
-                      <Text style={styles.examBoardLabel}>Exam Board:</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        {examBoards.map((board) => (
-                          <TouchableOpacity
-                            key={board}
-                            style={[
-                              styles.examBoardChip,
-                              selectedSubject?.examBoard === board && styles.selectedExamBoard,
-                            ]}
-                            onPress={() => updateExamBoard(subject.name, board)}
-                          >
-                            <Text style={[
-                              styles.examBoardText,
-                              selectedSubject?.examBoard === board && styles.selectedExamBoardText,
-                            ]}>
-                              {board}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              selectedSubjects.length === 0 && styles.disabledButton,
-            ]}
-            onPress={handleContinue}
-            disabled={selectedSubjects.length === 0}
-          >
-            <Text style={styles.continueButtonText}>
-              Continue ({selectedSubjects.length} subjects selected)
+            <Text style={styles.title}>
+              {!selectedExamBoard ? 'Choose your exam board' : 'Select your subjects'}
             </Text>
-          </TouchableOpacity>
+            <Text style={styles.subtitle}>
+              {!selectedExamBoard 
+                ? 'To provide you with accurate subject lists and topics, we need to know which exam board you\'re studying with'
+                : `Great! Now select your ${examType} subjects from ${selectedExamBoard.code}`}
+            </Text>
+          </View>
+
+          {!selectedExamBoard ? (
+            <View style={styles.examBoardsContainer}>
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle" size={24} color="#6366F1" />
+                <Text style={styles.infoText}>
+                  Each exam board has different subjects and topic structures. Selecting your exam board ensures you get the exact curriculum for your studies.
+                </Text>
+              </View>
+              
+              <Text style={styles.sectionTitle}>Select your exam board:</Text>
+              {examBoards.map((board) => (
+                <TouchableOpacity
+                  key={board.id}
+                  style={styles.examBoardCard}
+                  onPress={() => setSelectedExamBoard(board)}
+                >
+                  <View style={styles.examBoardInfo}>
+                    <Text style={styles.examBoardCode}>{board.code}</Text>
+                    <Text style={styles.examBoardName}>{board.full_name}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color="#6366F1" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <>
+              <TouchableOpacity 
+                style={styles.changeExamBoard}
+                onPress={() => {
+                  setSelectedExamBoard(null);
+                  setSelectedSubjects([]);
+                  setSearchQuery('');
+                }}
+              >
+                <Ionicons name="swap-horizontal" size={20} color="#6366F1" />
+                <Text style={styles.changeExamBoardText}>
+                  Change exam board (Currently: {selectedExamBoard.code})
+                </Text>
+              </TouchableOpacity>
+
+              {loadingSubjects ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color="#FFFFFF" />
+                </View>
+              ) : (
+                <>
+                  <View style={styles.searchContainer}>
+                    <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search subjects..."
+                      placeholderTextColor="#9CA3AF"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity 
+                        style={styles.clearButton}
+                        onPress={() => setSearchQuery('')}
+                      >
+                        <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={styles.subjectsContainer}>
+                    {filteredSubjects.length === 0 ? (
+                      <Text style={styles.noSubjectsText}>
+                        {searchQuery ? 'No subjects found' : 'No subjects available for this exam board'}
+                      </Text>
+                    ) : (
+                      filteredSubjects.map((subject) => {
+                        const isSelected = selectedSubjects.some(s => s.subjectId === subject.id);
+                        
+                        return (
+                          <TouchableOpacity
+                            key={subject.id}
+                            style={[styles.subjectCard, isSelected && styles.selectedCard]}
+                            onPress={() => toggleSubject(subject)}
+                          >
+                            <Text style={[styles.subjectName, isSelected && styles.selectedText]}>
+                              {subject.subject_name}
+                            </Text>
+                            <Ionicons 
+                              name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
+                              size={24} 
+                              color={isSelected ? "#6366F1" : "#9CA3AF"} 
+                            />
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                </>
+              )}
+            </>
+          )}
+
+          {selectedExamBoard && (
+            <TouchableOpacity
+              style={[
+                styles.continueButton,
+                selectedSubjects.length === 0 && styles.disabledButton,
+              ]}
+              onPress={handleContinue}
+              disabled={selectedSubjects.length === 0}
+            >
+              <Text style={styles.continueButtonText}>
+                Continue ({selectedSubjects.length} subjects selected)
+              </Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -246,12 +385,77 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E0E7FF',
   },
+  examBoardsContainer: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  examBoardCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  examBoardInfo: {
+    flex: 1,
+  },
+  examBoardCode: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  examBoardName: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  changeExamBoard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  changeExamBoardText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  searchContainer: {
+    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  clearButton: {
+    padding: 4,
+  },
   subjectsContainer: {
     flex: 1,
     marginBottom: 32,
-  },
-  subjectWrapper: {
-    marginBottom: 16,
   },
   subjectCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -260,6 +464,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   selectedCard: {
     backgroundColor: '#FFFFFF',
@@ -270,39 +475,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
+    flex: 1,
   },
   selectedText: {
     color: '#6366F1',
-  },
-  examBoardContainer: {
-    marginTop: 8,
-    paddingHorizontal: 20,
-  },
-  examBoardLabel: {
-    fontSize: 14,
-    color: '#E0E7FF',
-    marginBottom: 8,
-  },
-  examBoardChip: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  selectedExamBoard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#6366F1',
-  },
-  examBoardText: {
-    fontSize: 14,
-    color: '#E0E7FF',
-  },
-  selectedExamBoardText: {
-    color: '#6366F1',
-    fontWeight: '600',
   },
   continueButton: {
     backgroundColor: '#FFFFFF',
@@ -322,5 +498,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#6366F1',
+  },
+  noSubjectsText: {
+    fontSize: 16,
+    color: '#E0E7FF',
+    textAlign: 'center',
+    marginTop: 32,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#E0E7FF',
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
   },
 }); 

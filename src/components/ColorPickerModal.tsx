@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface ColorPickerModalProps {
   visible: boolean;
   subjectName: string;
+  subjectId: string;
   onClose: () => void;
   onColorSelected: (color: string) => void;
 }
@@ -34,6 +35,7 @@ const colors = [
 export default function ColorPickerModal({
   visible,
   subjectName,
+  subjectId,
   onClose,
   onColorSelected,
 }: ColorPickerModalProps) {
@@ -47,7 +49,7 @@ export default function ColorPickerModal({
         .from('user_subjects')
         .update({ color: selectedColor.hex })
         .eq('user_id', user?.id)
-        .eq('subject_name', subjectName);
+        .eq('subject_id', subjectId);
 
       if (error) throw error;
 
@@ -56,7 +58,7 @@ export default function ColorPickerModal({
         .from('user_custom_topics')
         .update({ color: selectedColor.light })
         .eq('user_id', user?.id)
-        .eq('subject_id', subjectName);
+        .eq('subject_id', subjectId);
 
       if (topicsError) console.error('Error updating topic colors:', topicsError);
 

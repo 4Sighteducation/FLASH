@@ -132,6 +132,7 @@ export default function TopicCurationScreen() {
           <ColorPickerModal
             visible={showColorModal}
             subjectName={selectedSubject.subjectName}
+            subjectId={selectedSubject.subjectId}
             onClose={() => setShowColorModal(false)}
             onColorSelected={handleColorSelected}
           />
