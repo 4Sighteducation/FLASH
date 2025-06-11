@@ -496,7 +496,6 @@ export default function TopicListScreen() {
               <Text style={styles.priorityItemName}>{node.name}</Text>
               <View style={[styles.priorityBadge, { backgroundColor: priorityInfo?.color }]}>
                 <Text style={styles.priorityEmoji}>{priorityInfo?.emoji}</Text>
-                <Text style={styles.priorityText}>{priorityInfo?.label}</Text>
               </View>
             </View>
             {hasFlashcards && (
@@ -920,17 +919,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
   },
   priorityEmoji: {
     fontSize: 14,
   },
   priorityBadge: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    justifyContent: 'center',
     marginLeft: 8,
   },
   priorityText: {

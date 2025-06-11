@@ -10,11 +10,42 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+
+type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
+
+interface CardTypeOption {
+  id: CardType;
+  name: string;
+  icon: string;
+  description: string;
+}
+
+const cardTypes: CardTypeOption[] = [
+  {
+    id: 'short_answer',
+    name: 'Short Answer',
+    icon: 'text-outline',
+    description: 'Brief response required',
+  },
+  {
+    id: 'essay',
+    name: 'Essay',
+    icon: 'document-text-outline',
+    description: 'Detailed explanation needed',
+  },
+  {
+    id: 'multiple_choice',
+    name: 'Multiple Choice',
+    icon: 'list-outline',
+    description: 'Select from options',
+  },
+];
 
 export default function CreateCardScreen() {
   const route = useRoute();
@@ -26,30 +57,66 @@ export default function CreateCardScreen() {
     subjectName: string;
   };
 
+  const [cardType, setCardType] = useState<CardType>('short_answer');
+  const [showTypeModal, setShowTypeModal] = useState(false);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [loading, setLoading] = useState(false);
+  
+  // Multiple choice specific state
+  const [choices, setChoices] = useState(['', '', '', '']);
+  const [correctChoice, setCorrectChoice] = useState(0);
 
   const handleSave = async () => {
-    if (!question.trim() || !answer.trim()) {
-      Alert.alert('Error', 'Please enter both question and answer');
+    if (!question.trim()) {
+      Alert.alert('Error', 'Please enter a question');
       return;
+    }
+
+    if (cardType === 'multiple_choice') {
+      // Validate multiple choice
+      const filledChoices = choices.filter(c => c.trim());
+      if (filledChoices.length < 2) {
+        Alert.alert('Error', 'Please provide at least 2 choices');
+        return;
+      }
+      if (!choices[correctChoice].trim()) {
+        Alert.alert('Error', 'The correct answer cannot be empty');
+        return;
+      }
+    } else {
+      // Validate other types
+      if (!answer.trim()) {
+        Alert.alert('Error', 'Please enter an answer');
+        return;
+      }
     }
 
     setLoading(true);
     try {
+      let flashcardData: any = {
+        user_id: user?.id,
+        topic_id: topicId,
+        question: question.trim(),
+        card_type: cardType,
+        box_number: 1,
+        subject_name: subjectName,
+        topic: topicName,
+      };
+
+      if (cardType === 'multiple_choice') {
+        // For multiple choice, store choices and correct answer
+        flashcardData.answer = choices[correctChoice].trim();
+        flashcardData.choices = choices.filter(c => c.trim()).map(c => c.trim());
+        flashcardData.correct_choice = correctChoice;
+      } else {
+        flashcardData.answer = answer.trim();
+      }
+
       const { error } = await supabase
         .from('flashcards')
-        .insert({
-          user_id: user?.id,
-          topic_id: topicId,
-          question: question.trim(),
-          answer: answer.trim(),
-          // TODO: Add difficulty once column is added to database
-          // difficulty,
-          box_number: 1, // Start in box 1 for Leitner system
-        });
+        .insert(flashcardData);
 
       if (error) throw error;
 
@@ -59,6 +126,8 @@ export default function CreateCardScreen() {
           onPress: () => {
             setQuestion('');
             setAnswer('');
+            setChoices(['', '', '', '']);
+            setCorrectChoice(0);
           }
         },
         { 
@@ -74,13 +143,122 @@ export default function CreateCardScreen() {
     }
   };
 
-  const handleAIGenerate = () => {
-    Alert.alert(
-      'AI Generation',
-      'AI flashcard generation will be available soon!',
-      [{ text: 'OK' }]
-    );
-  };
+  const renderCardTypeModal = () => (
+    <Modal
+      visible={showTypeModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowTypeModal(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowTypeModal(false)}
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Select Card Type</Text>
+          {cardTypes.map((type) => (
+            <TouchableOpacity
+              key={type.id}
+              style={[
+                styles.typeOption,
+                cardType === type.id && styles.selectedTypeOption,
+              ]}
+              onPress={() => {
+                setCardType(type.id);
+                setShowTypeModal(false);
+              }}
+            >
+              <View style={styles.typeOptionIcon}>
+                <Ionicons 
+                  name={type.icon as any} 
+                  size={24} 
+                  color={cardType === type.id ? '#6366F1' : '#6B7280'} 
+                />
+              </View>
+              <View style={styles.typeOptionInfo}>
+                <Text style={[
+                  styles.typeOptionName,
+                  cardType === type.id && styles.selectedTypeText
+                ]}>
+                  {type.name}
+                </Text>
+                <Text style={styles.typeOptionDescription}>
+                  {type.description}
+                </Text>
+              </View>
+              {cardType === type.id && (
+                <Ionicons name="checkmark-circle" size={24} color="#6366F1" />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  const renderMultipleChoiceInputs = () => (
+    <View style={styles.formSection}>
+      <Text style={styles.label}>Answer Choices</Text>
+      {choices.map((choice, index) => (
+        <View key={index} style={styles.choiceContainer}>
+          <TouchableOpacity
+            style={[
+              styles.radioButton,
+              correctChoice === index && styles.radioButtonSelected,
+            ]}
+            onPress={() => setCorrectChoice(index)}
+          >
+            {correctChoice === index && (
+              <View style={styles.radioButtonInner} />
+            )}
+          </TouchableOpacity>
+          <TextInput
+            style={[
+              styles.choiceInput,
+              correctChoice === index && styles.correctChoiceInput,
+            ]}
+            placeholder={`Choice ${index + 1}`}
+            placeholderTextColor="#9CA3AF"
+            value={choice}
+            onChangeText={(text: string) => {
+              const newChoices = [...choices];
+              newChoices[index] = text;
+              setChoices(newChoices);
+            }}
+          />
+        </View>
+      ))}
+      <Text style={styles.helperText}>
+        Select the correct answer by tapping the circle
+      </Text>
+    </View>
+  );
+
+  const renderAnswerInput = () => (
+    <View style={styles.formSection}>
+      <Text style={styles.label}>Answer</Text>
+      <TextInput
+        style={[
+          styles.textArea,
+          cardType === 'essay' && styles.largeTextArea,
+        ]}
+        placeholder={
+          cardType === 'essay' 
+            ? "Enter a detailed answer with key points..."
+            : "Enter the answer..."
+        }
+        placeholderTextColor="#9CA3AF"
+        multiline
+        numberOfLines={cardType === 'essay' ? 8 : 4}
+        value={answer}
+        onChangeText={setAnswer}
+        textAlignVertical="top"
+      />
+    </View>
+  );
+
+  const currentCardType = cardTypes.find(t => t.id === cardType);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,9 +284,22 @@ export default function CreateCardScreen() {
             <Text style={styles.topicName}>{topicName}</Text>
           </View>
 
-          <TouchableOpacity style={styles.aiButton} onPress={handleAIGenerate}>
-            <Ionicons name="sparkles" size={20} color="#6366F1" />
-            <Text style={styles.aiButtonText}>Generate with AI</Text>
+          <TouchableOpacity 
+            style={styles.typeSelector}
+            onPress={() => setShowTypeModal(true)}
+          >
+            <View style={styles.typeSelectorContent}>
+              <Ionicons 
+                name={currentCardType?.icon as any} 
+                size={24} 
+                color="#6366F1" 
+              />
+              <View style={styles.typeSelectorInfo}>
+                <Text style={styles.typeSelectorLabel}>Card Type</Text>
+                <Text style={styles.typeSelectorValue}>{currentCardType?.name}</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-down" size={20} color="#6B7280" />
           </TouchableOpacity>
 
           <View style={styles.formSection}>
@@ -125,19 +316,7 @@ export default function CreateCardScreen() {
             />
           </View>
 
-          <View style={styles.formSection}>
-            <Text style={styles.label}>Answer</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder="Enter the answer..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              numberOfLines={4}
-              value={answer}
-              onChangeText={setAnswer}
-              textAlignVertical="top"
-            />
-          </View>
+          {cardType === 'multiple_choice' ? renderMultipleChoiceInputs() : renderAnswerInput()}
 
           <View style={styles.formSection}>
             <Text style={styles.label}>Difficulty</Text>
@@ -170,14 +349,33 @@ export default function CreateCardScreen() {
 
           <View style={styles.tips}>
             <Text style={styles.tipsTitle}>
-              <Ionicons name="bulb-outline" size={16} color="#6366F1" /> Tips
+              <Ionicons name="bulb-outline" size={16} color="#6366F1" /> Tips for {currentCardType?.name}
             </Text>
-            <Text style={styles.tipText}>• Keep questions clear and concise</Text>
-            <Text style={styles.tipText}>• Focus on one concept per card</Text>
-            <Text style={styles.tipText}>• Use active recall principles</Text>
+            {cardType === 'multiple_choice' && (
+              <>
+                <Text style={styles.tipText}>• Make all choices plausible</Text>
+                <Text style={styles.tipText}>• Avoid "all of the above" options</Text>
+                <Text style={styles.tipText}>• Keep choices similar in length</Text>
+              </>
+            )}
+            {cardType === 'short_answer' && (
+              <>
+                <Text style={styles.tipText}>• Keep questions clear and concise</Text>
+                <Text style={styles.tipText}>• Focus on one concept per card</Text>
+                <Text style={styles.tipText}>• Use active recall principles</Text>
+              </>
+            )}
+            {cardType === 'essay' && (
+              <>
+                <Text style={styles.tipText}>• Ask for analysis or explanation</Text>
+                <Text style={styles.tipText}>• Include key points in the answer</Text>
+                <Text style={styles.tipText}>• Perfect for complex topics</Text>
+              </>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {renderCardTypeModal()}
     </SafeAreaView>
   );
 }
@@ -234,20 +432,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
   },
-  aiButton: {
+  typeSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EDE9FE',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  aiButtonText: {
+  typeSelectorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  typeSelectorInfo: {
+    gap: 2,
+  },
+  typeSelectorLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  typeSelectorValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6366F1',
-    marginLeft: 8,
+    color: '#111827',
   },
   formSection: {
     marginBottom: 24,
@@ -267,6 +478,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     minHeight: 120,
+  },
+  largeTextArea: {
+    minHeight: 200,
+  },
+  choiceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: '#6366F1',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#6366F1',
+  },
+  choiceInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+  },
+  correctChoiceInput: {
+    borderColor: '#6366F1',
+    backgroundColor: '#EDE9FE',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
   },
   difficultyContainer: {
     flexDirection: 'row',
@@ -310,5 +567,60 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginBottom: 4,
     paddingLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  typeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  selectedTypeOption: {
+    backgroundColor: '#EDE9FE',
+  },
+  typeOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  typeOptionInfo: {
+    flex: 1,
+  },
+  typeOptionName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  selectedTypeText: {
+    color: '#6366F1',
+  },
+  typeOptionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 }); 

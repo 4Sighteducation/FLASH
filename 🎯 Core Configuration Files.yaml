@@ -1,0 +1,76 @@
+🎯 Core Configuration Files 
+/app.config.js                          - Expo config with env vars
+/.env                                   - Environment variables (Supabase credentials)
+/package.json                           - Dependencies and scripts
+/tsconfig.json                          - TypeScript configuration
+
+
+
+🗄️ Database & Backend
+ /src/services/supabase.ts               - Supabase client configuration
+/src/services/aiService.ts              - OpenAI API integration
+
+/supabase/
+  - schema.sql                          - Original database schema
+  - create-user-topic-priorities-table.sql - Priority system table
+  - create-api-settings-table.sql       - API key storage
+  - update-flashcards-for-ai-corrected.sql - AI card columns
+  - COMPLETE-IMPORT-ALL-SUBJECTS.sql    - A-Level curriculum import
+  - COMPLETE-IMPORT-GCSE.sql            - GCSE curriculum import
+  - VERIFY-ENTIRE-SETUP.sql             - Database verification
+
+  🔐 Authentication & Context
+
+  /src/contexts/AuthContext.tsx           - Authentication state management
+/src/types/index.ts                     - TypeScript interfaces
+
+
+🧭 Navigation
+/src/navigation/AppNavigator.tsx        - Root navigation (auth check)
+/src/navigation/MainNavigator.tsx       - Main app navigation (tabs + stacks)
+
+📱 Main Screens
+/src/screens/auth/
+  - LoginScreen.tsx                     - User login
+  - SignUpScreen.tsx                    - User registration
+
+/src/screens/onboarding/
+  - WelcomeScreen.tsx                   - App introduction
+  - ExamTypeSelectionScreen.tsx         - Choose GCSE/A-Level/etc
+  - SubjectSelectionScreen.tsx          - Select subjects & exam boards
+  - TopicCurationScreen.tsx             - Customize topics per subject
+  - OnboardingCompleteScreen.tsx        - Success confirmation
+
+/src/screens/main/
+  - HomeScreen.tsx                      - Dashboard with subjects
+  - StudyScreen.tsx                     - Study mode (placeholder)
+  - ProfileScreen.tsx                   - User profile
+
+/src/screens/topics/
+  - TopicListScreen.tsx                 - Hierarchical topic view with priorities
+  - TopicHubScreen.tsx                  - Topic management with priorities
+  - TopicSelectorScreen.tsx             - Topic selection
+
+/src/screens/cards/
+  - CreateCardScreen.tsx                - Manual card creation
+  - AIGeneratorScreen.tsx               - AI card generation
+  - FlashcardsScreen.tsx                - View all flashcards
+  - StudyModal.tsx                      - Card study interface
+  - CardCreationChoice.tsx              - Choose AI or manual
+  - CardSubjectSelector.tsx             - Select subject for card creation
+  - CardTopicSelector.tsx               - Select topic for card creation
+
+/src/screens/settings/
+  - APISettingsScreen.tsx               - OpenAI API key management
+  - ColorPickerScreen.tsx               - Subject color customization
+
+  🧩 Components
+  /src/components/
+  - FlashcardCard.tsx                   - Flippable flashcard component
+  - TopicEditModal.tsx                  - Topic editing modal
+  - ColorPickerModal.tsx                - Color selection modal
+  - DeleteConfirmationModal.tsx         - Reusable delete confirmation
+
+  📚 Documentation
+  /FLASH-Development-Handover.md          - Comprehensive project documentation
+/supabase/IMPORT-SUMMARY.md            - Database import documentation
