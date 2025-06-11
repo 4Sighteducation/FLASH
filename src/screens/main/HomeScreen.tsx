@@ -7,11 +7,13 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
+import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
 interface UserSubject {
   id: string;
@@ -22,6 +24,7 @@ interface UserSubject {
     subject_name: string;
   };
   flashcard_count?: number;
+  topic_count?: number;
 }
 
 interface UserData {
@@ -34,6 +37,11 @@ export default function HomeScreen({ navigation }: any) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteModal, setDeleteModal] = useState<{
+    visible: boolean;
+    subject: UserSubject | null;
+  }>({ visible: false, subject: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -65,19 +73,28 @@ export default function HomeScreen({ navigation }: any) {
 
       if (subjectsError) throw subjectsError;
       
-      // Fetch flashcard counts for each subject
+      // Fetch flashcard counts and topic counts for each subject
       if (subjects && subjects.length > 0) {
         const subjectsWithCounts = await Promise.all(
           subjects.map(async (subject: any) => {
-            const { count } = await supabase
+            // Get flashcard count
+            const { count: flashcardCount } = await supabase
               .from('flashcards')
               .select('*', { count: 'exact', head: true })
               .eq('user_id', user?.id)
               .eq('subject_name', subject.subject.subject_name);
             
+            // Get topic count (level 3 topics)
+            const { count: topicCount } = await supabase
+              .from('curriculum_topics')
+              .select('*', { count: 'exact', head: true })
+              .eq('exam_board_subject_id', subject.subject_id)
+              .eq('topic_level', 3);
+            
             return {
               ...subject,
-              flashcard_count: count || 0
+              flashcard_count: flashcardCount || 0,
+              topic_count: topicCount || 0
             };
           })
         );
@@ -104,12 +121,42 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const handleSubjectPress = (subject: UserSubject) => {
-    navigation.navigate('Flashcards', { 
+    navigation.navigate('TopicList', { 
+      subjectId: subject.subject_id,
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
       examBoard: subject.exam_board,
       examType: userData?.exam_type,
     });
+  };
+
+  const handleDeleteSubject = async () => {
+    if (!deleteModal.subject) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete the user_subject record
+      const { error } = await supabase
+        .from('user_subjects')
+        .delete()
+        .eq('user_id', user?.id)
+        .eq('id', deleteModal.subject.id);
+
+      if (error) throw error;
+
+      // Refresh the subjects list
+      await fetchUserData();
+      setDeleteModal({ visible: false, subject: null });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      Alert.alert('Error', 'Failed to delete subject');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSubjectLongPress = (subject: UserSubject) => {
+    setDeleteModal({ visible: true, subject });
   };
 
   if (loading) {
@@ -164,25 +211,47 @@ export default function HomeScreen({ navigation }: any) {
               {userSubjects.map((subject) => (
                 <TouchableOpacity
                   key={subject.id}
-                  style={[
-                    styles.subjectCard,
-                    { borderLeftColor: subject.color || '#6366F1' }
-                  ]}
+                  style={styles.subjectCard}
                   onPress={() => handleSubjectPress(subject)}
+                  onLongPress={() => handleSubjectLongPress(subject)}
                 >
-                  <View style={styles.subjectContent}>
-                    <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
+                  <LinearGradient
+                    colors={[subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]}
+                    style={styles.subjectGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleSubjectLongPress(subject)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={styles.subjectHeader}>
+                      <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
+                      <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                    </View>
                     <View style={styles.subjectMeta}>
-                      <Text style={styles.examBoard}>{subject.exam_board}</Text>
+                      <View style={styles.metaBadge}>
+                        <Text style={styles.metaText}>{subject.exam_board}</Text>
+                      </View>
+                      <View style={styles.metaBadge}>
+                        <Text style={styles.metaText}>{getExamTypeDisplay(userData?.exam_type || '')}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.subjectStats}>
+                      <View style={styles.statItem}>
+                        <Ionicons name="list-outline" size={16} color="#FFFFFF" />
+                        <Text style={styles.statText}>{subject.topic_count || 0} sub-topics</Text>
+                      </View>
                       {subject.flashcard_count !== undefined && subject.flashcard_count > 0 && (
-                        <View style={styles.cardCountBadge}>
-                          <Ionicons name="albums-outline" size={14} color="#6366F1" />
-                          <Text style={styles.cardCount}>{subject.flashcard_count} cards</Text>
+                        <View style={styles.statItem}>
+                          <Ionicons name="albums-outline" size={16} color="#FFFFFF" />
+                          <Text style={styles.statText}>{subject.flashcard_count} cards</Text>
                         </View>
                       )}
                     </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+                  </LinearGradient>
                 </TouchableOpacity>
               ))}
             </View>
@@ -190,7 +259,10 @@ export default function HomeScreen({ navigation }: any) {
               style={styles.addMoreButton}
               onPress={() => {
                 if (userData?.exam_type) {
-                  navigation.navigate('SubjectSelection', { examType: userData.exam_type });
+                  navigation.navigate('SubjectSelection', { 
+                    examType: userData.exam_type,
+                    isAddingSubjects: true 
+                  });
                 } else {
                   navigation.navigate('ExamTypeSelection');
                 }
@@ -208,7 +280,10 @@ export default function HomeScreen({ navigation }: any) {
               style={styles.addSubjectButton}
               onPress={() => {
                 if (userData?.exam_type) {
-                  navigation.navigate('SubjectSelection', { examType: userData.exam_type });
+                  navigation.navigate('SubjectSelection', { 
+                    examType: userData.exam_type,
+                    isAddingSubjects: true 
+                  });
                 } else {
                   // If no exam type, go to exam type selection first
                   navigation.navigate('ExamTypeSelection');
@@ -231,16 +306,34 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CreateCard')}
+            onPress={() => navigation.navigate('CardSubjectSelector')}
           >
             <Ionicons name="add-circle-outline" size={32} color="#34C759" />
             <Text style={styles.actionText}>Create Card</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      <DeleteConfirmationModal
+        visible={deleteModal.visible}
+        onClose={() => setDeleteModal({ visible: false, subject: null })}
+        onConfirm={handleDeleteSubject}
+        itemType="Subject"
+        itemName={deleteModal.subject?.subject.subject_name || ''}
+        isDeleting={isDeleting}
+        warningMessage="All flashcards and progress for this subject will be permanently deleted."
+      />
     </SafeAreaView>
   );
 }
+
+const adjustColor = (color: string, amount: number): string => {
+  const hex = color.replace('#', '');
+  const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
+  const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
+  const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -328,28 +421,32 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   subjectCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  subjectGradient: {
+    padding: 20,
+  },
+  subjectHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 12,
   },
   subjectContent: {
     flex: 1,
   },
   subjectName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    flex: 1,
   },
   examBoard: {
     fontSize: 14,
@@ -357,22 +454,33 @@ const styles = StyleSheet.create({
   },
   subjectMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
+    marginBottom: 16,
   },
-  cardCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
+  metaBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    gap: 4,
   },
-  cardCount: {
-    color: '#6366F1',
+  metaText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  subjectStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -439,5 +547,13 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontWeight: '600',
     marginLeft: 8,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 20,
   },
 }); 

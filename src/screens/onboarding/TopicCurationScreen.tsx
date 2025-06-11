@@ -11,9 +11,10 @@ import { SelectedSubject } from '../../types';
 export default function TopicCurationScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { subjects, examType } = route.params as { 
+  const { subjects, examType, isAddingSubjects } = route.params as { 
     subjects: SelectedSubject[]; 
     examType: string;
+    isAddingSubjects?: boolean;
   };
 
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
@@ -40,7 +41,13 @@ export default function TopicCurationScreen() {
   };
 
   const handleComplete = () => {
-    navigation.navigate('OnboardingComplete' as never);
+    if (isAddingSubjects) {
+      // If adding subjects after onboarding, go back to home
+      navigation.navigate('HomeMain' as never);
+    } else {
+      // If in onboarding flow, go to completion screen
+      navigation.navigate('OnboardingComplete' as never);
+    }
   };
 
   const allSubjectsCompleted = completedSubjects.length === subjects.length;
@@ -115,7 +122,9 @@ export default function TopicCurationScreen() {
             disabled={!allSubjectsCompleted}
           >
             <Text style={styles.continueButtonText}>
-              {allSubjectsCompleted ? 'Complete Setup' : 'Customize all subjects to continue'}
+              {allSubjectsCompleted 
+                ? (isAddingSubjects ? 'Add Subjects' : 'Complete Setup')
+                : 'Customize all subjects to continue'}
             </Text>
           </TouchableOpacity>
         </ScrollView>

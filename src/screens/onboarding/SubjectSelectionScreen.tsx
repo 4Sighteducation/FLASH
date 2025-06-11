@@ -22,8 +22,7 @@ interface Subject {
 interface SelectedSubject {
   subjectId: string;
   subjectName: string;
-  examBoardId: string;
-  examBoardCode: string;
+  examBoard: string;
 }
 
 // Map exam type display names to database codes
@@ -47,7 +46,7 @@ export default function SubjectSelectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { examType } = route.params as { examType: string };
+  const { examType, isAddingSubjects } = route.params as { examType: string; isAddingSubjects?: boolean };
   
   const [examBoards, setExamBoards] = useState<ExamBoard[]>([]);
   const [selectedExamBoard, setSelectedExamBoard] = useState<ExamBoard | null>(null);
@@ -159,8 +158,7 @@ export default function SubjectSelectionScreen() {
       setSelectedSubjects([...selectedSubjects, {
         subjectId: subject.id,
         subjectName: subject.subject_name,
-        examBoardId: subject.exam_board_id,
-        examBoardCode: selectedExamBoard!.code,
+        examBoard: selectedExamBoard!.code,
       }]);
     }
   };
@@ -181,7 +179,7 @@ export default function SubjectSelectionScreen() {
       const subjectsToInsert = selectedSubjects.map(s => ({
         user_id: user?.id,
         subject_id: s.subjectId,
-        exam_board: s.examBoardCode,
+        exam_board: s.examBoard,
       }));
 
       const { error: subjectsError } = await supabase
@@ -193,7 +191,8 @@ export default function SubjectSelectionScreen() {
       // Navigate to topic curation
       navigation.navigate('TopicCuration' as never, { 
         subjects: selectedSubjects,
-        examType 
+        examType,
+        isAddingSubjects: isAddingSubjects || false
       } as never);
     } catch (error) {
       console.error('Error saving subjects:', error);

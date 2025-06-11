@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, CardGenerationParams, GeneratedCard } from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import FlashcardCard from '../../components/FlashcardCard';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -75,6 +76,7 @@ export default function AIGeneratorScreen() {
   const [numCards, setNumCards] = useState('5');
   const [additionalGuidance, setAdditionalGuidance] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
   const [currentStep, setCurrentStep] = useState<'select' | 'options' | 'preview'>('select');
   const [aiService] = useState(() => new AIService());
@@ -107,6 +109,7 @@ export default function AIGeneratorScreen() {
   const handleSaveCards = async () => {
     if (!user || !selectedType || selectedType === 'notes') return;
 
+    setIsSaving(true);
     try {
       await aiService.saveGeneratedCards(
         generatedCards,
@@ -122,13 +125,24 @@ export default function AIGeneratorScreen() {
         user.id
       );
 
+      // Small delay to ensure database updates are processed
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
+
       Alert.alert(
         'Success',
         `${generatedCards.length} cards saved successfully!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            // Simply navigate back - the TopicListScreen will refresh automatically
+            navigation.goBack();
+          }
+        }]
       );
     } catch (error: any) {
       Alert.alert('Save Error', error.message || 'Failed to save cards');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -207,42 +221,31 @@ export default function AIGeneratorScreen() {
   const renderPreview = () => (
     <ScrollView style={styles.previewContainer}>
       <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
-      {generatedCards.map((card, index) => (
-        <View key={index} style={styles.previewCard}>
-          <Text style={styles.cardNumber}>Card {index + 1}</Text>
-          <Text style={styles.cardQuestion}>{card.question}</Text>
-          
-          {card.options && (
-            <View style={styles.optionsContainer}>
-              {card.options.map((option, idx) => (
-                <Text
-                  key={idx}
-                  style={[
-                    styles.option,
-                    option === card.correctAnswer && styles.correctOption,
-                  ]}
-                >
-                  {String.fromCharCode(97 + idx)}) {option}
-                </Text>
-              ))}
-            </View>
-          )}
-          
-          {card.answer && (
-            <View style={styles.answerContainer}>
-              <Text style={styles.answerLabel}>Answer:</Text>
-              <Text style={styles.answerText}>{card.answer}</Text>
-            </View>
-          )}
-          
-          {card.detailedAnswer && (
-            <View style={styles.detailedAnswerContainer}>
-              <Text style={styles.answerLabel}>Detailed Explanation:</Text>
-              <Text style={styles.detailedAnswerText}>{card.detailedAnswer}</Text>
-            </View>
-          )}
-        </View>
-      ))}
+      {generatedCards.map((card, index) => {
+        // Convert generated card to flashcard format
+        const flashcard = {
+          id: `preview-${index}`,
+          question: card.question,
+          answer: card.answer,
+          card_type: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
+          options: card.options,
+          correct_answer: card.correctAnswer,
+          key_points: card.keyPoints,
+          detailed_answer: card.detailedAnswer,
+          box_number: 1,
+          topic: topic,
+        };
+
+        return (
+          <View key={index} style={styles.previewCardWrapper}>
+            <FlashcardCard
+              card={flashcard}
+              color="#6366F1"
+              showDeleteButton={false}
+            />
+          </View>
+        );
+      })}
     </ScrollView>
   );
 
@@ -273,6 +276,13 @@ export default function AIGeneratorScreen() {
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>Generating cards...</Text>
+          </View>
+        )}
+
+        {isSaving && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Saving cards...</Text>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -503,55 +513,7 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
   },
-  previewCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+  previewCardWrapper: {
     padding: 16,
-    marginBottom: 16,
-  },
-  cardNumber: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  cardQuestion: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
-  },
-  option: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 6,
-    paddingLeft: 20,
-  },
-  correctOption: {
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-  answerContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  answerLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
-  },
-  answerText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  detailedAnswerContainer: {
-    marginTop: 12,
-  },
-  detailedAnswerText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
   },
 }); 

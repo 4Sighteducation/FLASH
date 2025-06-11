@@ -10,7 +10,16 @@ import TopicListScreen from '../screens/topics/TopicListScreen';
 import CreateCardScreen from '../screens/cards/CreateCardScreen';
 import AIGeneratorScreen from '../screens/cards/AIGeneratorScreen';
 import FlashcardsScreen from '../screens/cards/FlashcardsScreen';
+import StudyModal from '../screens/cards/StudyModal';
+import CardCreationChoice from '../screens/cards/CardCreationChoice';
+import APISettingsScreen from '../screens/settings/APISettingsScreen';
 import TopicEditModal from '../components/TopicEditModal';
+import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen';
+import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
+import TopicCurationScreen from '../screens/onboarding/TopicCurationScreen';
+import CardSubjectSelector from '../screens/cards/CardSubjectSelector';
+import CardTopicSelector from '../screens/cards/CardTopicSelector';
+import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -20,6 +29,46 @@ function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen 
+        name="ExamTypeSelection" 
+        component={ExamTypeSelectionScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="SubjectSelection" 
+        component={SubjectSelectionScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="TopicCuration" 
+        component={TopicCurationScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="CardSubjectSelector" 
+        component={CardSubjectSelector}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="CardTopicSelector" 
+        component={CardTopicSelector}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
       <Stack.Screen 
         name="TopicSelector" 
         component={TopicSelectorScreen}
@@ -51,6 +100,38 @@ function HomeStack() {
           presentation: 'modal'
         }}
       />
+      <Stack.Screen 
+        name="StudyModal" 
+        component={StudyModal}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="CardCreationChoice" 
+        component={CardCreationChoice}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="TopicEdit" 
+        component={TopicEditModal}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="ColorPicker" 
+        component={ColorPickerScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -69,6 +150,14 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen 
+        name="APISettings" 
+        component={APISettingsScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
     </Stack.Navigator>
   );
 }
