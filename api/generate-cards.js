@@ -1,21 +1,22 @@
-import OpenAI from 'openai';
-
-// Initialize OpenAI with your API key from environment variables
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Exam complexity guidance
-const examComplexityGuidance = {
-  "A-Level": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
-  "GCSE": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
-  "BTEC": "Focus on practical applications, industry standards, and vocational context.",
-  "IB": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
-  "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
-};
-
 // Main handler function
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  // Dynamic import for ESM module
+  const { default: OpenAI } = await import('openai');
+  
+  // Initialize OpenAI with your API key from environment variables
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  // Exam complexity guidance
+  const examComplexityGuidance = {
+    "A-Level": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
+    "GCSE": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
+    "BTEC": "Focus on practical applications, industry standards, and vocational context.",
+    "IB": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
+    "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
+  };
+
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
