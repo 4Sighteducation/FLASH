@@ -20,6 +20,7 @@ import TopicCurationScreen from '../screens/onboarding/TopicCurationScreen';
 import CardSubjectSelector from '../screens/cards/CardSubjectSelector';
 import CardTopicSelector from '../screens/cards/CardTopicSelector';
 import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
+import TopicHubScreen from '../screens/topics/TopicHubScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -117,8 +118,8 @@ function HomeStack() {
         }}
       />
       <Stack.Screen 
-        name="TopicEdit" 
-        component={TopicEditModal}
+        name="TopicHub" 
+        component={TopicHubScreen}
         options={{ 
           headerShown: false,
           presentation: 'modal'

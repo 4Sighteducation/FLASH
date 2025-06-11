@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface UserSubject {
   id: string;
@@ -43,9 +44,12 @@ export default function HomeScreen({ navigation }: any) {
   }>({ visible: false, subject: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUserData();
+    }, [user?.id])
+  );
 
   const fetchUserData = async () => {
     try {
@@ -221,15 +225,33 @@ export default function HomeScreen({ navigation }: any) {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleSubjectLongPress(subject)}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
                     <View style={styles.subjectHeader}>
                       <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
-                      <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                      <View style={styles.headerButtons}>
+                        <TouchableOpacity
+                          style={styles.colorButton}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            navigation.navigate('ColorPicker', {
+                              subjectId: subject.subject_id,
+                              subjectName: subject.subject.subject_name,
+                              currentColor: subject.color,
+                            });
+                          }}
+                        >
+                          <Ionicons name="color-palette-outline" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleSubjectLongPress(subject);
+                          }}
+                        >
+                          <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                      </View>
                     </View>
                     <View style={styles.subjectMeta}>
                       <View style={styles.metaBadge}>
@@ -549,11 +571,18 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   deleteButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
     padding: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  colorButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
   },
 }); 

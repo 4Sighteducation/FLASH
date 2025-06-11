@@ -261,6 +261,11 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 6. AI Generation flow:
    - First use → Prompted to set API key in Profile → API Settings
    - Select card type → Set options → Preview generated cards → Save all
+7. Topic Hub → Settings icon in topic list → Manage topics with priority levels:
+   - Edit topic names
+   - Delete topics with confirmation
+   - Set priority levels (1-5) with fun categories
+   - Add custom topics
 
 ### 🔮 Next Steps Recommendations
 1. **Flashcard Creation** ✅ PARTIALLY COMPLETE
@@ -359,7 +364,23 @@ The app has a solid foundation with:
 - ✅ AI card generation with 4 types
 - ✅ Secure API key management
 - ✅ Exam board-specific content generation
+- ✅ Topic Hub with priority management
+- ✅ Delete functionality with confirmations
+- ✅ Color customization for subjects
+- ✅ Progress indicators for topic completion
 
-**Latest Achievement:** Full AI card generation system with OpenAI integration, supporting multiple choice, short answer, essay, and acronym card types. Cards are generated with exam board and qualification-specific content.
+**Latest Updates (December 2024):**
+- Fixed navigation errors when adding subjects post-onboarding
+- Added metadata display (exam board, level) to topics with improved contrast
+- Added color change functionality for subjects
+- Added delete functionality with confirmation modals
+- Improved visual hierarchy with progress bars
+- Created Topic Hub for advanced topic management with priority levels
+- Fixed data persistence issues with proper refresh on focus
+- Enhanced subject cards with gradient backgrounds
+
+**Database Updates:**
+- Added `user_topic_priorities` table for priority management
+- Run `create-user-topic-priorities-table.sql` to add this feature
 
 Ready for study mode implementation with Leitner box algorithm! 

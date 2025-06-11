@@ -31,7 +31,16 @@ interface TopicNode {
   isCollapsed?: boolean;
   originalLevel: number;
   flashcardCount?: number;
+  priority?: number;
 }
+
+const PRIORITY_LEVELS = [
+  { value: 1, label: 'Netflix & Chill', color: '#10B981', emoji: '😎' },
+  { value: 2, label: 'Casual Review', color: '#3B82F6', emoji: '📚' },
+  { value: 3, label: 'Getting Serious', color: '#F59E0B', emoji: '🎯' },
+  { value: 4, label: 'Crunch Time', color: '#F97316', emoji: '⏰' },
+  { value: 5, label: 'Emergency Mode!', color: '#EF4444', emoji: '🚨' },
+];
 
 // Helper function to get lighter shade of color
 const getLighterShade = (color: string, level: number): string => {
@@ -61,11 +70,14 @@ export default function TopicListScreen() {
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [flashcardCounts, setFlashcardCounts] = useState<Map<string, number>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
+  const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
+  const [viewMode, setViewMode] = useState<'hierarchy' | 'priority'>('hierarchy');
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchFlashcardCounts();
+      fetchPriorities();
     }, [subjectName, user?.id])
   );
 
@@ -127,6 +139,23 @@ export default function TopicListScreen() {
     }
   };
 
+  const fetchPriorities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_topic_priorities')
+        .select('topic_id, priority')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      const priorityMap = new Map();
+      data?.forEach((p: any) => priorityMap.set(p.topic_id, p.priority));
+      setPriorities(priorityMap);
+    } catch (error) {
+      console.error('Error fetching priorities:', error);
+    }
+  };
+
   const buildTopicTree = (topics: CurriculumTopic[]): TopicNode[] => {
     const topicMap = new Map<string, TopicNode>();
     const rootNodes: TopicNode[] = [];
@@ -134,6 +163,7 @@ export default function TopicListScreen() {
     // First, create all nodes
     topics.forEach(topic => {
       const flashcardCount = flashcardCounts.get(topic.topic_name) || 0;
+      const priority = priorities.get(topic.id);
       topicMap.set(topic.id, {
         id: topic.id,
         name: topic.topic_name,
@@ -141,6 +171,7 @@ export default function TopicListScreen() {
         originalLevel: topic.topic_level,
         children: [],
         flashcardCount,
+        priority,
       });
     });
 
@@ -198,13 +229,13 @@ export default function TopicListScreen() {
     return processedNodes;
   };
 
-  // Re-build tree when flashcard counts change
+  // Re-build tree when flashcard counts or priorities change
   useEffect(() => {
     if (topics.length > 0 && !loading) {
       const tree = buildTopicTree(topics);
       setTopicTree(tree);
     }
-  }, [flashcardCounts, topics]);
+  }, [flashcardCounts, topics, priorities]);
 
   const toggleExpanded = (topicId: string) => {
     const newExpanded = new Set(expandedTopics);
@@ -260,6 +291,7 @@ export default function TopicListScreen() {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedTopics.has(node.id);
     const hasFlashcards = (node.flashcardCount || 0) > 0;
+    const priorityInfo = node.priority ? PRIORITY_LEVELS.find(p => p.value === node.priority) : null;
     
     // Calculate progress for parent nodes
     const calculateProgress = (node: TopicNode): { completed: number; total: number } => {
@@ -307,8 +339,8 @@ export default function TopicListScreen() {
             { 
               marginLeft: depth * 20,
               backgroundColor: nodeColor,
-              borderLeftColor: borderColor,
-              borderLeftWidth: hasFlashcards ? 4 : depth === 0 ? 4 : depth === 1 ? 3 : 2,
+              borderLeftColor: priorityInfo ? priorityInfo.color : borderColor,
+              borderLeftWidth: priorityInfo ? 6 : hasFlashcards ? 4 : depth === 0 ? 4 : depth === 1 ? 3 : 2,
             },
           ]}
           onPress={() => hasChildren ? toggleExpanded(node.id) : handleTopicPress(node)}
@@ -333,6 +365,11 @@ export default function TopicListScreen() {
                 {node.name}
               </Text>
               <View style={styles.topicMeta}>
+                {priorityInfo && (
+                  <View style={[styles.priorityIndicator, { backgroundColor: priorityInfo.color }]}>
+                    <Text style={styles.priorityEmoji}>{priorityInfo.emoji}</Text>
+                  </View>
+                )}
                 {depth === 0 && hasChildren && (
                   <Text style={[styles.childCount, { color: subtextColor }]}>
                     {node.children.length} {node.children.length === 1 ? 'topic' : 'topics'}
@@ -380,18 +417,29 @@ export default function TopicListScreen() {
         
         {/* Progress bar for parent nodes */}
         {hasChildren && progress && progress.total > 0 && (
-          <View style={[styles.progressBar, { marginLeft: depth * 20 + 16 }]}>
+          <View style={[styles.progressBarContainer, { marginLeft: depth * 20 + 16 }]}>
             <View style={styles.progressBarBackground}>
               <View 
                 style={[
                   styles.progressBarFill, 
                   { 
                     width: `${progressPercentage}%`,
-                    backgroundColor: progressPercentage === 100 ? '#10B981' : subjectColor || '#6366F1'
+                    backgroundColor: progressPercentage === 100 
+                      ? '#10B981' 
+                      : progressPercentage >= 75 
+                      ? '#3B82F6' 
+                      : progressPercentage >= 50 
+                      ? '#F59E0B' 
+                      : progressPercentage >= 25 
+                      ? '#F97316' 
+                      : '#EF4444'
                   }
                 ]} 
               />
             </View>
+            <Text style={styles.progressLabel}>
+              {Math.round(progressPercentage)}% complete
+            </Text>
           </View>
         )}
         
@@ -410,6 +458,77 @@ export default function TopicListScreen() {
     let total = 0;
     flashcardCounts.forEach(count => total += count);
     return total;
+  };
+
+  const renderPriorityView = () => {
+    // Flatten all topics and get only those with priorities
+    const flattenTopics = (nodes: TopicNode[]): TopicNode[] => {
+      let result: TopicNode[] = [];
+      nodes.forEach(node => {
+        if (!node.children || node.children.length === 0) {
+          if (node.priority) result.push(node);
+        }
+        if (node.children) {
+          result = result.concat(flattenTopics(node.children));
+        }
+      });
+      return result;
+    };
+
+    const prioritizedTopics = flattenTopics(topicTree)
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    return prioritizedTopics.map(node => {
+      const priorityInfo = PRIORITY_LEVELS.find(p => p.value === node.priority);
+      const hasFlashcards = (node.flashcardCount || 0) > 0;
+      
+      return (
+        <TouchableOpacity
+          key={node.id}
+          style={[
+            styles.priorityItem,
+            { borderLeftColor: priorityInfo?.color, borderLeftWidth: 6 }
+          ]}
+          onPress={() => handleTopicPress(node)}
+        >
+          <View style={styles.priorityItemContent}>
+            <View style={styles.priorityItemHeader}>
+              <Text style={styles.priorityItemName}>{node.name}</Text>
+              <View style={[styles.priorityBadge, { backgroundColor: priorityInfo?.color }]}>
+                <Text style={styles.priorityEmoji}>{priorityInfo?.emoji}</Text>
+                <Text style={styles.priorityText}>{priorityInfo?.label}</Text>
+              </View>
+            </View>
+            {hasFlashcards && (
+              <View style={styles.priorityItemStats}>
+                <Ionicons name="albums-outline" size={16} color="#6B7280" />
+                <Text style={styles.priorityItemStat}>{node.flashcardCount} cards</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.aiButton]}
+              onPress={(e: any) => {
+                e.stopPropagation();
+                handleAIGenerate(node);
+              }}
+            >
+              <Ionicons name="flash" size={20} color="#FFD700" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={(e: any) => {
+                e.stopPropagation();
+                handleCreateManual(node);
+              }}
+            >
+              <Ionicons name="create-outline" size={22} color={subjectColor || '#6366F1'} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      );
+    });
   };
 
   if (loading) {
@@ -470,9 +589,10 @@ export default function TopicListScreen() {
               <Ionicons name="color-palette-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.navigate('TopicEdit' as never, {
+              onPress={() => navigation.navigate('TopicHub' as never, {
                 subjectId,
                 subjectName,
+                subjectColor,
               } as never)}
               style={styles.headerButton}
             >
@@ -483,13 +603,46 @@ export default function TopicListScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.scrollView}>
-        {topicTree.length > 0 ? (
-          topicTree.map(node => renderTopicNode(node))
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'hierarchy' && styles.activeToggle]}
+            onPress={() => setViewMode('hierarchy')}
+          >
+            <Ionicons name="git-branch" size={18} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#6B7280'} />
+            <Text style={[styles.toggleText, viewMode === 'hierarchy' && styles.activeToggleText]}>
+              All Topics
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'priority' && styles.activeToggle]}
+            onPress={() => setViewMode('priority')}
+          >
+            <Ionicons name="flag" size={18} color={viewMode === 'priority' ? '#FFFFFF' : '#6B7280'} />
+            <Text style={[styles.toggleText, viewMode === 'priority' && styles.activeToggleText]}>
+              Priority Only
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {viewMode === 'hierarchy' ? (
+          topicTree.length > 0 ? (
+            topicTree.map(node => renderTopicNode(node))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="list-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No topics available</Text>
+            </View>
+          )
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="list-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyText}>No topics available</Text>
-          </View>
+          renderPriorityView().length > 0 ? (
+            renderPriorityView()
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="flag-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No priority topics set</Text>
+              <Text style={styles.emptySubtext}>Use the Topic Hub to set priorities</Text>
+            </View>
+          )
         )}
       </ScrollView>
 
@@ -712,19 +865,119 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  progressBar: {
+  progressBarContainer: {
     marginTop: -8,
-    marginBottom: 8,
+    marginBottom: 12,
     paddingRight: 16,
   },
   progressBarBackground: {
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  toggleButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  activeToggle: {
+    backgroundColor: '#6366F1',
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  activeToggleText: {
+    color: '#FFFFFF',
+  },
+  priorityIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  priorityEmoji: {
+    fontSize: 14,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  priorityText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  priorityItem: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  priorityItemContent: {
+    flex: 1,
+  },
+  priorityItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priorityItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  priorityItemStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  priorityItemStat: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
   },
 }); 
