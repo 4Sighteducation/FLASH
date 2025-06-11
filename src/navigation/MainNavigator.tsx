@@ -9,6 +9,7 @@ import TopicSelectorScreen from '../screens/topics/TopicSelectorScreen';
 import TopicListScreen from '../screens/topics/TopicListScreen';
 import CreateCardScreen from '../screens/cards/CreateCardScreen';
 import AIGeneratorScreen from '../screens/cards/AIGeneratorScreen';
+import FlashcardsScreen from '../screens/cards/FlashcardsScreen';
 import TopicEditModal from '../components/TopicEditModal';
 
 const Tab = createBottomTabNavigator();
@@ -27,6 +28,11 @@ function HomeStack() {
       <Stack.Screen 
         name="TopicList" 
         component={TopicListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Flashcards" 
+        component={FlashcardsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen 

@@ -66,13 +66,21 @@ export class AIService {
     // e.g., http://192.168.1.100:3000/api/generate-cards
     const isDev = __DEV__ ?? false;
     
-    this.apiUrl = isDev
-      ? 'http://localhost:3000/api/generate-cards'  // Update this with your local IP if needed
-      : 'https://flash-gules.vercel.app/api/generate-cards';  // Your actual Vercel URL!
+    // For now, always use the production URL since it's already deployed
+    // This avoids the localhost connection issues
+    this.apiUrl = 'https://flash-gules.vercel.app/api/generate-cards';
+    
+    // If you want to test with a local backend later, uncomment this:
+    // this.apiUrl = isDev
+    //   ? 'http://192.168.0.243:3000/api/generate-cards'  // Your local IP
+    //   : 'https://flash-gules.vercel.app/api/generate-cards';
   }
 
   async generateCards(params: CardGenerationParams): Promise<GeneratedCard[]> {
     try {
+      console.log('Generating cards with params:', params);
+      console.log('API URL:', this.apiUrl);
+      
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
@@ -89,12 +97,16 @@ export class AIService {
         })
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('API Error:', errorData);
         throw new Error(errorData.error || errorData.message || 'Failed to generate cards');
       }
 
       const data = await response.json();
+      console.log('Response data:', data);
       
       if (data.success && data.cards && Array.isArray(data.cards)) {
         return this.processGeneratedCards(data.cards, params);
@@ -103,6 +115,11 @@ export class AIService {
       throw new Error('Invalid response format from server');
     } catch (error) {
       console.error('Error generating cards:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        apiUrl: this.apiUrl
+      });
       throw error;
     }
   }

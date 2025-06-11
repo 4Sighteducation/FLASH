@@ -21,6 +21,7 @@ interface UserSubject {
   subject: {
     subject_name: string;
   };
+  flashcard_count?: number;
 }
 
 interface UserData {
@@ -63,7 +64,27 @@ export default function HomeScreen({ navigation }: any) {
         .eq('user_id', user?.id);
 
       if (subjectsError) throw subjectsError;
-      setUserSubjects(subjects || []);
+      
+      // Fetch flashcard counts for each subject
+      if (subjects && subjects.length > 0) {
+        const subjectsWithCounts = await Promise.all(
+          subjects.map(async (subject: any) => {
+            const { count } = await supabase
+              .from('flashcards')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user?.id)
+              .eq('subject_name', subject.subject.subject_name);
+            
+            return {
+              ...subject,
+              flashcard_count: count || 0
+            };
+          })
+        );
+        setUserSubjects(subjectsWithCounts);
+      } else {
+        setUserSubjects(subjects || []);
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -83,10 +104,11 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const handleSubjectPress = (subject: UserSubject) => {
-    navigation.navigate('TopicList', { 
-      subjectId: subject.subject_id,
+    navigation.navigate('Flashcards', { 
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
+      examBoard: subject.exam_board,
+      examType: userData?.exam_type,
     });
   };
 
@@ -150,7 +172,15 @@ export default function HomeScreen({ navigation }: any) {
                 >
                   <View style={styles.subjectContent}>
                     <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
-                    <Text style={styles.examBoard}>{subject.exam_board}</Text>
+                    <View style={styles.subjectMeta}>
+                      <Text style={styles.examBoard}>{subject.exam_board}</Text>
+                      {subject.flashcard_count !== undefined && subject.flashcard_count > 0 && (
+                        <View style={styles.cardCountBadge}>
+                          <Ionicons name="albums-outline" size={14} color="#6366F1" />
+                          <Text style={styles.cardCount}>{subject.flashcard_count} cards</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#6B7280" />
                 </TouchableOpacity>
@@ -324,6 +354,25 @@ const styles = StyleSheet.create({
   examBoard: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  subjectMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  cardCount: {
+    color: '#6366F1',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionsGrid: {
     flexDirection: 'row',
