@@ -1,22 +1,7 @@
+const OpenAI = require('openai');
+
 // Main handler function
 module.exports = async function handler(req, res) {
-  // Dynamic import for ESM module
-  const { default: OpenAI } = await import('openai');
-  
-  // Initialize OpenAI with your API key from environment variables
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-
-  // Exam complexity guidance
-  const examComplexityGuidance = {
-    "A-Level": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
-    "GCSE": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
-    "BTEC": "Focus on practical applications, industry standards, and vocational context.",
-    "IB": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
-    "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
-  };
-
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -41,6 +26,11 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // Initialize OpenAI
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
     const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance } = req.body;
 
     // Validate required fields
@@ -50,6 +40,15 @@ module.exports = async function handler(req, res) {
         required: ['subject', 'topic', 'examType', 'examBoard', 'questionType', 'numCards']
       });
     }
+
+    // Exam complexity guidance
+    const examComplexityGuidance = {
+      "A-Level": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
+      "GCSE": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
+      "BTEC": "Focus on practical applications, industry standards, and vocational context.",
+      "IB": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
+      "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
+    };
 
     // Build the prompt
     const complexityGuidance = examComplexityGuidance[examType] || examComplexityGuidance["GCSE"];
@@ -177,7 +176,7 @@ CONTENT GUIDANCE:
     const systemMessage = `You are an expert ${examType} ${subject} educator. Create precise, high-quality flashcards that match ${examBoard} standards.`;
     
     const completion = await openai.chat.completions.create({
-      model: questionType === 'essay' ? 'gpt-4-turbo-preview' : 'gpt-3.5-turbo',
+      model: questionType === 'essay' ? 'gpt-4-turbo' : 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: systemMessage },
         { role: 'user', content: prompt }
