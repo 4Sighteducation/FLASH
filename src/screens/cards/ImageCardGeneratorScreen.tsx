@@ -81,28 +81,43 @@ export default function ImageCardGeneratorScreen() {
 
       console.log('Edge Function Response:', { data, error });
 
-      if (error) {
+      // Check if we have data, even if there's an error
+      if (data) {
+        if (data.success && data.text) {
+          setExtractedText(data.text);
+          return; // Success, exit early
+        } else if (data.text) {
+          // Sometimes the response might have text without success flag
+          setExtractedText(data.text);
+          return; // Success, exit early
+        } else if (!data.success && data.error) {
+          throw new Error(data.error);
+        }
+      }
+
+      // Only throw error if we don't have text
+      if (error && !data?.text) {
         console.error('Edge Function Error:', error);
         throw new Error(error.message || 'Edge Function error');
       }
 
-      if (data && data.success && data.text) {
-        setExtractedText(data.text);
-      } else if (data && !data.success) {
-        throw new Error(data.error || 'Failed to extract text');
-      } else {
+      // If we get here, something went wrong
+      if (!extractedText) {
         throw new Error('No text found in image');
       }
     } catch (error: any) {
       console.error('OCR Error:', error);
-      Alert.alert(
-        'OCR Error', 
-        error.message || 'Failed to extract text from image. Please try again.',
-        [
-          { text: 'OK', onPress: () => setStep('select') },
-          { text: 'View Details', onPress: () => Alert.alert('Error Details', JSON.stringify(error, null, 2)) }
-        ]
-      );
+      // Only show error if we don't have extracted text
+      if (!extractedText) {
+        Alert.alert(
+          'OCR Error', 
+          error.message || 'Failed to extract text from image. Please try again.',
+          [
+            { text: 'OK', onPress: () => setStep('select') },
+            { text: 'View Details', onPress: () => Alert.alert('Error Details', JSON.stringify(error, null, 2)) }
+          ]
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -118,35 +133,75 @@ export default function ImageCardGeneratorScreen() {
     setStep('generate');
 
     try {
-      // Get user's API key
-      const { data: apiData } = await supabase
-        .from('api_settings')
-        .select('openai_api_key')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (!apiData?.openai_api_key) {
-        Alert.alert('API Key Required', 'Please set your OpenAI API key in settings');
-        navigation.navigate('APISettings' as never);
-        return;
-      }
-
-      // Generate cards using AI
+      // First, check if content is relevant to the topic
       const aiService = new AIService();
-      const cards = await aiService.generateCards({
-        subject: subjectName,
-        topic: topicName,
-        examBoard,
-        examType,
-        questionType: selectedCardType,
-        numCards: 5,
-        contentGuidance: `Generate flashcards based on this content:\n\n${extractedText}`,
-      });
+      
+      // Add a relevance check prompt
+      const relevanceCheckPrompt = `
+        Topic: ${topicName}
+        Subject: ${subjectName}
+        Content: ${extractedText.substring(0, 500)}...
+        
+        Does this content relate to the topic? Reply with just "YES" or "NO".
+      `;
+      
+      // For now, we'll skip the relevance check and add it in a future update
+      // This would require a separate API endpoint or modifying the existing one
+      
+      // Generate cards using AI service (no API key needed - uses backend)
+      const generateCards = async (forceGenerate = false) => {
+        const cards = await aiService.generateCards({
+          subject: subjectName,
+          topic: topicName,
+          examBoard,
+          examType,
+          questionType: selectedCardType,
+          numCards: 5,
+          contentGuidance: forceGenerate 
+            ? `Generate flashcards based on this content (ignore topic mismatch):\n\n${extractedText}`
+            : `Generate flashcards based on this content:\n\n${extractedText}`,
+        });
+        setGeneratedCards(cards);
+      };
 
-      setGeneratedCards(cards);
+      // Try to generate cards
+      try {
+        await generateCards();
+      } catch (error: any) {
+        // If the AI detects a mismatch, it might throw an error
+        if (error.message?.includes('topic mismatch') || error.message?.includes('not related')) {
+          Alert.alert(
+            'Content Mismatch',
+            `This content doesn't seem to match the topic "${topicName}". Would you like to create cards anyway?`,
+            [
+              {
+                text: 'Cancel',
+                onPress: () => setStep('review'),
+                style: 'cancel'
+              },
+              {
+                text: 'Create Anyway',
+                onPress: async () => {
+                  try {
+                    setLoading(true);
+                    await generateCards(true);
+                  } catch (err: any) {
+                    Alert.alert('Error', err.message || 'Failed to generate flashcards');
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }
+            ]
+          );
+          return;
+        }
+        throw error;
+      }
     } catch (error: any) {
       console.error('Generation Error:', error);
       Alert.alert('Error', error.message || 'Failed to generate flashcards');
+      setStep('review');
     } finally {
       setLoading(false);
     }

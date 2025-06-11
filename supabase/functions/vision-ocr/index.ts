@@ -1,71 +1,35 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { create, getNumericDate } from "https://deno.land/x/djwt@v2.4/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper function to get access token using service account
-async function getAccessToken() {
-  const serviceAccountJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
-  if (!serviceAccountJson) {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT not configured');
-  }
-  
-  const serviceAccount = JSON.parse(serviceAccountJson);
-  
-  // Create JWT
-  const iat = getNumericDate(0);
-  const exp = getNumericDate(3600); // 1 hour
-  
-  const jwt = await create(
-    { alg: "RS256", typ: "JWT" },
-    {
-      iss: serviceAccount.client_email,
-      scope: "https://www.googleapis.com/auth/cloud-vision",
-      aud: "https://oauth2.googleapis.com/token",
-      iat,
-      exp,
-    },
-    serviceAccount.private_key
-  );
-  
-  // Exchange JWT for access token
-  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
-    }),
-  });
-  
-  if (!tokenResponse.ok) {
-    throw new Error(`Failed to get access token: ${await tokenResponse.text()}`);
-  }
-  
-  const { access_token } = await tokenResponse.json();
-  return access_token;
-}
-
 serve(async (req) => {
+  console.log('Request received:', req.method, req.url);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight');
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    console.log('Reading request body...');
     const { image, features } = await req.json()
+    console.log('Request body received, image length:', image?.length || 0);
     
     if (!image) {
+      console.error('No image provided in request');
       throw new Error('No image provided')
     }
 
-    // Get access token using service account
-    const accessToken = await getAccessToken();
+    // Get API key from environment
+    const apiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+    if (!apiKey) {
+      console.error('GOOGLE_VISION_API_KEY not found in environment');
+      throw new Error('Google Vision API key not configured. Please add GOOGLE_VISION_API_KEY to Edge Function secrets.');
+    }
     
     // Prepare the request for Google Vision API
     const visionRequest = {
@@ -80,29 +44,36 @@ serve(async (req) => {
       }]
     }
 
-    // Call Google Vision API with Bearer token
+    console.log('Calling Google Vision API...');
+    
+    // Call Google Vision API with API key
     const response = await fetch(
-      'https://vision.googleapis.com/v1/images:annotate',
+      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(visionRequest),
       }
     )
 
+    const responseText = await response.text();
+    console.log('Vision API response status:', response.status);
+    
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Vision API error: ${error}`)
+      console.error('Vision API error:', responseText);
+      throw new Error(`Vision API error: ${responseText}`)
     }
 
-    const result = await response.json()
+    const result = JSON.parse(responseText);
+    console.log('Vision API response received');
     
     // Extract text from the response
     const extractedText = result.responses[0]?.fullTextAnnotation?.text || 
                          result.responses[0]?.textAnnotations?.[0]?.description || ''
+    
+    console.log('Extracted text length:', extractedText.length);
 
     // Return the extracted text
     return new Response(
@@ -117,6 +88,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Error in vision-ocr function:', error);
     return new Response(
       JSON.stringify({
         success: false,
