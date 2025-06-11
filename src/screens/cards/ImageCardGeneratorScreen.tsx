@@ -79,17 +79,30 @@ export default function ImageCardGeneratorScreen() {
         body: { image: base64Image }
       });
 
-      if (error) throw error;
+      console.log('Edge Function Response:', { data, error });
 
-      if (data.success && data.text) {
+      if (error) {
+        console.error('Edge Function Error:', error);
+        throw new Error(error.message || 'Edge Function error');
+      }
+
+      if (data && data.success && data.text) {
         setExtractedText(data.text);
+      } else if (data && !data.success) {
+        throw new Error(data.error || 'Failed to extract text');
       } else {
         throw new Error('No text found in image');
       }
     } catch (error: any) {
       console.error('OCR Error:', error);
-      Alert.alert('Error', 'Failed to extract text from image. Please try again.');
-      setStep('select');
+      Alert.alert(
+        'OCR Error', 
+        error.message || 'Failed to extract text from image. Please try again.',
+        [
+          { text: 'OK', onPress: () => setStep('select') },
+          { text: 'View Details', onPress: () => Alert.alert('Error Details', JSON.stringify(error, null, 2)) }
+        ]
+      );
     } finally {
       setLoading(false);
     }

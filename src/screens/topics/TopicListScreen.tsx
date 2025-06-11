@@ -287,6 +287,16 @@ export default function TopicListScreen() {
     } as never);
   };
 
+  const handleImageCreate = (topic: TopicNode) => {
+    navigation.navigate('ImageCardGenerator' as never, {
+      topicId: topic.id,
+      topicName: topic.name,
+      subjectName,
+      examBoard: route.params.examBoard || 'AQA',
+      examType: route.params.examType || 'GCSE',
+    } as never);
+  };
+
   const renderTopicNode = (node: TopicNode, depth: number = 0) => {
     const hasChildren = node.children.length > 0;
     const isExpanded = expandedTopics.has(node.id);
@@ -403,6 +413,15 @@ export default function TopicListScreen() {
                 <Ionicons name="flash" size={20} color="#FFD700" />
               </TouchableOpacity>
               <TouchableOpacity
+                style={[styles.actionButton, styles.imageButton]}
+                onPress={(e: any) => {
+                  e.stopPropagation();
+                  handleImageCreate(node);
+                }}
+              >
+                <Ionicons name="camera" size={20} color="#4CAF50" />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.actionButton}
                 onPress={(e: any) => {
                   e.stopPropagation();
@@ -514,6 +533,15 @@ export default function TopicListScreen() {
               }}
             >
               <Ionicons name="flash" size={20} color="#FFD700" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.imageButton]}
+              onPress={(e: any) => {
+                e.stopPropagation();
+                handleImageCreate(node);
+              }}
+            >
+              <Ionicons name="camera" size={20} color="#4CAF50" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
@@ -790,6 +818,11 @@ const styles = StyleSheet.create({
   },
   aiButton: {
     backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 20,
+    padding: 6,
+  },
+  imageButton: {
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
     borderRadius: 20,
     padding: 6,
   },
