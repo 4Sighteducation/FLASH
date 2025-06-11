@@ -1,0 +1,8 @@
+{
+  "name": "flash-api",
+  "version": "1.0.0",
+  "description": "API functions for FLASH app",
+  "dependencies": {
+    "openai": "^4.0.0"
+  }
+} 
