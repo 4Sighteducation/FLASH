@@ -58,12 +58,23 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // For now, fetch all cards due today directly (until daily_study_cards table is populated)
+      // First get user's active subjects
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select('subject_name')
+        .eq('user_id', user?.id);
+
+      if (subjectsError) throw subjectsError;
+
+      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      
+      // Fetch all cards due today that are in study bank and from active subjects
       const { data: flashcards, error } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
-        .or('in_study_bank.eq.true,in_study_bank.is.null')
+        .eq('in_study_bank', true)
+        .in('subject_name', activeSubjects)
         .lte('next_review_date', today.toISOString())
         .order('box_number', { ascending: true });
 

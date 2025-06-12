@@ -51,6 +51,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
+  const cardScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -59,6 +60,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   useEffect(() => {
     fetchFlashcards();
   }, []);
+
+  useEffect(() => {
+    // Add a subtle scale animation when card appears
+    Animated.spring(cardScale, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex]);
 
   const fetchFlashcards = async () => {
     try {
@@ -283,120 +294,122 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   if (flashcards.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={handleClose} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
+      <View style={styles.fullScreenContainer}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color="#333" />
             </TouchableOpacity>
+            <Text style={styles.headerTitle}>{topicName}</Text>
+            <View style={{ minWidth: 50 }} />
           </View>
-          <Text style={styles.headerTitle}>{topicName}</Text>
-          <View style={styles.headerRight} />
-        </View>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No flashcards found for this topic</Text>
-        </View>
-      </SafeAreaView>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No flashcards found for this topic</Text>
+          </View>
+        </SafeAreaView>
+      </View>
     );
   }
 
   const currentCard = flashcards[currentIndex];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleClose} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+    <View style={styles.fullScreenContainer}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
-        </View>
-        <Text style={styles.headerTitle} numberOfLines={1}>{topicName}</Text>
-        <View style={styles.headerRight}>
+          <Text style={styles.headerTitle} numberOfLines={1}>{topicName}</Text>
           <Text style={styles.counter}>{currentIndex + 1}/{flashcards.length}</Text>
         </View>
-      </View>
 
-      {/* Leitner Boxes Visualization */}
-      <LeitnerBoxes 
-        boxes={boxCounts} 
-        activeBox={currentCard?.box_number}
-      />
-
-      <Animated.View 
-        style={[
-          styles.cardContainer,
-          {
-            transform: [{ translateX }],
-          },
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <View ref={cardRef} collapsable={false}>
-          <FlashcardCard
-            card={currentCard}
-            color={subjectColor}
-            onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+        {/* Leitner Boxes Visualization */}
+        <View style={styles.leitnerContainer}>
+          <LeitnerBoxes 
+            boxes={boxCounts} 
+            activeBox={currentCard?.box_number}
           />
         </View>
-      </Animated.View>
 
-      <View style={styles.navigationContainer}>
-        <TouchableOpacity
-          style={[styles.navButton, currentIndex === 0 && styles.disabledButton]}
-          onPress={handlePrevious}
-          disabled={currentIndex === 0}
-        >
-          <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
-          <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
-            Previous
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { 
-                  width: `${((currentIndex + 1) / flashcards.length) * 100}%`,
-                  backgroundColor: subjectColor 
-                }
-              ]} 
-            />
-          </View>
-          <Text style={styles.swipeHint}>Swipe to navigate</Text>
+        <View style={styles.mainContent} {...panResponder.panHandlers}>
+          <Animated.View 
+            style={[
+              styles.cardContainer,
+              {
+                transform: [{ translateX }],
+              },
+            ]}
+          >
+            <View ref={cardRef} collapsable={false}>
+              <FlashcardCard
+                card={currentCard}
+                color={subjectColor}
+                onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+              />
+            </View>
+          </Animated.View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.navButton, currentIndex === flashcards.length - 1 && styles.disabledButton]}
-          onPress={handleNext}
-          disabled={currentIndex === flashcards.length - 1}
-        >
-          <Text style={[styles.navButtonText, currentIndex === flashcards.length - 1 && styles.disabledText]}>
-            Next
-          </Text>
-          <Ionicons name="chevron-forward" size={24} color={currentIndex === flashcards.length - 1 ? '#ccc' : '#333'} />
-        </TouchableOpacity>
-      </View>
+        <View style={styles.bottomSection}>
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity
+              style={[styles.navButton, currentIndex === 0 && styles.disabledButton]}
+              onPress={handlePrevious}
+              disabled={currentIndex === 0}
+            >
+              <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+              <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
+                Previous
+              </Text>
+            </TouchableOpacity>
 
-      {/* Bottom close button for better accessibility */}
-      <TouchableOpacity style={styles.floatingCloseButton} onPress={handleClose}>
-        <Ionicons name="close" size={24} color="#fff" />
-      </TouchableOpacity>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { 
+                      width: `${((currentIndex + 1) / flashcards.length) * 100}%`,
+                      backgroundColor: subjectColor 
+                    }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.swipeHint}>Swipe to navigate</Text>
+            </View>
 
-      {/* Card Swoosh Animation */}
-      <CardSwooshAnimation
-        visible={showSwoosh}
-        fromPosition={swooshData.fromPosition}
-        toBox={swooshData.toBox}
-        color={subjectColor}
-        onComplete={() => setShowSwoosh(false)}
-      />
-    </SafeAreaView>
+            <TouchableOpacity
+              style={[styles.navButton, currentIndex === flashcards.length - 1 && styles.disabledButton]}
+              onPress={handleNext}
+              disabled={currentIndex === flashcards.length - 1}
+            >
+              <Text style={[styles.navButtonText, currentIndex === flashcards.length - 1 && styles.disabledText]}>
+                Next
+              </Text>
+              <Ionicons name="chevron-forward" size={24} color={currentIndex === flashcards.length - 1 ? '#ccc' : '#333'} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Card Swoosh Animation */}
+        <CardSwooshAnimation
+          visible={showSwoosh}
+          fromPosition={swooshData.fromPosition}
+          toBox={swooshData.toBox}
+          color={subjectColor}
+          onComplete={() => setShowSwoosh(false)}
+        />
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -411,28 +424,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    ...Platform.select({
-      ios: {
-        paddingTop: 0,
-      },
-      android: {
-        paddingTop: 0,
-      },
-    }),
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  headerLeft: {
-    width: 80,
-  },
-  headerRight: {
-    width: 80,
-    alignItems: 'flex-end',
-  },
-  backButton: {
+  closeButton: {
     padding: 8,
+    marginLeft: -8,
   },
   headerTitle: {
     fontSize: 18,
@@ -440,37 +444,51 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
     textAlign: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
   },
   counter: {
     fontSize: 16,
     color: '#666',
     fontWeight: '500',
+    minWidth: 50,
+    textAlign: 'right',
   },
-  emptyContainer: {
+  leitnerContainer: {
+    paddingVertical: 8,
+    backgroundColor: 'white',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  mainContent: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
+    paddingBottom: 20,
   },
   cardContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginTop: -60,
+  },
+  bottomSection: {
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 20,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   navButton: {
     flexDirection: 'row',
@@ -509,20 +527,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  floatingCloseButton: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
   },
 }); 
