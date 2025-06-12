@@ -53,12 +53,16 @@ export default function FlashcardCard({
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [userAnswerCorrect, setUserAnswerCorrect] = useState<boolean | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
 
   // Reset state when card changes
   useEffect(() => {
     setIsFlipped(false);
     setSelectedOption(null);
+    setUserAnswerCorrect(null);
+    setShowFeedback(false);
     flipAnimation.setValue(0);
   }, [card.id]);
 
@@ -146,8 +150,21 @@ export default function FlashcardCard({
     ? getDynamicFontSize(card.options.join(''), 16, 12) 
     : 16;
 
+  const handleUserAnswer = (correct: boolean) => {
+    setUserAnswerCorrect(correct);
+    setShowFeedback(true);
+    if (onAnswer) {
+      onAnswer(correct);
+    }
+    // Auto-hide feedback after 2 seconds
+    setTimeout(() => {
+      setShowFeedback(false);
+    }, 2000);
+  };
+
   const renderFront = () => {
     const isMultipleChoice = card.card_type === 'multiple_choice';
+    const needsUserConfirmation = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
     const hasLongContent = isMultipleChoice && card.options && 
       (card.question.length > 100 || card.options.some(opt => opt.length > 50));
 
@@ -192,6 +209,15 @@ export default function FlashcardCard({
               </View>
             )}
 
+            {needsUserConfirmation && (
+              <View style={styles.speakPrompt}>
+                <Ionicons name="mic-outline" size={24} color={color} />
+                <Text style={styles.speakPromptText}>
+                  Before flipping, try speaking your answer out loud!
+                </Text>
+              </View>
+            )}
+
             {!isMultipleChoice && (
               <View style={styles.flipHint}>
                 <Text style={styles.flipHintText}>Tap anywhere to reveal answer</Text>
@@ -205,6 +231,8 @@ export default function FlashcardCard({
   };
 
   const renderBack = () => {
+    const needsUserConfirmation = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
+    
     return (
       <TouchableWithoutFeedback onPress={flipCard}>
         <View style={styles.touchableArea}>
@@ -276,6 +304,45 @@ export default function FlashcardCard({
 
             {card.card_type === 'manual' && (
               <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+            )}
+
+            {/* User Confirmation Section */}
+            {needsUserConfirmation && userAnswerCorrect === null && (
+              <View style={styles.confirmationSection}>
+                <Text style={styles.confirmationPrompt}>Did you get that correct?</Text>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.yesButton, { backgroundColor: '#10B981' }]}
+                    onPress={() => handleUserAnswer(true)}
+                  >
+                    <Ionicons name="checkmark-circle" size={24} color="white" />
+                    <Text style={styles.confirmButtonText}>Yes!</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.noButton, { backgroundColor: '#EF4444' }]}
+                    onPress={() => handleUserAnswer(false)}
+                  >
+                    <Ionicons name="close-circle" size={24} color="white" />
+                    <Text style={styles.confirmButtonText}>Not quite</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Feedback Message */}
+            {showFeedback && userAnswerCorrect !== null && (
+              <Animated.View style={[styles.feedbackContainer, { backgroundColor: userAnswerCorrect ? '#D1FAE5' : '#FEE2E2' }]}>
+                <Ionicons 
+                  name={userAnswerCorrect ? "happy-outline" : "refresh-outline"} 
+                  size={32} 
+                  color={userAnswerCorrect ? '#10B981' : '#EF4444'} 
+                />
+                <Text style={[styles.feedbackText, { color: userAnswerCorrect ? '#065F46' : '#991B1B' }]}>
+                  {userAnswerCorrect 
+                    ? "Well done! Keep up the great work! 🎉" 
+                    : "Unlucky! Well done for being honest - you'd only be cheating yourself anyway! 💪"}
+                </Text>
+              </Animated.View>
             )}
 
             {/* Fallback for any other card types */}
@@ -515,5 +582,79 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  speakPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  speakPromptText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    fontStyle: 'italic',
+  },
+  confirmationSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  confirmationPrompt: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  yesButton: {
+    backgroundColor: '#10B981',
+  },
+  noButton: {
+    backgroundColor: '#EF4444',
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 6,
+  },
+  feedbackContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    marginHorizontal: -8,
+  },
+  feedbackText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
+    textAlign: 'center',
   },
 }); 
