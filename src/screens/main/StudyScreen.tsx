@@ -71,6 +71,7 @@ export default function StudyScreen() {
   const fetchBoxStats = async () => {
     try {
       setLoading(true);
+      console.log('Starting fetchBoxStats...');
       
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -78,9 +79,27 @@ export default function StudyScreen() {
         .select('subject_name')
         .eq('user_id', user?.id);
 
-      if (subjectsError) throw subjectsError;
+      if (subjectsError) {
+        console.error('Error fetching user subjects:', subjectsError);
+        throw subjectsError;
+      }
 
+      console.log('User subjects:', userSubjects);
       const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      
+      if (activeSubjects.length === 0) {
+        console.log('No active subjects found');
+        setBoxStats({
+          box1: 0,
+          box2: 0,
+          box3: 0,
+          box4: 0,
+          box5: 0,
+          totalDue: 0,
+          totalInStudyBank: 0,
+        });
+        return;
+      }
       
       // Fetch only cards that are in study bank AND from active subjects
       const { data: cards, error } = await supabase
@@ -90,7 +109,12 @@ export default function StudyScreen() {
         .eq('in_study_bank', true)
         .in('subject_name', activeSubjects);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching flashcards:', error);
+        throw error;
+      }
+
+      console.log('Flashcards fetched:', cards?.length);
 
       const now = new Date();
       const stats: BoxStats = {
@@ -116,10 +140,21 @@ export default function StudyScreen() {
         }
       });
 
+      console.log('Box stats calculated:', stats);
       setBoxStats(stats);
     } catch (error) {
-      console.error('Error fetching box stats:', error);
+      console.error('Error in fetchBoxStats:', error);
       Alert.alert('Error', 'Failed to load study statistics');
+      // Set default values on error
+      setBoxStats({
+        box1: 0,
+        box2: 0,
+        box3: 0,
+        box4: 0,
+        box5: 0,
+        totalDue: 0,
+        totalInStudyBank: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -129,6 +164,7 @@ export default function StudyScreen() {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      console.log('Fetching daily card count...');
       
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -136,9 +172,18 @@ export default function StudyScreen() {
         .select('subject_name')
         .eq('user_id', user?.id);
 
-      if (subjectsError) throw subjectsError;
+      if (subjectsError) {
+        console.error('Error fetching user subjects for daily cards:', subjectsError);
+        throw subjectsError;
+      }
 
       const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      
+      if (activeSubjects.length === 0) {
+        console.log('No active subjects for daily cards');
+        setDailyCardCount(0);
+        return;
+      }
       
       // Count cards due today from active subjects only
       const { count, error } = await supabase
@@ -149,10 +194,16 @@ export default function StudyScreen() {
         .in('subject_name', activeSubjects)
         .lte('next_review_date', today.toISOString());
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching daily card count:', error);
+        throw error;
+      }
+      
+      console.log('Daily card count:', count);
       setDailyCardCount(count || 0);
     } catch (error) {
-      console.error('Error fetching daily cards:', error);
+      console.error('Error in fetchDailyCardCount:', error);
+      setDailyCardCount(0);
     }
   };
 

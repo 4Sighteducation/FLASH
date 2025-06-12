@@ -60,6 +60,8 @@
   - CardSubjectSelector.tsx             - Select subject for card creation
   - CardTopicSelector.tsx               - Select topic for card creation
   - ImageCardGeneratorScreen.tsx        - Generate cards from images using OCR
+  - StudySlideshowModal.tsx             - Slideshow mode for reviewing cards
+  - VoiceAnswerModal.tsx                - Future AI voice assessment feature (concept)
 
 /src/screens/settings/
   - APISettingsScreen.tsx               - OpenAI API key management
@@ -73,6 +75,15 @@
   - DeleteConfirmationModal.tsx         - Reusable delete confirmation
   - LeitnerBoxes.tsx                    - Leitner box system visualization
   - CardSwooshAnimation.tsx             - Card movement animation
+  - StudyBoxModal.tsx                   - Modal for studying specific Leitner boxes
+  - DailyCardsModal.tsx                 - Modal for daily card reviews
+
+  🛠️ Utilities & Services
+  /src/utils/
+  - databaseMaintenance.ts              - Database cleanup utilities
+
+  /supabase/migrations/
+  - cleanup-orphaned-cards.sql          - SQL to clean orphaned flashcards
 
   📚 Documentation
   /FLASH-Development-Handover.md          - Comprehensive project documentation

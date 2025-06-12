@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
+import FrozenCard from '../../components/FrozenCard';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -105,34 +106,33 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       setBoxCounts(counts);
       console.log('Box counts:', counts);
       
-      // Filter cards that are due for review today
+      // Mark cards as frozen or not based on review date
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      const dueCards = allCards.filter(card => {
+      const cardsWithStatus = allCards.map(card => {
         const reviewDate = new Date(card.next_review_date);
         reviewDate.setHours(0, 0, 0, 0);
-        return reviewDate <= today;
+        const isFrozen = reviewDate > today;
+        
+        return {
+          ...card,
+          isFrozen,
+          daysUntilReview: isFrozen ? Math.ceil((reviewDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0
+        };
       });
       
-      console.log('Due cards:', dueCards.length);
+      // Sort cards: due cards first, then frozen cards
+      const sortedCards = cardsWithStatus.sort((a, b) => {
+        if (a.isFrozen && !b.isFrozen) return 1;
+        if (!a.isFrozen && b.isFrozen) return -1;
+        return 0;
+      });
       
-      // If no cards are due, show cards from box 1
-      const cardsToStudy = dueCards.length > 0 ? dueCards : allCards.filter(card => card.box_number === 1);
+      console.log('Cards ready for review:', sortedCards.filter(c => !c.isFrozen).length);
+      console.log('Frozen cards:', sortedCards.filter(c => c.isFrozen).length);
       
-      // Occasionally add a random card from box 5
-      if (Math.random() < 0.1) { // 10% chance
-        const box5Cards = allCards.filter(card => card.box_number === 5);
-        if (box5Cards.length > 0) {
-          const randomCard = box5Cards[Math.floor(Math.random() * box5Cards.length)];
-          if (!cardsToStudy.find(c => c.id === randomCard.id)) {
-            cardsToStudy.push(randomCard);
-          }
-        }
-      }
-      
-      console.log('Cards to study:', cardsToStudy.length);
-      setFlashcards(cardsToStudy);
+      setFlashcards(sortedCards);
     } catch (error) {
       console.error('Error fetching flashcards:', error);
     } finally {
@@ -226,7 +226,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handleCardAnswer = async (cardId: string, correct: boolean) => {
     const card = flashcards.find(c => c.id === cardId);
-    if (!card) return;
+    if (!card || card.isFrozen) return;
 
     const oldBoxNumber = card.box_number;
     const newBoxNumber = correct 
@@ -342,11 +342,18 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             ]}
           >
             <View ref={cardRef} collapsable={false}>
-              <FlashcardCard
-                card={currentCard}
-                color={subjectColor}
-                onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
-              />
+              {currentCard.isFrozen ? (
+                <FrozenCard
+                  card={currentCard}
+                  color={subjectColor}
+                />
+              ) : (
+                <FlashcardCard
+                  card={currentCard}
+                  color={subjectColor}
+                  onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+                />
+              )}
             </View>
           </Animated.View>
         </View>
