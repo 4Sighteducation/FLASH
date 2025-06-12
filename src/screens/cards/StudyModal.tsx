@@ -62,17 +62,20 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const fetchFlashcards = async () => {
     try {
+      console.log('Fetching flashcards for:', { topicName, subjectName });
+      
       const { data, error } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
-        .or('topic_name.eq.' + topicName + ',topic.eq.' + topicName)
-        .or('in_study_bank.eq.true,in_study_bank.is.null')
+        .eq('subject_name', subjectName)
+        .eq('in_study_bank', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
       const allCards = data || [];
+      console.log('Total cards fetched:', allCards.length);
       
       // Calculate box counts
       const counts = {
@@ -89,6 +92,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       });
       
       setBoxCounts(counts);
+      console.log('Box counts:', counts);
       
       // Filter cards that are due for review today
       const today = new Date();
@@ -99,6 +103,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         reviewDate.setHours(0, 0, 0, 0);
         return reviewDate <= today;
       });
+      
+      console.log('Due cards:', dueCards.length);
       
       // If no cards are due, show cards from box 1
       const cardsToStudy = dueCards.length > 0 ? dueCards : allCards.filter(card => card.box_number === 1);
@@ -114,6 +120,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         }
       }
       
+      console.log('Cards to study:', cardsToStudy.length);
       setFlashcards(cardsToStudy);
     } catch (error) {
       console.error('Error fetching flashcards:', error);

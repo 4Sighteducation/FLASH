@@ -72,12 +72,23 @@ export default function StudyScreen() {
     try {
       setLoading(true);
       
-      // Fetch all cards in study bank (or cards without the flag set - for backwards compatibility)
+      // First get user's active subjects
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select('subject_name')
+        .eq('user_id', user?.id);
+
+      if (subjectsError) throw subjectsError;
+
+      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      
+      // Fetch only cards that are in study bank AND from active subjects
       const { data: cards, error } = await supabase
         .from('flashcards')
-        .select('box_number, next_review_date, in_study_bank')
+        .select('box_number, next_review_date, in_study_bank, subject_name')
         .eq('user_id', user?.id)
-        .or('in_study_bank.eq.true,in_study_bank.is.null');
+        .eq('in_study_bank', true)
+        .in('subject_name', activeSubjects);
 
       if (error) throw error;
 
@@ -119,12 +130,23 @@ export default function StudyScreen() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Count cards due today directly
+      // First get user's active subjects
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select('subject_name')
+        .eq('user_id', user?.id);
+
+      if (subjectsError) throw subjectsError;
+
+      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      
+      // Count cards due today from active subjects only
       const { count, error } = await supabase
         .from('flashcards')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user?.id)
-        .or('in_study_bank.eq.true,in_study_bank.is.null')
+        .eq('in_study_bank', true)
+        .in('subject_name', activeSubjects)
         .lte('next_review_date', today.toISOString());
 
       if (error) throw error;
