@@ -218,7 +218,7 @@ export default function FlashcardsScreen() {
       <ScrollView style={styles.cardsContainer} showsVerticalScrollIndicator={false}>
         {filter === 'studying' && flashcards.length > 0 && (
           <TouchableOpacity 
-            style={[styles.studyPrompt, { backgroundColor: subjectColor + '15', borderColor: subjectColor }]}
+            style={[styles.studyPrompt, { backgroundColor: '#4CAF50' + '15', borderColor: '#4CAF50' }]}
             onPress={() => (navigation as any).navigate('StudyModal', {
               topicName: topicFilter || subjectName,
               subjectName,
@@ -226,16 +226,16 @@ export default function FlashcardsScreen() {
             })}
           >
             <View style={styles.studyPromptContent}>
-              <Ionicons name="rocket-outline" size={32} color={subjectColor} />
+              <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
               <View style={styles.studyPromptTextContainer}>
-                <Text style={[styles.studyPromptTitle, { color: subjectColor }]}>
-                  Ready to level up? 🚀
+                <Text style={[styles.studyPromptTitle, { color: '#4CAF50' }]}>
+                  Sweet, you're all caught up! 🎉
                 </Text>
                 <Text style={styles.studyPromptText}>
-                  Practice is great, but let's put those cards to the test! Jump into Study Mode and show what you've learned!
+                  You've mastered these cards like a pro. Time to kick back and relax, or dive into Study Mode for a quick refresh!
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color={subjectColor} />
+              <Ionicons name="chevron-forward" size={24} color="#4CAF50" />
             </View>
           </TouchableOpacity>
         )}

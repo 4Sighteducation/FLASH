@@ -32,9 +32,12 @@ export default function CardSwooshAnimation({
   useEffect(() => {
     if (visible) {
       // Calculate target position based on box number
-      const boxWidth = (screenWidth - 48) / 5 - 8;
-      const targetX = 32 + (toBox - 1) * (boxWidth + 8) + boxWidth / 2;
-      const targetY = screenHeight * 0.3; // Position of the boxes
+      // The boxes are in the CompactLeitnerBoxes component at the top
+      const boxWidth = (screenWidth - 48) / 5 - 6;
+      const boxGap = 6;
+      const startX = 24; // padding
+      const targetX = startX + (toBox - 1) * (boxWidth + boxGap) + boxWidth / 2;
+      const targetY = 140; // Approximate Y position of the Leitner boxes
 
       // Reset animation values
       translateX.setValue(fromPosition.x);
@@ -43,46 +46,69 @@ export default function CardSwooshAnimation({
       opacity.setValue(1);
       rotation.setValue(0);
 
-      // Create swoosh animation
-      Animated.parallel([
-        // Movement animation with curve
-        Animated.sequence([
+      // Create swoosh animation with a curved path
+      const midX = (fromPosition.x + targetX) / 2;
+      const midY = Math.min(fromPosition.y, targetY) - 100; // Arc upward
+
+      Animated.sequence([
+        // First half: move up and to the middle with slight rotation
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: midX,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: midY,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scale, {
+            toValue: 0.8,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotation, {
+            toValue: 180,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Second half: move down to target with continued rotation
+        Animated.parallel([
           Animated.timing(translateX, {
             toValue: targetX,
-            duration: 800,
+            duration: 400,
             useNativeDriver: true,
           }),
+          Animated.timing(translateY, {
+            toValue: targetY,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scale, {
+            toValue: 0.2,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotation, {
+            toValue: 360,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.timing(opacity, {
+              toValue: 0.8,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
         ]),
-        Animated.timing(translateY, {
-          toValue: targetY,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        // Scale down as it moves
-        Animated.timing(scale, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        // Fade out at the end
-        Animated.sequence([
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]),
-        // Rotation for swoosh effect
-        Animated.timing(rotation, {
-          toValue: 360,
-          duration: 800,
-          useNativeDriver: true,
-        }),
       ]).start(() => {
         onComplete();
       });
@@ -118,8 +144,8 @@ export default function CardSwooshAnimation({
 const styles = StyleSheet.create({
   card: {
     position: 'absolute',
-    width: 80,
-    height: 100,
+    width: 60,
+    height: 80,
     borderRadius: 8,
     elevation: 10,
     shadowColor: '#000',

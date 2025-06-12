@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
@@ -62,6 +64,77 @@ export default function StudyBoxModal({
   const [animationTarget, setAnimationTarget] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, total: 0 });
   const [showAllCaughtUp, setShowAllCaughtUp] = useState(false);
+  
+  // Animation values for swipe
+  const translateX = React.useRef(new Animated.Value(0)).current;
+  const currentIndexRef = React.useRef(0);
+
+  React.useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  // Pan responder for swipe gestures
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only enable swipe for frozen cards
+        const card = cards[currentIndexRef.current];
+        return !!(card?.isFrozen && Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx));
+      },
+      onPanResponderGrant: () => {
+        translateX.stopAnimation();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        translateX.setValue(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const threshold = width * 0.2;
+        const velocity = gestureState.vx;
+        const currentIdx = currentIndexRef.current;
+        
+        if ((gestureState.dx > threshold || velocity > 0.3) && currentIdx > 0) {
+          // Swipe right - previous
+          Animated.timing(translateX, {
+            toValue: width,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setCurrentIndex(currentIdx - 1);
+            translateX.setValue(-width);
+            Animated.timing(translateX, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }).start();
+          });
+        } else if ((gestureState.dx < -threshold || velocity < -0.3) && currentIdx < cards.length - 1) {
+          // Swipe left - next
+          Animated.timing(translateX, {
+            toValue: -width,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setCurrentIndex(currentIdx + 1);
+            translateX.setValue(width);
+            Animated.timing(translateX, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }).start();
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 5,
+            tension: 80,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   useEffect(() => {
     if (visible) {
@@ -295,20 +368,26 @@ export default function StudyBoxModal({
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.cardContainer}>
-            {cards[currentIndex]?.isFrozen ? (
-              <FrozenCard
-                card={cards[currentIndex]}
-                color={getBoxColor()}
-              />
-            ) : (
-              <FlashcardCard
-                card={cards[currentIndex]}
-                color={getBoxColor()}
-                onAnswer={handleCardAnswer}
-                showDeleteButton={false}
-              />
-            )}
+          <View style={styles.cardContainer} {...panResponder.panHandlers}>
+            <Animated.View
+              style={{
+                transform: [{ translateX }],
+              }}
+            >
+              {cards[currentIndex]?.isFrozen ? (
+                <FrozenCard
+                  card={cards[currentIndex]}
+                  color={getBoxColor()}
+                />
+              ) : (
+                <FlashcardCard
+                  card={cards[currentIndex]}
+                  color={getBoxColor()}
+                  onAnswer={handleCardAnswer}
+                  showDeleteButton={false}
+                />
+              )}
+            </Animated.View>
           </View>
         )}
 
@@ -337,6 +416,11 @@ export default function StudyBoxModal({
               <Ionicons name="chevron-forward" size={24} color={currentIndex === cards.length - 1 ? '#ccc' : '#333'} />
             </TouchableOpacity>
           </View>
+        )}
+
+        {/* Swipe hint for frozen cards */}
+        {cards.length > 0 && cards[currentIndex]?.isFrozen && (
+          <Text style={styles.swipeHint}>Swipe to navigate</Text>
         )}
 
         {/* Progress Bar */}
@@ -573,5 +657,12 @@ const styles = StyleSheet.create({
   frozenNavText: {
     fontSize: 14,
     color: '#666',
+  },
+  swipeHint: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 8,
+    fontStyle: 'italic',
   },
 }); 

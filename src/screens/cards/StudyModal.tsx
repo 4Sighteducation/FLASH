@@ -160,44 +160,74 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handleNext = () => {
     if (currentIndex < flashcards.length - 1) {
-      // Slide current card to the left
-      Animated.timing(translateX, {
-        toValue: -screenWidth,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
+      // Slide current card to the left with scale down
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: -screenWidth,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardScale, {
+          toValue: 0.9,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
         // Update to next card
         setCurrentIndex(prev => prev + 1);
         // Position new card on the right
         translateX.setValue(screenWidth);
-        // Slide new card in from the right
-        Animated.timing(translateX, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
+        cardScale.setValue(0.9);
+        // Slide new card in from the right with scale up
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(cardScale, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          })
+        ]).start();
       });
     }
   };
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      // Slide current card to the right
-      Animated.timing(translateX, {
-        toValue: screenWidth,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
+      // Slide current card to the right with scale down
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: screenWidth,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardScale, {
+          toValue: 0.9,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
         // Update to previous card
         setCurrentIndex(prev => prev - 1);
         // Position new card on the left
         translateX.setValue(-screenWidth);
-        // Slide new card in from the left
-        Animated.timing(translateX, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
+        cardScale.setValue(0.9);
+        // Slide new card in from the left with scale up
+        Animated.parallel([
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(cardScale, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          })
+        ]).start();
       });
     }
   };
@@ -216,27 +246,39 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onPanResponderMove: (_, gestureState) => {
         // Only allow horizontal movement
         translateX.setValue(gestureState.dx);
+        
+        // Add subtle scale effect based on swipe distance
+        const scale = 1 - Math.abs(gestureState.dx) / (screenWidth * 2);
+        cardScale.setValue(Math.max(0.9, scale));
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = screenWidth * 0.25; // Lower threshold for easier swiping
+        const threshold = screenWidth * 0.2; // Lower threshold for easier swiping
         const velocity = gestureState.vx;
         const currentIdx = currentIndexRef.current;
         
         // Consider velocity for more natural swiping
-        if ((gestureState.dx > threshold || velocity > 0.5) && currentIdx > 0) {
+        if ((gestureState.dx > threshold || velocity > 0.3) && currentIdx > 0) {
           // Swipe right - go to previous
           handlePrevious();
-        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIdx < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.3) && currentIdx < flashcards.length - 1) {
           // Swipe left - go to next
           handleNext();
         } else {
           // Snap back with spring animation
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            friction: 5,
-            tension: 80,
-          }).start();
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+              friction: 5,
+              tension: 80,
+            }),
+            Animated.spring(cardScale, {
+              toValue: 1,
+              useNativeDriver: true,
+              friction: 5,
+              tension: 80,
+            })
+          ]).start();
         }
       },
     })
@@ -357,7 +399,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             style={[
               styles.cardContainer,
               {
-                transform: [{ translateX }],
+                transform: [
+                  { translateX },
+                  { scale: cardScale }
+                ],
               },
             ]}
           >
