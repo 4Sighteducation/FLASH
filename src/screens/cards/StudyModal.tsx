@@ -31,6 +31,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const { user } = useAuth();
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentIndexRef = useRef(0);
   const [loading, setLoading] = useState(true);
   
   // Leitner box state
@@ -50,6 +51,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   useEffect(() => {
     fetchFlashcards();
@@ -179,12 +184,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onPanResponderRelease: (_, gestureState) => {
         const threshold = screenWidth * 0.25; // Lower threshold for easier swiping
         const velocity = gestureState.vx;
+        const currentIdx = currentIndexRef.current;
         
         // Consider velocity for more natural swiping
-        if ((gestureState.dx > threshold || velocity > 0.5) && currentIndex > 0) {
+        if ((gestureState.dx > threshold || velocity > 0.5) && currentIdx > 0) {
           // Swipe right - go to previous
           handlePrevious();
-        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIndex < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIdx < flashcards.length - 1) {
           // Swipe left - go to next
           handleNext();
         } else {

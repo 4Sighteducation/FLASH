@@ -34,12 +34,17 @@ export default function StudySlideshowModal({
   isPracticeMode = false,
 }: StudySlideshowModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const currentIndexRef = useRef(0);
   const translateX = useRef(new Animated.Value(0)).current;
 
-  // Reset state when modal opens
+  React.useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
   React.useEffect(() => {
     if (visible) {
       setCurrentIndex(0);
+      currentIndexRef.current = 0;
       translateX.setValue(0);
     }
   }, [visible]);
@@ -67,6 +72,7 @@ export default function StudySlideshowModal({
   };
 
   const handlePrevious = () => {
+    console.log('handlePrevious called, currentIndex:', currentIndex);
     if (currentIndex > 0) {
       // Slide current card to the right
       Animated.timing(translateX, {
@@ -74,8 +80,12 @@ export default function StudySlideshowModal({
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
+        console.log('Animation complete, updating index');
         // Update to previous card
-        setCurrentIndex(prev => prev - 1);
+        setCurrentIndex(prev => {
+          console.log('Setting index from', prev, 'to', prev - 1);
+          return prev - 1;
+        });
         // Position new card on the left
         translateX.setValue(-screenWidth);
         // Slide new card in from the left
@@ -92,23 +102,40 @@ export default function StudySlideshowModal({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+        // More sensitive to horizontal swipes
+        const shouldRespond = Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+        return shouldRespond;
       },
       onPanResponderGrant: () => {
+        // Stop any ongoing animations when starting a new gesture
         translateX.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
+        // Only allow horizontal movement
         translateX.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = screenWidth * 0.25;
+        const threshold = screenWidth * 0.25; // Lower threshold for easier swiping
         const velocity = gestureState.vx;
+        const currentIdx = currentIndexRef.current;
         
-        if ((gestureState.dx > threshold || velocity > 0.5) && currentIndex > 0) {
+        console.log('Swipe released:', {
+          dx: gestureState.dx,
+          velocity: velocity,
+          currentIndex: currentIdx,
+          threshold: threshold
+        });
+        
+        // Consider velocity for more natural swiping
+        if ((gestureState.dx > threshold || velocity > 0.5) && currentIdx > 0) {
+          console.log('Swiping to previous');
           handlePrevious();
-        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIndex < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIdx < flashcards.length - 1) {
+          console.log('Swiping to next');
           handleNext();
         } else {
+          console.log('Snapping back');
+          // Snap back with spring animation
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
@@ -174,22 +201,23 @@ export default function StudySlideshowModal({
           </View>
         </View>
 
-        <Animated.View 
-          style={[
-            styles.cardContainer,
-            {
-              transform: [{ translateX }],
-            },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          <FlashcardCard
-            card={currentCard}
-            color={subjectColor}
-            onAnswer={handleCardAnswer}
-            showDeleteButton={false}
-          />
-        </Animated.View>
+        <View style={styles.swipeContainer} {...panResponder.panHandlers}>
+          <Animated.View 
+            style={[
+              styles.cardContainer,
+              {
+                transform: [{ translateX }],
+              },
+            ]}
+          >
+            <FlashcardCard
+              card={currentCard}
+              color={subjectColor}
+              onAnswer={handleCardAnswer}
+              showDeleteButton={false}
+            />
+          </Animated.View>
+        </View>
 
         <View style={styles.navigationContainer}>
           <TouchableOpacity
@@ -262,6 +290,9 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  swipeContainer: {
+    flex: 1,
   },
   cardContainer: {
     flex: 1,
