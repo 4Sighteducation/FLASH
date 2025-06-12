@@ -310,11 +310,6 @@ export default function FlashcardCard({
               <Ionicons name="trash-outline" size={20} color="#EF4444" />
             </TouchableOpacity>
           )}
-          {card.in_study_bank && (
-            <View style={[styles.boxIndicator, styles.boxIndicatorFront]}>
-              <Text style={styles.boxText}>Box {card.box_number}</Text>
-            </View>
-          )}
         </Animated.View>
 
         <Animated.View 
@@ -327,9 +322,6 @@ export default function FlashcardCard({
           pointerEvents={isFlipped ? 'auto' : 'none'}
         >
           {renderBack()}
-          <View style={styles.boxIndicator}>
-            <Text style={styles.boxText}>Box {card.box_number}</Text>
-          </View>
         </Animated.View>
       </View>
 
@@ -516,26 +508,5 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     padding: 8,
-  },
-  boxIndicator: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  boxText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
-  },
-  boxIndicatorFront: {
-    top: 12,
-    bottom: 'auto',
-    left: 12,
-    right: 'auto',
-    backgroundColor: '#10B981',
   },
 }); 

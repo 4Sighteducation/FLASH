@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
+import StudySlideshowModal from '../../components/StudySlideshowModal';
 
 interface Flashcard {
   id: string;
@@ -28,17 +29,19 @@ interface Flashcard {
   subject_name?: string;
   topic?: string;
   next_review_date: string;
+  in_study_bank?: boolean;
 }
 
 export default function FlashcardsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { subjectName, subjectColor } = route.params as any;
+  const { subjectName, subjectColor, topicFilter } = route.params as any;
   
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'due'>('all');
+  const [filter, setFilter] = useState<'all' | 'studying'>('all');
+  const [showSlideshow, setShowSlideshow] = useState(false);
 
   useEffect(() => {
     fetchFlashcards();
@@ -53,8 +56,14 @@ export default function FlashcardsScreen() {
         .eq('subject_name', subjectName)
         .order('created_at', { ascending: false });
 
-      if (filter === 'due') {
-        query = query.lte('next_review_date', new Date().toISOString());
+      // Apply topic filter if provided
+      if (topicFilter) {
+        query = query.eq('topic', topicFilter);
+      }
+
+      if (filter === 'studying') {
+        // Only show cards that are in study bank
+        query = query.eq('in_study_bank', true);
       }
 
       const { data, error } = await query;
@@ -136,15 +145,17 @@ export default function FlashcardsScreen() {
 
   const getStats = () => {
     const total = flashcards.length;
-    const due = flashcards.filter(card => 
-      new Date(card.next_review_date) <= new Date()
-    ).length;
+    const studying = flashcards.filter(card => card.in_study_bank === true).length;
     const mastered = flashcards.filter(card => card.box_number === 5).length;
     
-    return { total, due, mastered };
+    return { total, studying, mastered };
   };
 
   const stats = getStats();
+
+  const handlePlayPress = () => {
+    setShowSlideshow(true);
+  };
 
   if (loading) {
     return (
@@ -162,8 +173,10 @@ export default function FlashcardsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{subjectName} Flashcards</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Study', { subjectName, subjectColor })}>
+        <Text style={styles.headerTitle}>
+          {subjectName} {topicFilter ? `- ${topicFilter}` : ''} Flashcards
+        </Text>
+        <TouchableOpacity onPress={handlePlayPress}>
           <Ionicons name="play-circle" size={28} color={subjectColor} />
         </TouchableOpacity>
       </View>
@@ -174,8 +187,8 @@ export default function FlashcardsScreen() {
           <Text style={styles.statLabel}>Total Cards</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statNumber, { color: '#FF9500' }]}>{stats.due}</Text>
-          <Text style={styles.statLabel}>Due for Review</Text>
+          <Text style={[styles.statNumber, { color: '#FF9500' }]}>{stats.studying}</Text>
+          <Text style={styles.statLabel}>Currently Studying</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={[styles.statNumber, { color: '#FFD700' }]}>{stats.mastered}</Text>
@@ -193,11 +206,11 @@ export default function FlashcardsScreen() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'due' && styles.activeFilter]}
-          onPress={() => setFilter('due')}
+          style={[styles.filterButton, filter === 'studying' && styles.activeFilter]}
+          onPress={() => setFilter('studying')}
         >
-          <Text style={[styles.filterText, filter === 'due' && styles.activeFilterText]}>
-            Due Only
+          <Text style={[styles.filterText, filter === 'studying' && styles.activeFilterText]}>
+            Studying
           </Text>
         </TouchableOpacity>
       </View>
@@ -207,15 +220,15 @@ export default function FlashcardsScreen() {
           <View style={styles.emptyState}>
             <Ionicons name="albums-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>
-              {filter === 'due' ? 'No cards due for review!' : 'No flashcards yet'}
+              {filter === 'studying' ? 'No cards in study mode!' : 'No flashcards yet'}
             </Text>
             <TouchableOpacity
               style={[styles.createButton, { backgroundColor: subjectColor }]}
-              onPress={() => navigation.navigate('AIGenerator', { 
+              onPress={() => (navigation as any).navigate('AIGenerator', { 
                 subject: subjectName,
                 topic: 'General',
-                examBoard: route.params?.examBoard || 'AQA',
-                examType: route.params?.examType || 'GCSE',
+                examBoard: (route.params as any)?.examBoard || 'AQA',
+                examType: (route.params as any)?.examType || 'GCSE',
               })}
             >
               <Text style={styles.createButtonText}>Create Flashcards</Text>
@@ -223,17 +236,32 @@ export default function FlashcardsScreen() {
           </View>
         ) : (
           flashcards.map((card) => (
-            <FlashcardCard
-              key={card.id}
-              card={card}
-              color={subjectColor}
-              onAnswer={(correct) => handleCardAnswer(card.id, correct)}
-              showDeleteButton
-              onDelete={() => handleDeleteCard(card.id)}
-            />
+            <View key={card.id} style={styles.cardWrapper}>
+              <FlashcardCard
+                card={card}
+                color={subjectColor}
+                onAnswer={(correct) => handleCardAnswer(card.id, correct)}
+                showDeleteButton
+                onDelete={() => handleDeleteCard(card.id)}
+              />
+              {card.in_study_bank && (
+                <View style={[styles.boxIndicator, { backgroundColor: subjectColor }]}>
+                  <Text style={styles.boxIndicatorText}>Box {card.box_number}</Text>
+                </View>
+              )}
+            </View>
           ))
         )}
       </ScrollView>
+
+      <StudySlideshowModal
+        visible={showSlideshow}
+        onClose={() => setShowSlideshow(false)}
+        flashcards={flashcards}
+        subjectColor={subjectColor}
+        onCardAnswer={handleCardAnswer}
+        isPracticeMode={filter === 'studying'}
+      />
     </SafeAreaView>
   );
 }
@@ -312,6 +340,28 @@ const styles = StyleSheet.create({
   cardsContainer: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  cardWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  boxIndicator: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  boxIndicatorText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
