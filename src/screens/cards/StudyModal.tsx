@@ -157,26 +157,35 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10;
+        // More sensitive to horizontal swipes
+        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+      },
+      onPanResponderGrant: () => {
+        // Stop any ongoing animations when starting a new gesture
+        translateX.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
+        // Only allow horizontal movement
         translateX.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = screenWidth * 0.3;
+        const threshold = screenWidth * 0.25; // Lower threshold for easier swiping
+        const velocity = gestureState.vx;
         
-        if (gestureState.dx > threshold && currentIndex > 0) {
+        // Consider velocity for more natural swiping
+        if ((gestureState.dx > threshold || velocity > 0.5) && currentIndex > 0) {
           // Swipe right - go to previous
           handlePrevious();
-        } else if (gestureState.dx < -threshold && currentIndex < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIndex < flashcards.length - 1) {
           // Swipe left - go to next
           handleNext();
         } else {
-          // Snap back
+          // Snap back with spring animation
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
             friction: 5,
+            tension: 80,
           }).start();
         }
       },

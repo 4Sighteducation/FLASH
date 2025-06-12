@@ -76,23 +76,28 @@ export default function StudySlideshowModal({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10;
+        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+      },
+      onPanResponderGrant: () => {
+        translateX.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
         translateX.setValue(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = screenWidth * 0.3;
+        const threshold = screenWidth * 0.25;
+        const velocity = gestureState.vx;
         
-        if (gestureState.dx > threshold && currentIndex > 0) {
+        if ((gestureState.dx > threshold || velocity > 0.5) && currentIndex > 0) {
           handlePrevious();
-        } else if (gestureState.dx < -threshold && currentIndex < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIndex < flashcards.length - 1) {
           handleNext();
         } else {
           Animated.spring(translateX, {
             toValue: 0,
             useNativeDriver: true,
             friction: 5,
+            tension: 80,
           }).start();
         }
       },
