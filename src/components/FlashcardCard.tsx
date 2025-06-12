@@ -24,6 +24,7 @@ interface FlashcardCardProps {
     detailed_answer?: string;
     box_number: number;
     topic?: string;
+    in_study_bank?: boolean;
   };
   color: string;
   onAnswer?: (correct: boolean) => void;
@@ -277,6 +278,11 @@ export default function FlashcardCard({
               <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
             )}
 
+            {/* Fallback for any other card types */}
+            {!['multiple_choice', 'short_answer', 'essay', 'acronym', 'manual'].includes(card.card_type) && (
+              <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+            )}
+
             <View style={styles.flipBackHint}>
               <Text style={styles.flipHintText}>Tap anywhere to flip back</Text>
             </View>
@@ -303,6 +309,11 @@ export default function FlashcardCard({
             <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
               <Ionicons name="trash-outline" size={20} color="#EF4444" />
             </TouchableOpacity>
+          )}
+          {card.in_study_bank && (
+            <View style={[styles.boxIndicator, styles.boxIndicatorFront]}>
+              <Text style={styles.boxText}>Box {card.box_number}</Text>
+            </View>
           )}
         </Animated.View>
 
@@ -519,5 +530,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '600',
+  },
+  boxIndicatorFront: {
+    top: 12,
+    bottom: 'auto',
+    left: 12,
+    right: 'auto',
+    backgroundColor: '#10B981',
   },
 }); 

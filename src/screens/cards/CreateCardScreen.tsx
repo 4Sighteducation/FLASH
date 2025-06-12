@@ -114,30 +114,98 @@ export default function CreateCardScreen() {
         flashcardData.answer = answer.trim();
       }
 
+      // Ask user if they want to add to study bank
+      Alert.alert(
+        'Add to Study Bank?',
+        'This card will be added to your Card Bank. Do you also want to add it to your Study Bank for immediate review?',
+        [
+          {
+            text: 'No, Card Bank Only',
+            onPress: () => saveCard(flashcardData, false),
+            style: 'cancel'
+          },
+          {
+            text: 'Yes, Add to Study Bank Too',
+            onPress: () => saveCard(flashcardData, true),
+            style: 'default'
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error creating flashcard:', error);
+      Alert.alert('Error', 'Failed to create flashcard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveCard = async (flashcardData: any, addToStudyBank: boolean) => {
+    try {
+      // Add study bank fields
+      flashcardData.in_study_bank = addToStudyBank;
+      flashcardData.added_to_study_bank_at = addToStudyBank ? new Date().toISOString() : null;
+      flashcardData.next_review_date = new Date().toISOString();
+      
+      // Fix field names for database
+      if (flashcardData.topic) {
+        flashcardData.topic_name = flashcardData.topic;
+        delete flashcardData.topic;
+      }
+      
+      // Fix multiple choice fields
+      if (cardType === 'multiple_choice' && flashcardData.choices) {
+        flashcardData.options = flashcardData.choices;
+        flashcardData.correct_answer = flashcardData.answer;
+        delete flashcardData.choices;
+        delete flashcardData.correct_choice;
+      }
+
       const { error } = await supabase
         .from('flashcards')
         .insert(flashcardData);
 
       if (error) throw error;
 
-      Alert.alert('Success', 'Flashcard created!', [
-        { 
-          text: 'Create Another', 
-          onPress: () => {
-            setQuestion('');
-            setAnswer('');
-            setChoices(['', '', '', '']);
-            setCorrectChoice(0);
-          }
-        },
-        { 
-          text: 'Done', 
-          onPress: () => navigation.goBack()
+      // Update topic study preference if adding to study bank
+      if (addToStudyBank && topicId) {
+        const { error: prefError } = await supabase
+          .from('topic_study_preferences')
+          .upsert({
+            user_id: user?.id,
+            topic_id: topicId,
+            in_study_bank: true,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,topic_id'
+          });
+
+        if (prefError) {
+          console.error('Error updating topic study preference:', prefError);
         }
-      ]);
+      }
+
+      Alert.alert(
+        'Success', 
+        `Flashcard created!${addToStudyBank ? ' Card added to Study Bank.' : ''}`,
+        [
+          { 
+            text: 'Create Another', 
+            onPress: () => {
+              setQuestion('');
+              setAnswer('');
+              setChoices(['', '', '', '']);
+              setCorrectChoice(0);
+            }
+          },
+          { 
+            text: 'Done', 
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
     } catch (error) {
-      console.error('Error creating flashcard:', error);
-      Alert.alert('Error', 'Failed to create flashcard');
+      console.error('Error saving flashcard:', error);
+      Alert.alert('Error', 'Failed to save flashcard');
     } finally {
       setLoading(false);
     }

@@ -55,10 +55,11 @@
   - CreateCardScreen.tsx                - Manual card creation
   - AIGeneratorScreen.tsx               - AI card generation
   - FlashcardsScreen.tsx                - View all flashcards
-  - StudyModal.tsx                      - Card study interface
+  - StudyModal.tsx                      - Card study interface with Leitner box system
   - CardCreationChoice.tsx              - Choose AI or manual
   - CardSubjectSelector.tsx             - Select subject for card creation
   - CardTopicSelector.tsx               - Select topic for card creation
+  - ImageCardGeneratorScreen.tsx        - Generate cards from images using OCR
 
 /src/screens/settings/
   - APISettingsScreen.tsx               - OpenAI API key management
@@ -70,6 +71,8 @@
   - TopicEditModal.tsx                  - Topic editing modal
   - ColorPickerModal.tsx                - Color selection modal
   - DeleteConfirmationModal.tsx         - Reusable delete confirmation
+  - LeitnerBoxes.tsx                    - Leitner box system visualization
+  - CardSwooshAnimation.tsx             - Card movement animation
 
   📚 Documentation
   /FLASH-Development-Handover.md          - Comprehensive project documentation

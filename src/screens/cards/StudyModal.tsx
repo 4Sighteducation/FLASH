@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
+import LeitnerBoxes from '../../components/LeitnerBoxes';
+import CardSwooshAnimation from '../../components/CardSwooshAnimation';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -31,6 +33,21 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   
+  // Leitner box state
+  const [boxCounts, setBoxCounts] = useState({
+    box1: 0,
+    box2: 0,
+    box3: 0,
+    box4: 0,
+    box5: 0,
+  });
+  const [showSwoosh, setShowSwoosh] = useState(false);
+  const [swooshData, setSwooshData] = useState({
+    fromPosition: { x: 0, y: 0 },
+    toBox: 1,
+  });
+  const cardRef = useRef<View>(null);
+  
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -44,11 +61,55 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('topic', topicName)
+        .or('topic_name.eq.' + topicName + ',topic.eq.' + topicName)
+        .or('in_study_bank.eq.true,in_study_bank.is.null')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setFlashcards(data || []);
+      
+      const allCards = data || [];
+      
+      // Calculate box counts
+      const counts = {
+        box1: 0,
+        box2: 0,
+        box3: 0,
+        box4: 0,
+        box5: 0,
+      };
+      
+      allCards.forEach(card => {
+        const boxKey = `box${card.box_number}` as keyof typeof counts;
+        counts[boxKey]++;
+      });
+      
+      setBoxCounts(counts);
+      
+      // Filter cards that are due for review today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const dueCards = allCards.filter(card => {
+        const reviewDate = new Date(card.next_review_date);
+        reviewDate.setHours(0, 0, 0, 0);
+        return reviewDate <= today;
+      });
+      
+      // If no cards are due, show cards from box 1
+      const cardsToStudy = dueCards.length > 0 ? dueCards : allCards.filter(card => card.box_number === 1);
+      
+      // Occasionally add a random card from box 5
+      if (Math.random() < 0.1) { // 10% chance
+        const box5Cards = allCards.filter(card => card.box_number === 5);
+        if (box5Cards.length > 0) {
+          const randomCard = box5Cards[Math.floor(Math.random() * box5Cards.length)];
+          if (!cardsToStudy.find(c => c.id === randomCard.id)) {
+            cardsToStudy.push(randomCard);
+          }
+        }
+      }
+      
+      setFlashcards(cardsToStudy);
     } catch (error) {
       console.error('Error fetching flashcards:', error);
     } finally {
@@ -126,11 +187,23 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     const card = flashcards.find(c => c.id === cardId);
     if (!card) return;
 
+    const oldBoxNumber = card.box_number;
     const newBoxNumber = correct 
       ? Math.min(card.box_number + 1, 5) 
       : 1;
 
-    const daysUntilReview = [1, 3, 7, 14, 30][newBoxNumber - 1];
+    // Get card position for swoosh animation
+    if (cardRef.current) {
+      cardRef.current.measure((x, y, width, height, pageX, pageY) => {
+        setSwooshData({
+          fromPosition: { x: pageX + width / 2, y: pageY + height / 2 },
+          toBox: newBoxNumber,
+        });
+        setShowSwoosh(true);
+      });
+    }
+
+    const daysUntilReview = [1, 2, 3, 7, 30][newBoxNumber - 1];
     const nextReviewDate = new Date();
     nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
 
@@ -148,6 +221,20 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         ? { ...c, box_number: newBoxNumber, next_review_date: nextReviewDate.toISOString() }
         : c
     ));
+
+    // Update box counts
+    setBoxCounts(prev => ({
+      ...prev,
+      [`box${oldBoxNumber}`]: prev[`box${oldBoxNumber}` as keyof typeof prev] - 1,
+      [`box${newBoxNumber}`]: prev[`box${newBoxNumber}` as keyof typeof prev] + 1,
+    }));
+
+    // Auto-advance after a delay
+    setTimeout(() => {
+      if (currentIndex < flashcards.length - 1) {
+        handleNext();
+      }
+    }, 1500);
   };
 
   const handleClose = () => {
@@ -199,6 +286,12 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         </View>
       </View>
 
+      {/* Leitner Boxes Visualization */}
+      <LeitnerBoxes 
+        boxes={boxCounts} 
+        activeBox={currentCard?.box_number}
+      />
+
       <Animated.View 
         style={[
           styles.cardContainer,
@@ -208,11 +301,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         ]}
         {...panResponder.panHandlers}
       >
-        <FlashcardCard
-          card={currentCard}
-          color={subjectColor}
-          onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
-        />
+        <View ref={cardRef} collapsable={false}>
+          <FlashcardCard
+            card={currentCard}
+            color={subjectColor}
+            onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+          />
+        </View>
       </Animated.View>
 
       <View style={styles.navigationContainer}>
@@ -258,6 +353,15 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       <TouchableOpacity style={styles.floatingCloseButton} onPress={handleClose}>
         <Ionicons name="close" size={24} color="#fff" />
       </TouchableOpacity>
+
+      {/* Card Swoosh Animation */}
+      <CardSwooshAnimation
+        visible={showSwoosh}
+        fromPosition={swooshData.fromPosition}
+        toBox={swooshData.toBox}
+        color={subjectColor}
+        onComplete={() => setShowSwoosh(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -327,6 +431,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
+    marginTop: -60,
   },
   navigationContainer: {
     flexDirection: 'row',

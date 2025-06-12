@@ -109,6 +109,28 @@ export default function AIGeneratorScreen() {
   const handleSaveCards = async () => {
     if (!user || !selectedType || selectedType === 'notes') return;
 
+    // Ask user if they want to add to study bank
+    Alert.alert(
+      'Add to Study Bank?',
+      'These cards will be added to your Card Bank. Do you also want to add them to your Study Bank for immediate review?',
+      [
+        {
+          text: 'No, Card Bank Only',
+          onPress: () => saveCards(false),
+          style: 'cancel'
+        },
+        {
+          text: 'Yes, Add to Study Bank Too',
+          onPress: () => saveCards(true),
+          style: 'default'
+        }
+      ]
+    );
+  };
+
+  const saveCards = async (addToStudyBank: boolean) => {
+    if (!user || !selectedType || selectedType === 'notes') return;
+
     setIsSaving(true);
     try {
       await aiService.saveGeneratedCards(
@@ -122,7 +144,8 @@ export default function AIGeneratorScreen() {
           questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
           numCards: generatedCards.length,
         },
-        user.id
+        user.id,
+        addToStudyBank
       );
 
       // Small delay to ensure database updates are processed
@@ -130,7 +153,7 @@ export default function AIGeneratorScreen() {
 
       Alert.alert(
         'Success',
-        `${generatedCards.length} cards saved successfully!`,
+        `${generatedCards.length} cards saved successfully!${addToStudyBank ? ' Cards added to Study Bank.' : ''}`,
         [{ 
           text: 'OK', 
           onPress: () => {

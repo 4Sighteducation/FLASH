@@ -9,6 +9,9 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +19,49 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { AIService } from '../../services/aiService';
+import { AIService, GeneratedCard } from '../../services/aiService';
+import FlashcardCard from '../../components/FlashcardCard';
+
+type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
+
+interface CardTypeOption {
+  id: CardType;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  available: boolean;
+}
+
+const cardTypes: CardTypeOption[] = [
+  {
+    id: 'multiple_choice',
+    title: 'Multiple Choice',
+    description: 'Questions with 4 answer options',
+    icon: 'list-circle-outline',
+    available: true,
+  },
+  {
+    id: 'short_answer',
+    title: 'Short Answer',
+    description: 'Questions requiring brief responses',
+    icon: 'create-outline',
+    available: true,
+  },
+  {
+    id: 'essay',
+    title: 'Essay Style',
+    description: 'In-depth analysis questions',
+    icon: 'document-text-outline',
+    available: true,
+  },
+  {
+    id: 'acronym',
+    title: 'Acronym',
+    description: 'Memory aids using acronyms',
+    icon: 'text-outline',
+    available: true,
+  },
+];
 
 export default function ImageCardGeneratorScreen() {
   const route = useRoute();
@@ -27,77 +72,77 @@ export default function ImageCardGeneratorScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'select' | 'review' | 'generate'>('select');
-  const [selectedCardType, setSelectedCardType] = useState<'multiple_choice' | 'short_answer' | 'essay'>('short_answer');
-  const [generatedCards, setGeneratedCards] = useState<any[]>([]);
+  const [step, setStep] = useState<'select' | 'review' | 'options' | 'preview'>('select');
+  const [selectedCardType, setSelectedCardType] = useState<CardType | null>(null);
+  const [numCards, setNumCards] = useState('5');
+  const [additionalGuidance, setAdditionalGuidance] = useState('');
+  const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const pickImage = async (source: 'camera' | 'gallery') => {
-    let result;
-    
-    if (source === 'camera') {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission needed', 'Camera permission is required to take photos');
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-    }
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    };
 
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      
-      // Compress image if needed
-      const manipulated = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [{ resize: { width: 1024 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-      );
-      
-      setImage(manipulated.uri);
-      await extractTextFromImage(manipulated.base64!);
+    try {
+      let result;
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permission needed', 'Camera permission is required');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        
+        // Compress image if needed
+        const manipResult = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [{ resize: { width: 1024 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+
+        setImage(manipResult.uri);
+        setStep('review');
+        
+        // Extract text from image
+        if (manipResult.base64) {
+          await extractTextFromImage(manipResult.base64);
+        }
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 
   const extractTextFromImage = async (base64Image: string) => {
     setLoading(true);
-    setStep('review');
-    
+    let extractedText = '';
+
     try {
-      // Call your Supabase Edge Function
+      // Call Supabase Edge Function for OCR
       const { data, error } = await supabase.functions.invoke('vision-ocr', {
         body: { image: base64Image }
       });
 
-      console.log('Edge Function Response:', { data, error });
-
-      // Check if we have data, even if there's an error
-      if (data) {
-        if (data.success && data.text) {
-          setExtractedText(data.text);
-          return; // Success, exit early
-        } else if (data.text) {
-          // Sometimes the response might have text without success flag
-          setExtractedText(data.text);
-          return; // Success, exit early
-        } else if (!data.success && data.error) {
-          throw new Error(data.error);
+      if (data?.text) {
+        extractedText = data.text;
+        setExtractedText(extractedText);
+        
+        if (!extractedText.trim()) {
+          Alert.alert('No Text Found', 'Could not extract any text from the image. Please try a clearer image.');
+          setStep('select');
         }
-      }
-
-      // Only throw error if we don't have text
-      if (error && !data?.text) {
-        console.error('Edge Function Error:', error);
+      } else if (error) {
         throw new Error(error.message || 'Edge Function error');
       }
 
@@ -124,120 +169,75 @@ export default function ImageCardGeneratorScreen() {
   };
 
   const generateCardsFromText = async () => {
-    if (!extractedText.trim()) {
-      Alert.alert('Error', 'No text to generate cards from');
+    if (!extractedText.trim() || !selectedCardType) {
+      Alert.alert('Error', 'Please select a card type');
       return;
     }
 
     setLoading(true);
-    setStep('generate');
 
     try {
-      // First, check if content is relevant to the topic
       const aiService = new AIService();
       
-      // Add a relevance check prompt
-      const relevanceCheckPrompt = `
-        Topic: ${topicName}
-        Subject: ${subjectName}
-        Content: ${extractedText.substring(0, 500)}...
-        
-        Does this content relate to the topic? Reply with just "YES" or "NO".
-      `;
-      
-      // For now, we'll skip the relevance check and add it in a future update
-      // This would require a separate API endpoint or modifying the existing one
-      
-      // Generate cards using AI service (no API key needed - uses backend)
-      const generateCards = async (forceGenerate = false) => {
-        const cards = await aiService.generateCards({
-          subject: subjectName,
-          topic: topicName,
-          examBoard,
-          examType,
-          questionType: selectedCardType,
-          numCards: 5,
-          contentGuidance: forceGenerate 
-            ? `Generate flashcards based on this content (ignore topic mismatch):\n\n${extractedText}`
-            : `Generate flashcards based on this content:\n\n${extractedText}`,
-        });
-        setGeneratedCards(cards);
-      };
+      // Combine extracted text with additional guidance
+      const fullGuidance = additionalGuidance 
+        ? `${additionalGuidance}\n\nBased on the following extracted text, generate complete flashcards with both questions AND detailed answers:\n\n${extractedText}`
+        : `Based on the following extracted text, generate complete flashcards with both questions AND detailed answers. Make sure each answer is comprehensive and directly answers the question using information from the text:\n\n${extractedText}`;
 
-      // Try to generate cards
-      try {
-        await generateCards();
-      } catch (error: any) {
-        // If the AI detects a mismatch, it might throw an error
-        if (error.message?.includes('topic mismatch') || error.message?.includes('not related')) {
-          Alert.alert(
-            'Content Mismatch',
-            `This content doesn't seem to match the topic "${topicName}". Would you like to create cards anyway?`,
-            [
-              {
-                text: 'Cancel',
-                onPress: () => setStep('review'),
-                style: 'cancel'
-              },
-              {
-                text: 'Create Anyway',
-                onPress: async () => {
-                  try {
-                    setLoading(true);
-                    await generateCards(true);
-                  } catch (err: any) {
-                    Alert.alert('Error', err.message || 'Failed to generate flashcards');
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }
-            ]
-          );
-          return;
-        }
-        throw error;
-      }
+      const cards = await aiService.generateCards({
+        subject: subjectName,
+        topic: topicName,
+        examBoard,
+        examType,
+        questionType: selectedCardType,
+        numCards: parseInt(numCards, 10),
+        contentGuidance: fullGuidance,
+      });
+      
+      setGeneratedCards(cards);
+      setStep('preview');
     } catch (error: any) {
       console.error('Generation Error:', error);
       Alert.alert('Error', error.message || 'Failed to generate flashcards');
-      setStep('review');
     } finally {
       setLoading(false);
     }
   };
 
   const saveCards = async () => {
-    setLoading(true);
+    if (!user || !selectedCardType) return;
+
+    setIsSaving(true);
     try {
-      // Save all generated cards
-      const cardsToInsert = generatedCards.map(card => ({
-        ...card,
-        user_id: user?.id,
-        topic_id: topicId,
-        subject_name: subjectName,
-        topic: topicName,
-        box_number: 1,
-        is_ai_generated: true,
-        source: 'image_ocr',
-      }));
+      await new AIService().saveGeneratedCards(
+        generatedCards,
+        {
+          subject: subjectName,
+          topic: topicName,
+          topicId,
+          examBoard,
+          examType,
+          questionType: selectedCardType,
+          numCards: generatedCards.length,
+        },
+        user.id
+      );
 
-      const { error } = await supabase
-        .from('flashcards')
-        .insert(cardsToInsert);
-
-      if (error) throw error;
+      // Small delay to ensure database updates
+      await new Promise<void>(resolve => setTimeout(resolve, 500));
 
       Alert.alert(
         'Success!', 
         `${generatedCards.length} flashcards created from your image!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{ 
+          text: 'OK', 
+          onPress: () => navigation.goBack()
+        }]
       );
-    } catch (error) {
-      console.error('Save Error:', error);
-      Alert.alert('Error', 'Failed to save flashcards');
+    } catch (error: any) {
+      Alert.alert('Save Error', error.message || 'Failed to save cards');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -287,59 +287,120 @@ export default function ImageCardGeneratorScreen() {
         <Text style={styles.extractedText}>{extractedText}</Text>
       </View>
 
-      <View style={styles.cardTypeSelector}>
-        <Text style={styles.label}>Card Type</Text>
-        <View style={styles.cardTypeOptions}>
-          {(['short_answer', 'multiple_choice', 'essay'] as const).map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.cardTypeButton,
-                selectedCardType === type && styles.selectedCardType
-              ]}
-              onPress={() => setSelectedCardType(type)}
-            >
-              <Text style={[
-                styles.cardTypeText,
-                selectedCardType === type && styles.selectedCardTypeText
-              ]}>
-                {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
       <TouchableOpacity
-        style={styles.generateButton}
-        onPress={generateCardsFromText}
-        disabled={loading}
+        style={styles.primaryButton}
+        onPress={() => setStep('options')}
       >
-        <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-        <Text style={styles.generateButtonText}>Generate Flashcards</Text>
+        <Text style={styles.primaryButtonText}>Next: Choose Options</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 
-  const renderGeneratedCards = () => (
-    <ScrollView style={styles.cardsContainer}>
-      <Text style={styles.title}>Generated Flashcards</Text>
-      <Text style={styles.subtitle}>{generatedCards.length} cards created</Text>
-
-      {generatedCards.map((card, index) => (
-        <View key={index} style={styles.cardPreview}>
-          <Text style={styles.cardQuestion}>Q: {card.question}</Text>
-          <Text style={styles.cardAnswer}>A: {card.answer}</Text>
-        </View>
+  const renderCardTypeSelection = () => (
+    <View style={styles.cardTypesContainer}>
+      <Text style={styles.sectionTitle}>Select Card Type</Text>
+      {cardTypes.map((type) => (
+        <TouchableOpacity
+          key={type.id}
+          style={[
+            styles.cardTypeOption,
+            selectedCardType === type.id && styles.selectedCardType,
+            !type.available && styles.disabledCardType,
+          ]}
+          onPress={() => type.available && setSelectedCardType(type.id)}
+          disabled={!type.available}
+        >
+          <View style={styles.cardTypeIcon}>
+            <Ionicons
+              name={type.icon}
+              size={24}
+              color={
+                !type.available
+                  ? '#ccc'
+                  : selectedCardType === type.id
+                  ? '#007AFF'
+                  : '#666'
+              }
+            />
+          </View>
+          <View style={styles.cardTypeInfo}>
+            <Text style={[styles.cardTypeTitle, !type.available && styles.disabledText]}>
+              {type.title}
+            </Text>
+            <Text style={[styles.cardTypeDescription, !type.available && styles.disabledText]}>
+              {type.description}
+            </Text>
+          </View>
+        </TouchableOpacity>
       ))}
+    </View>
+  );
 
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={saveCards}
-        disabled={loading}
-      >
-        <Text style={styles.saveButtonText}>Save All Cards</Text>
-      </TouchableOpacity>
+  const renderOptions = () => (
+    <ScrollView style={styles.optionsContainer}>
+      <Text style={styles.sectionTitle}>Generation Options</Text>
+      
+      {renderCardTypeSelection()}
+      
+      <View style={styles.optionGroup}>
+        <Text style={styles.optionLabel}>Number of Cards</Text>
+        <TextInput
+          style={styles.numberInput}
+          value={numCards}
+          onChangeText={setNumCards}
+          keyboardType="number-pad"
+          maxLength={2}
+        />
+      </View>
+
+      <View style={styles.optionGroup}>
+        <Text style={styles.optionLabel}>Additional Guidance (Optional)</Text>
+        <TextInput
+          style={styles.textArea}
+          value={additionalGuidance}
+          onChangeText={setAdditionalGuidance}
+          placeholder="e.g., Focus on key dates, Include practical examples..."
+          multiline
+          numberOfLines={3}
+        />
+      </View>
+
+      <View style={styles.extractedTextPreview}>
+        <Text style={styles.optionLabel}>Extracted Text Preview</Text>
+        <Text style={styles.extractedTextSmall}>
+          {extractedText.substring(0, 200)}...
+        </Text>
+      </View>
+    </ScrollView>
+  );
+
+  const renderPreview = () => (
+    <ScrollView style={styles.previewContainer}>
+      <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
+      {generatedCards.map((card, index) => {
+        const flashcard = {
+          id: `preview-${index}`,
+          question: card.question,
+          answer: card.answer,
+          card_type: selectedCardType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
+          options: card.options,
+          correct_answer: card.correctAnswer,
+          key_points: card.keyPoints,
+          detailed_answer: card.detailedAnswer,
+          box_number: 1,
+          topic: topicName,
+        };
+
+        return (
+          <View key={index} style={styles.previewCardWrapper}>
+            <FlashcardCard
+              card={flashcard}
+              color="#6366F1"
+              showDeleteButton={false}
+            />
+          </View>
+        );
+      })}
     </ScrollView>
   );
 
@@ -353,18 +414,85 @@ export default function ImageCardGeneratorScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#6366F1" />
-          <Text style={styles.loadingText}>
-            {step === 'review' ? 'Extracting text...' : 'Generating cards...'}
-          </Text>
-        </View>
-      )}
+      <View style={styles.topicInfo}>
+        <Text style={styles.topicSubject}>{subjectName}</Text>
+        <Text style={styles.topicName}>{topicName}</Text>
+      </View>
 
-      {step === 'select' && renderImageSelection()}
-      {step === 'review' && !loading && renderTextReview()}
-      {step === 'generate' && !loading && renderGeneratedCards()}
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {step === 'select' && renderImageSelection()}
+        {step === 'review' && !loading && renderTextReview()}
+        {step === 'options' && renderOptions()}
+        {step === 'preview' && renderPreview()}
+
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>
+              {step === 'review' ? 'Extracting text...' : 'Generating cards...'}
+            </Text>
+          </View>
+        )}
+
+        {isSaving && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Saving cards...</Text>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+
+      <View style={styles.bottomButtons}>
+        {step === 'review' && (
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => setStep('options')}
+          >
+            <Text style={styles.primaryButtonText}>Next</Text>
+          </TouchableOpacity>
+        )}
+        
+        {step === 'options' && (
+          <>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => setStep('review')}
+            >
+              <Text style={styles.secondaryButtonText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={generateCardsFromText}
+              disabled={loading || !selectedCardType}
+            >
+              <Text style={styles.primaryButtonText}>Generate</Text>
+            </TouchableOpacity>
+          </>
+        )}
+        
+        {step === 'preview' && (
+          <>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => {
+                setGeneratedCards([]);
+                setStep('options');
+              }}
+            >
+              <Text style={styles.secondaryButtonText}>Regenerate</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={saveCards}
+            >
+              <Text style={styles.primaryButtonText}>Save All Cards</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -372,21 +500,43 @@ export default function ImageCardGeneratorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: '#333',
+  },
+  topicInfo: {
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  topicSubject: {
+    fontSize: 14,
+    color: '#666',
+  },
+  topicName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 4,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
   },
   selectionContainer: {
     flex: 1,
@@ -465,102 +615,145 @@ const styles = StyleSheet.create({
     color: '#374151',
     lineHeight: 20,
   },
-  cardTypeSelector: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  cardTypeOptions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cardTypeButton: {
+  cardTypesContainer: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
   },
-  selectedCardType: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
-  },
-  cardTypeText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  selectedCardTypeText: {
-    color: '#FFFFFF',
-  },
-  generateButton: {
-    flexDirection: 'row',
-    backgroundColor: '#6366F1',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  generateButtonText: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#333',
+    marginBottom: 16,
   },
-  cardsContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  cardPreview: {
-    backgroundColor: '#FFFFFF',
+  cardTypeOption: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  cardQuestion: {
+  selectedCardType: {
+    borderColor: '#007AFF',
+  },
+  disabledCardType: {
+    opacity: 0.6,
+  },
+  cardTypeIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  cardTypeInfo: {
+    flex: 1,
+  },
+  cardTypeTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#333',
+    marginBottom: 4,
+  },
+  cardTypeDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  disabledText: {
+    color: '#ccc',
+  },
+  optionsContainer: {
+    flex: 1,
+  },
+  optionGroup: {
+    marginBottom: 24,
+  },
+  optionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 8,
   },
-  cardAnswer: {
-    fontSize: 14,
-    color: '#6B7280',
+  numberInput: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    width: 100,
   },
-  saveButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+  textArea: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  extractedTextPreview: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  extractedTextSmall: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  previewContainer: {
+    flex: 1,
+  },
+  previewCardWrapper: {
+    marginBottom: 16,
+  },
+  bottomButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginTop: 20,
+    marginLeft: 8,
   },
-  saveButtonText: {
+  primaryButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  secondaryButtonText: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: '600',
   },
   loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    justifyContent: 'center',
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
+    color: '#666',
   },
 }); 

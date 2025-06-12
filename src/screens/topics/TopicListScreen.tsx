@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Alert } from 'react-native';
 
 interface CurriculumTopic {
   id: string;
@@ -72,12 +73,14 @@ export default function TopicListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
   const [viewMode, setViewMode] = useState<'hierarchy' | 'priority'>('hierarchy');
+  const [topicStudyPreferences, setTopicStudyPreferences] = useState<Map<string, boolean>>(new Map());
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchFlashcardCounts();
       fetchPriorities();
+      fetchTopicStudyPreferences();
     }, [subjectName, user?.id])
   );
 
@@ -153,6 +156,23 @@ export default function TopicListScreen() {
       setPriorities(priorityMap);
     } catch (error) {
       console.error('Error fetching priorities:', error);
+    }
+  };
+
+  const fetchTopicStudyPreferences = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('topic_study_preferences')
+        .select('topic_id, in_study_bank')
+        .eq('user_id', user?.id);
+
+      if (error) throw error;
+
+      const prefsMap = new Map();
+      data?.forEach((p: any) => prefsMap.set(p.topic_id, p.in_study_bank));
+      setTopicStudyPreferences(prefsMap);
+    } catch (error) {
+      console.error('Error fetching topic study preferences:', error);
     }
   };
 
@@ -251,11 +271,13 @@ export default function TopicListScreen() {
     const topicCardCount = flashcardCounts.get(topic.name) || 0;
     
     if (topicCardCount > 0) {
-      // If cards exist, open study modal
-      navigation.navigate('StudyModal' as never, {
-        topicName: topic.name,
+      // Navigate to Flashcards screen with topic filter
+      navigation.navigate('Flashcards' as never, {
         subjectName,
         subjectColor: subjectColor || '#6366F1',
+        examBoard: route.params?.examBoard,
+        examType: route.params?.examType,
+        topicFilter: topic.name, // Add topic filter
       } as never);
     } else {
       // If no cards, show creation options
@@ -263,8 +285,8 @@ export default function TopicListScreen() {
         topicId: topic.id,
         topicName: topic.name,
         subjectName,
-        examBoard: route.params.examBoard || 'AQA',
-        examType: route.params.examType || 'GCSE',
+        examBoard: route.params?.examBoard || 'AQA',
+        examType: route.params?.examType || 'GCSE',
       } as never);
     }
   };
@@ -282,8 +304,8 @@ export default function TopicListScreen() {
       subject: subjectName,
       topic: topic.name,
       topicId: topic.id,
-      examBoard: route.params.examBoard || 'AQA',
-      examType: route.params.examType || 'GCSE',
+      examBoard: route.params?.examBoard || 'AQA',
+      examType: route.params?.examType || 'GCSE',
     } as never);
   };
 
@@ -292,9 +314,54 @@ export default function TopicListScreen() {
       topicId: topic.id,
       topicName: topic.name,
       subjectName,
-      examBoard: route.params.examBoard || 'AQA',
-      examType: route.params.examType || 'GCSE',
+      examBoard: route.params?.examBoard || 'AQA',
+      examType: route.params?.examType || 'GCSE',
     } as never);
+  };
+
+  const toggleStudyBank = async (topicId: string, currentlyInStudyBank: boolean) => {
+    try {
+      const newStatus = !currentlyInStudyBank;
+      
+      // Update topic preference
+      const { error: prefError } = await supabase
+        .from('topic_study_preferences')
+        .upsert({
+          user_id: user?.id,
+          topic_id: topicId,
+          in_study_bank: newStatus,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,topic_id'
+        });
+
+      if (prefError) throw prefError;
+
+      // Update all flashcards for this topic
+      const { error: cardsError } = await supabase
+        .from('flashcards')
+        .update({
+          in_study_bank: newStatus,
+          added_to_study_bank_at: newStatus ? new Date().toISOString() : null
+        })
+        .eq('user_id', user?.id)
+        .eq('topic_id', topicId);
+
+      if (cardsError) throw cardsError;
+
+      // Update local state
+      setTopicStudyPreferences(prev => new Map(prev).set(topicId, newStatus));
+      
+      Alert.alert(
+        'Success',
+        newStatus 
+          ? 'Topic added to Study Bank! Cards will appear in your study sessions.'
+          : 'Topic removed from Study Bank. Cards remain in your Card Bank.'
+      );
+    } catch (error) {
+      console.error('Error toggling study bank:', error);
+      Alert.alert('Error', 'Failed to update study bank status');
+    }
   };
 
   const renderTopicNode = (node: TopicNode, depth: number = 0) => {
@@ -302,6 +369,7 @@ export default function TopicListScreen() {
     const isExpanded = expandedTopics.has(node.id);
     const hasFlashcards = (node.flashcardCount || 0) > 0;
     const priorityInfo = node.priority ? PRIORITY_LEVELS.find(p => p.value === node.priority) : null;
+    const isInStudyBank = topicStudyPreferences.get(node.id) || false;
     
     // Calculate progress for parent nodes
     const calculateProgress = (node: TopicNode): { completed: number; total: number } => {
@@ -391,6 +459,12 @@ export default function TopicListScreen() {
                     <Text style={styles.flashcardCount}>{node.flashcardCount}</Text>
                   </View>
                 )}
+                {hasFlashcards && isInStudyBank && (
+                  <View style={[styles.studyBankIndicator]}>
+                    <Ionicons name="book" size={12} color="#10B981" />
+                    <Text style={styles.studyBankText}>Study</Text>
+                  </View>
+                )}
                 {progress && progress.total > 0 && (
                   <View style={styles.progressIndicator}>
                     <Text style={[styles.progressText, { color: subtextColor }]}>
@@ -403,6 +477,25 @@ export default function TopicListScreen() {
           </View>
           {!hasChildren && (
             <View style={styles.actionButtons}>
+              {hasFlashcards && (
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton, 
+                    styles.studyBankButton,
+                    isInStudyBank && styles.studyBankButtonActive
+                  ]}
+                  onPress={(e: any) => {
+                    e.stopPropagation();
+                    toggleStudyBank(node.id, isInStudyBank);
+                  }}
+                >
+                  <Ionicons 
+                    name={isInStudyBank ? "book" : "book-outline"} 
+                    size={20} 
+                    color={isInStudyBank ? "#10B981" : "#6B7280"} 
+                  />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.actionButton, styles.aiButton]}
                 onPress={(e: any) => {
@@ -585,10 +678,10 @@ export default function TopicListScreen() {
             <Text style={styles.subjectName}>{subjectName}</Text>
             <View style={styles.headerStats}>
               <View style={styles.metaBadge}>
-                <Text style={styles.metaText}>{route.params.examBoard || 'N/A'}</Text>
+                <Text style={styles.metaText}>{route.params?.examBoard || 'N/A'}</Text>
               </View>
               <View style={styles.metaBadge}>
-                <Text style={styles.metaText}>{route.params.examType || 'N/A'}</Text>
+                <Text style={styles.metaText}>{route.params?.examType || 'N/A'}</Text>
               </View>
             </View>
             <View style={styles.headerStats}>
@@ -679,8 +772,8 @@ export default function TopicListScreen() {
           onPress={() => navigation.navigate('Flashcards' as never, {
             subjectName,
             subjectColor: subjectColor || '#6366F1',
-            examBoard: route.params.examBoard,
-            examType: route.params.examType,
+            examBoard: route.params?.examBoard,
+            examType: route.params?.examType,
           } as never)}
         >
           <Ionicons name="albums" size={24} color="#FFFFFF" />
@@ -689,6 +782,7 @@ export default function TopicListScreen() {
           </View>
         </TouchableOpacity>
       )}
+
     </SafeAreaView>
   );
 }
@@ -825,6 +919,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(76, 175, 80, 0.1)',
     borderRadius: 20,
     padding: 6,
+  },
+  studyBankButton: {
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+    borderRadius: 20,
+    padding: 6,
+  },
+  studyBankButtonActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  studyBankIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 12,
+    gap: 4,
+  },
+  studyBankText: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

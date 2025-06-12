@@ -100,12 +100,12 @@ export class AIService {
       console.log('Response status:', response.status);
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json() as any;
         console.error('API Error:', errorData);
         throw new Error(errorData.error || errorData.message || 'Failed to generate cards');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       console.log('Response data:', data);
       
       if (data.success && data.cards && Array.isArray(data.cards)) {
@@ -163,7 +163,8 @@ export class AIService {
   async saveGeneratedCards(
     cards: GeneratedCard[], 
     params: CardGenerationParams & { topicId?: string }, 
-    userId: string
+    userId: string,
+    addToStudyBank: boolean = false
   ): Promise<void> {
     // For AI-generated cards, we'll need a topic_id
     // If not provided, we can use a generic one or create cards without topic_id
@@ -175,7 +176,8 @@ export class AIService {
       question: card.question,
       answer: card.answer || card.detailedAnswer || '',
       subject_name: params.subject,
-      topic: params.topic,
+      topic: params.topic, // Keep the old field name for compatibility
+      topic_name: params.topic,
       card_type: params.questionType,
       options: card.options || null,
       correct_answer: card.correctAnswer || null,
@@ -183,15 +185,42 @@ export class AIService {
       detailed_answer: card.detailedAnswer || null,
       next_review_date: new Date().toISOString(),
       box_number: 1, // Note: it's box_number, not box_num in the schema
-      is_ai_generated: true
+      is_ai_generated: true,
+      in_study_bank: addToStudyBank,
+      added_to_study_bank_at: addToStudyBank ? new Date().toISOString() : null
     }));
 
-    const { error } = await supabase
+    console.log('Attempting to save flashcards:', flashcards.length, 'cards');
+    console.log('First card data:', flashcards[0]);
+    
+    const { data, error } = await supabase
       .from('flashcards')
-      .insert(flashcards);
+      .insert(flashcards)
+      .select();
 
     if (error) {
+      console.error('Error saving flashcards:', error);
       throw error;
+    }
+    
+    console.log('Successfully saved cards:', data?.length, 'cards');
+
+    // If adding to study bank and topicId exists, update topic preference
+    if (addToStudyBank && topicId) {
+      const { error: prefError } = await supabase
+        .from('topic_study_preferences')
+        .upsert({
+          user_id: userId,
+          topic_id: topicId,
+          in_study_bank: true,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,topic_id'
+        });
+
+      if (prefError) {
+        console.error('Error updating topic study preference:', prefError);
+      }
     }
   }
 } 

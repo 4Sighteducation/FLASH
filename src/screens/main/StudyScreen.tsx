@@ -1,30 +1,311 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabase';
+import { useNavigation } from '@react-navigation/native';
+import LeitnerBoxes from '../../components/LeitnerBoxes';
+import StudyBoxModal from '../../components/StudyBoxModal';
+import DailyCardsModal from '../../components/DailyCardsModal';
 
-export default function StudyScreen({ navigation }: any) {
+const { width } = Dimensions.get('window');
+
+interface BoxStats {
+  box1: number;
+  box2: number;
+  box3: number;
+  box4: number;
+  box5: number;
+  totalDue: number;
+  totalInStudyBank: number;
+}
+
+interface StudyCard {
+  id: string;
+  question: string;
+  answer?: string;
+  card_type: string;
+  options?: string[];
+  correct_answer?: string;
+  key_points?: string[];
+  detailed_answer?: string;
+  box_number: number;
+  subject_name?: string;
+  topic_name?: string;
+  next_review_date: string;
+  in_study_bank: boolean;
+}
+
+export default function StudyScreen() {
+  const navigation = useNavigation();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [boxStats, setBoxStats] = useState<BoxStats>({
+    box1: 0,
+    box2: 0,
+    box3: 0,
+    box4: 0,
+    box5: 0,
+    totalDue: 0,
+    totalInStudyBank: 0,
+  });
+  const [selectedBox, setSelectedBox] = useState<number | null>(null);
+  const [showDailyCards, setShowDailyCards] = useState(false);
+  const [dailyCardCount, setDailyCardCount] = useState(0);
+
+  useEffect(() => {
+    fetchBoxStats();
+    fetchDailyCardCount();
+  }, []);
+
+  const fetchBoxStats = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all cards in study bank (or cards without the flag set - for backwards compatibility)
+      const { data: cards, error } = await supabase
+        .from('flashcards')
+        .select('box_number, next_review_date, in_study_bank')
+        .eq('user_id', user?.id)
+        .or('in_study_bank.eq.true,in_study_bank.is.null');
+
+      if (error) throw error;
+
+      const now = new Date();
+      const stats: BoxStats = {
+        box1: 0,
+        box2: 0,
+        box3: 0,
+        box4: 0,
+        box5: 0,
+        totalDue: 0,
+        totalInStudyBank: cards?.length || 0,
+      };
+
+      cards?.forEach(card => {
+        // Count cards per box
+        const boxKey = `box${card.box_number}` as keyof BoxStats;
+        if (boxKey in stats) {
+          (stats[boxKey] as number)++;
+        }
+
+        // Count due cards
+        if (new Date(card.next_review_date) <= now) {
+          stats.totalDue++;
+        }
+      });
+
+      setBoxStats(stats);
+    } catch (error) {
+      console.error('Error fetching box stats:', error);
+      Alert.alert('Error', 'Failed to load study statistics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDailyCardCount = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Count cards due today directly
+      const { count, error } = await supabase
+        .from('flashcards')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id)
+        .or('in_study_bank.eq.true,in_study_bank.is.null')
+        .lte('next_review_date', today.toISOString());
+
+      if (error) throw error;
+      setDailyCardCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching daily cards:', error);
+    }
+  };
+
+  const handleBoxPress = (boxNumber: number) => {
+    setSelectedBox(boxNumber);
+  };
+
+  const handleCloseBoxModal = () => {
+    setSelectedBox(null);
+    fetchBoxStats(); // Refresh stats after studying
+  };
+
+  const handleCloseDailyModal = () => {
+    setShowDailyCards(false);
+    fetchBoxStats();
+    fetchDailyCardCount();
+  };
+
+  const navigateToCardBank = () => {
+    navigation.navigate('Home' as never);
+  };
+
+  const getBoxInfo = (boxNumber: number): { title: string; description: string; reviewInterval: string } => {
+    const boxInfo = {
+      1: {
+        title: 'Daily Review',
+        description: 'New cards and cards you got wrong. Review these every day to build strong foundations.',
+        reviewInterval: 'Review: Daily',
+      },
+      2: {
+        title: 'Short-term Memory',
+        description: 'Cards you\'re starting to remember. These need review every 2 days.',
+        reviewInterval: 'Review: Every 2 days',
+      },
+      3: {
+        title: 'Building Confidence',
+        description: 'Cards that are sticking in your memory. Review every 3 days to reinforce.',
+        reviewInterval: 'Review: Every 3 days',
+      },
+      4: {
+        title: 'Nearly Mastered',
+        description: 'Cards you know well. Just a weekly check-in to keep them fresh.',
+        reviewInterval: 'Review: Weekly',
+      },
+      5: {
+        title: 'Mastered',
+        description: 'Cards you\'ve mastered! These only need occasional review every 3 weeks.',
+        reviewInterval: 'Review: Every 3 weeks',
+      },
+    };
+
+    return boxInfo[boxNumber as keyof typeof boxInfo] || { title: '', description: '', reviewInterval: '' };
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6366F1" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Ionicons name="school-outline" size={80} color="#007AFF" />
-        <Text style={styles.title}>Ready to Study?</Text>
-        <Text style={styles.subtitle}>
-          Select your topics first to start studying flashcards
-        </Text>
-        
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.buttonText}>Select Topics</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Study Mode</Text>
+          <Text style={styles.headerSubtitle}>
+            {boxStats.totalInStudyBank} cards in study bank • {boxStats.totalDue} due for review
+          </Text>
+        </View>
+
+        {/* Daily Cards Section */}
+        {dailyCardCount > 0 && (
+          <TouchableOpacity 
+            style={styles.dailyCardsCard}
+            onPress={() => setShowDailyCards(true)}
+          >
+            <View style={styles.dailyCardsContent}>
+              <View style={styles.dailyCardsLeft}>
+                <Ionicons name="today" size={32} color="#FF6B6B" />
+                <View style={styles.dailyCardsText}>
+                  <Text style={styles.dailyCardsTitle}>Daily Review</Text>
+                  <Text style={styles.dailyCardsSubtitle}>
+                    {dailyCardCount} cards due today
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#666" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Leitner Boxes Visual */}
+        <View style={styles.boxesContainer}>
+          <LeitnerBoxes
+            boxes={{
+              box1: boxStats.box1,
+              box2: boxStats.box2,
+              box3: boxStats.box3,
+              box4: boxStats.box4,
+              box5: boxStats.box5,
+            }}
+            activeBox={selectedBox || undefined}
+          />
+        </View>
+
+        {/* Box Details */}
+        <View style={styles.boxDetailsContainer}>
+          {[1, 2, 3, 4, 5].map((boxNumber) => {
+            const info = getBoxInfo(boxNumber);
+            const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
+            
+            return (
+              <TouchableOpacity
+                key={boxNumber}
+                style={styles.boxDetailCard}
+                onPress={() => handleBoxPress(boxNumber)}
+              >
+                <View style={styles.boxDetailHeader}>
+                  <View style={styles.boxDetailLeft}>
+                    <Text style={styles.boxDetailTitle}>Box {boxNumber}: {info.title}</Text>
+                    <Text style={styles.boxDetailInterval}>{info.reviewInterval}</Text>
+                  </View>
+                  <View style={styles.boxDetailRight}>
+                    <Text style={styles.boxDetailCount}>{count}</Text>
+                    <Text style={styles.boxDetailCountLabel}>cards</Text>
+                  </View>
+                </View>
+                <Text style={styles.boxDetailDescription}>{info.description}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Card Bank Link */}
+        <TouchableOpacity style={styles.cardBankButton} onPress={navigateToCardBank}>
+          <Ionicons name="albums-outline" size={24} color="#6366F1" />
+          <Text style={styles.cardBankButtonText}>Go to Card Bank</Text>
+          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
         </TouchableOpacity>
-      </View>
+
+        {/* Empty State */}
+        {boxStats.totalInStudyBank === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="school-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyTitle}>No Cards in Study Bank</Text>
+            <Text style={styles.emptySubtitle}>
+              Add cards from your Card Bank to start studying with spaced repetition
+            </Text>
+            <TouchableOpacity style={styles.emptyButton} onPress={navigateToCardBank}>
+              <Text style={styles.emptyButtonText}>Browse Card Bank</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Study Box Modal */}
+      {selectedBox !== null && (
+        <StudyBoxModal
+          visible={true}
+          boxNumber={selectedBox}
+          onClose={handleCloseBoxModal}
+        />
+      )}
+
+      {/* Daily Cards Modal */}
+      {showDailyCards && (
+        <DailyCardsModal
+          visible={true}
+          onClose={handleCloseDailyModal}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -32,37 +313,158 @@ export default function StudyScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f5f5f5',
   },
-  content: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  title: {
+  header: {
+    padding: 20,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginTop: 20,
-    marginBottom: 10,
+    color: '#1a1a1a',
+    marginBottom: 4,
   },
-  subtitle: {
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  dailyCardsCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFE0E0',
+  },
+  dailyCardsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dailyCardsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dailyCardsText: {
+    marginLeft: 12,
+  },
+  dailyCardsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  dailyCardsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  boxesContainer: {
+    padding: 16,
+  },
+  boxDetailsContainer: {
+    paddingHorizontal: 16,
+  },
+  boxDetailCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  boxDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  boxDetailLeft: {
+    flex: 1,
+  },
+  boxDetailTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  boxDetailInterval: {
+    fontSize: 12,
+    color: '#6366F1',
+    marginTop: 2,
+  },
+  boxDetailRight: {
+    alignItems: 'center',
+  },
+  boxDetailCount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6366F1',
+  },
+  boxDetailCountLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  boxDetailDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  cardBankButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#6366F1',
+  },
+  cardBankButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366F1',
+    marginHorizontal: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  emptySubtitle: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 40,
+    marginTop: 8,
+    paddingHorizontal: 20,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
+  emptyButton: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginTop: 20,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
+  emptyButtonText: {
+    color: 'white',
     fontWeight: '600',
+    fontSize: 16,
   },
 }); 
