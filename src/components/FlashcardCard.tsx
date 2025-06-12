@@ -238,7 +238,10 @@ export default function FlashcardCard({
         <View style={styles.touchableArea}>
           <ScrollView 
             style={styles.cardContent} 
-            contentContainerStyle={styles.cardContentContainer}
+            contentContainerStyle={[
+              styles.cardContentContainer,
+              needsUserConfirmation && styles.cardContentWithConfirmation
+            ]}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.backHeader}>
@@ -260,51 +263,58 @@ export default function FlashcardCard({
               )}
             </View>
 
-            {/* Main Answer Section */}
-            {card.card_type === 'multiple_choice' && (
-              <View style={styles.answerContainer}>
-                <Text style={styles.correctAnswerLabel}>Correct Answer:</Text>
-                <Text style={styles.correctAnswerText}>{card.correct_answer}</Text>
-              </View>
-            )}
+            <View style={styles.answerContent}>
+              {/* Main Answer Section */}
+              {card.card_type === 'multiple_choice' && (
+                <View style={styles.answerContainer}>
+                  <Text style={styles.correctAnswerLabel}>Correct Answer:</Text>
+                  <Text style={styles.correctAnswerText}>{card.correct_answer}</Text>
+                </View>
+              )}
 
-            {card.card_type === 'short_answer' && (
-              <>
-                {card.answer && (
-                  <Text style={styles.answerText}>{card.answer}</Text>
-                )}
-                {!card.answer && card.key_points && card.key_points.length > 0 && (
-                  <View style={styles.keyPointsContainer}>
-                    {card.key_points.map((point, index) => (
-                      <View key={index} style={styles.keyPoint}>
-                        <Text style={styles.bulletPoint}>•</Text>
-                        <Text style={styles.keyPointText}>{point}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
+              {card.card_type === 'short_answer' && (
+                <>
+                  {card.answer && (
+                    <Text style={styles.answerText}>{card.answer}</Text>
+                  )}
+                  {!card.answer && card.key_points && card.key_points.length > 0 && (
+                    <View style={styles.keyPointsContainer}>
+                      {card.key_points.map((point, index) => (
+                        <View key={index} style={styles.keyPoint}>
+                          <Text style={styles.bulletPoint}>•</Text>
+                          <Text style={styles.keyPointText}>{point}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
 
-            {card.card_type === 'essay' && (
-              <View style={styles.essayContainer}>
-                <Text style={styles.essayStructureLabel}>Essay Structure:</Text>
-                {card.key_points && card.key_points.map((point, index) => (
-                  <View key={index} style={styles.keyPoint}>
-                    <Text style={styles.bulletPoint}>•</Text>
-                    <Text style={styles.keyPointText}>{point}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+              {card.card_type === 'essay' && (
+                <View style={styles.essayContainer}>
+                  <Text style={styles.essayStructureLabel}>Essay Structure:</Text>
+                  {card.key_points && card.key_points.map((point, index) => (
+                    <View key={index} style={styles.keyPoint}>
+                      <Text style={styles.bulletPoint}>•</Text>
+                      <Text style={styles.keyPointText}>{point}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-            {card.card_type === 'acronym' && (
-              <Text style={styles.acronymAnswer}>{card.answer}</Text>
-            )}
+              {card.card_type === 'acronym' && (
+                <Text style={styles.acronymAnswer}>{card.answer}</Text>
+              )}
 
-            {card.card_type === 'manual' && (
-              <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
-            )}
+              {card.card_type === 'manual' && (
+                <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+              )}
+
+              {/* Fallback for any other card types */}
+              {!['multiple_choice', 'short_answer', 'essay', 'acronym', 'manual'].includes(card.card_type) && (
+                <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+              )}
+            </View>
 
             {/* User Confirmation Section */}
             {needsUserConfirmation && userAnswerCorrect === null && (
@@ -343,11 +353,6 @@ export default function FlashcardCard({
                     : "Unlucky! Well done for being honest - you'd only be cheating yourself anyway! 💪"}
                 </Text>
               </Animated.View>
-            )}
-
-            {/* Fallback for any other card types */}
-            {!['multiple_choice', 'short_answer', 'essay', 'acronym', 'manual'].includes(card.card_type) && (
-              <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
             )}
 
             <View style={styles.flipBackHint}>
@@ -407,7 +412,7 @@ export default function FlashcardCard({
 const styles = StyleSheet.create({
   container: {
     width: screenWidth - 32,
-    height: 400,
+    height: 420,
     marginVertical: 8,
     alignSelf: 'center',
   },
@@ -437,6 +442,10 @@ const styles = StyleSheet.create({
   },
   cardContentContainer: {
     flexGrow: 1,
+    justifyContent: 'space-between',
+  },
+  cardContentWithConfirmation: {
+    paddingBottom: 20,
   },
   topicLabel: {
     fontSize: 12,
@@ -501,8 +510,8 @@ const styles = StyleSheet.create({
   },
   flipBackHint: {
     alignItems: 'center',
-    marginTop: 'auto',
-    paddingTop: 20,
+    marginTop: 16,
+    paddingTop: 8,
   },
   backHeader: {
     flexDirection: 'row',
@@ -553,7 +562,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#374151',
     lineHeight: 24,
-    marginBottom: 16,
   },
   essayContainer: {
     marginBottom: 16,
@@ -600,8 +608,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   confirmationSection: {
-    marginTop: 20,
-    paddingTop: 20,
+    marginTop: 'auto',
+    paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
@@ -648,7 +656,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginTop: 16,
-    marginHorizontal: -8,
+    marginBottom: 8,
   },
   feedbackText: {
     fontSize: 14,
@@ -656,5 +664,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
     textAlign: 'center',
+  },
+  answerContent: {
+    flex: 1,
+    marginBottom: 16,
   },
 }); 
