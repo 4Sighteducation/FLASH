@@ -186,26 +186,40 @@ export default function FlashcardCard({
 
             {isMultipleChoice && card.options && (
               <View style={[styles.optionsContainer, hasLongContent && styles.compactOptionsContainer]}>
-                {card.options.map((option, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.optionButton,
-                      hasLongContent && styles.compactOptionButton,
-                      getOptionStyle(option),
-                    ]}
-                    onPress={() => handleOptionSelect(option)}
-                    disabled={selectedOption !== null}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      { fontSize: optionFontSize },
-                      selectedOption === option && styles.selectedOptionText,
-                    ]}>
-                      {String.fromCharCode(65 + index)}. {option}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {card.options.map((option, index) => {
+                  // Check if option already has a letter prefix (e.g., "A) ", "a) ", "A. ", "a. ")
+                  const letterPrefixMatch = option.match(/^[A-Za-z][\)\.]\s*/);
+                  const hasLetterPrefix = letterPrefixMatch !== null;
+                  
+                  // If it has a prefix, remove it and use our own consistent format
+                  const cleanOption = hasLetterPrefix 
+                    ? option.substring(letterPrefixMatch[0].length).trim()
+                    : option;
+                  
+                  // Always use our consistent format: "A. Option text"
+                  const displayText = `${String.fromCharCode(65 + index)}. ${cleanOption}`;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.optionButton,
+                        hasLongContent && styles.compactOptionButton,
+                        getOptionStyle(option),
+                      ]}
+                      onPress={() => handleOptionSelect(option)}
+                      disabled={selectedOption !== null}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        { fontSize: optionFontSize },
+                        selectedOption === option && styles.selectedOptionText,
+                      ]}>
+                        {displayText}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
 

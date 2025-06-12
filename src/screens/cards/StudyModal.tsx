@@ -60,6 +60,19 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     toBox: 1,
   });
   const cardRef = useRef<View>(null);
+  const [showAllCaughtUp, setShowAllCaughtUp] = useState(false);
+  const [showAnswerFeedback, setShowAnswerFeedback] = useState(false);
+  const [answerFeedback, setAnswerFeedback] = useState({ correct: false, message: '' });
+  const feedbackScale = useRef(new Animated.Value(0)).current;
+  
+  // Track session statistics
+  const [sessionStats, setSessionStats] = useState({
+    totalReviewed: 0,
+    correctAnswers: 0,
+    incorrectAnswers: 0,
+  });
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const sessionStartTime = useRef(new Date());
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
@@ -164,30 +177,33 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: -screenWidth,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.9,
-          duration: 300,
+          toValue: 0.85,
+          duration: 250,
           useNativeDriver: true,
         })
       ]).start(() => {
         // Update to next card
         setCurrentIndex(prev => prev + 1);
-        // Position new card on the right
+        // Reset position for new card to slide in from right
         translateX.setValue(screenWidth);
-        cardScale.setValue(0.9);
-        // Slide new card in from the right with scale up
+        cardScale.setValue(0.85);
+        
+        // Animate new card sliding in
         Animated.parallel([
-          Animated.timing(translateX, {
+          Animated.spring(translateX, {
             toValue: 0,
-            duration: 300,
+            friction: 8,
+            tension: 40,
             useNativeDriver: true,
           }),
-          Animated.timing(cardScale, {
+          Animated.spring(cardScale, {
             toValue: 1,
-            duration: 300,
+            friction: 8,
+            tension: 40,
             useNativeDriver: true,
           })
         ]).start();
@@ -201,30 +217,33 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       Animated.parallel([
         Animated.timing(translateX, {
           toValue: screenWidth,
-          duration: 300,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.9,
-          duration: 300,
+          toValue: 0.85,
+          duration: 250,
           useNativeDriver: true,
         })
       ]).start(() => {
         // Update to previous card
         setCurrentIndex(prev => prev - 1);
-        // Position new card on the left
+        // Reset position for new card to slide in from left
         translateX.setValue(-screenWidth);
-        cardScale.setValue(0.9);
-        // Slide new card in from the left with scale up
+        cardScale.setValue(0.85);
+        
+        // Animate new card sliding in
         Animated.parallel([
-          Animated.timing(translateX, {
+          Animated.spring(translateX, {
             toValue: 0,
-            duration: 300,
+            friction: 8,
+            tension: 40,
             useNativeDriver: true,
           }),
-          Animated.timing(cardScale, {
+          Animated.spring(cardScale, {
             toValue: 1,
-            duration: 300,
+            friction: 8,
+            tension: 40,
             useNativeDriver: true,
           })
         ]).start();
@@ -242,25 +261,26 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onPanResponderGrant: () => {
         // Stop any ongoing animations when starting a new gesture
         translateX.stopAnimation();
+        cardScale.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
         // Only allow horizontal movement
         translateX.setValue(gestureState.dx);
         
         // Add subtle scale effect based on swipe distance
-        const scale = 1 - Math.abs(gestureState.dx) / (screenWidth * 2);
-        cardScale.setValue(Math.max(0.9, scale));
+        const scale = 1 - Math.abs(gestureState.dx) / (screenWidth * 3);
+        cardScale.setValue(Math.max(0.85, scale));
       },
       onPanResponderRelease: (_, gestureState) => {
-        const threshold = screenWidth * 0.2; // Lower threshold for easier swiping
+        const threshold = screenWidth * 0.15; // Lower threshold for easier swiping
         const velocity = gestureState.vx;
         const currentIdx = currentIndexRef.current;
         
         // Consider velocity for more natural swiping
-        if ((gestureState.dx > threshold || velocity > 0.3) && currentIdx > 0) {
+        if ((gestureState.dx > threshold || velocity > 0.5) && currentIdx > 0) {
           // Swipe right - go to previous
           handlePrevious();
-        } else if ((gestureState.dx < -threshold || velocity < -0.3) && currentIdx < flashcards.length - 1) {
+        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIdx < flashcards.length - 1) {
           // Swipe left - go to next
           handleNext();
         } else {
@@ -269,14 +289,14 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             Animated.spring(translateX, {
               toValue: 0,
               useNativeDriver: true,
-              friction: 5,
-              tension: 80,
+              friction: 8,
+              tension: 40,
             }),
             Animated.spring(cardScale, {
               toValue: 1,
               useNativeDriver: true,
-              friction: 5,
-              tension: 80,
+              friction: 8,
+              tension: 40,
             })
           ]).start();
         }
@@ -288,10 +308,34 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     const card = flashcards.find(c => c.id === cardId);
     if (!card || card.isFrozen) return;
 
+    // Update session statistics
+    setSessionStats(prev => ({
+      totalReviewed: prev.totalReviewed + 1,
+      correctAnswers: prev.correctAnswers + (correct ? 1 : 0),
+      incorrectAnswers: prev.incorrectAnswers + (correct ? 0 : 1),
+    }));
+
     const oldBoxNumber = card.box_number;
     const newBoxNumber = correct 
       ? Math.min(card.box_number + 1, 5) 
       : 1;
+
+    // Show feedback with more subtle styling
+    setAnswerFeedback({
+      correct,
+      message: correct 
+        ? `Nice! → Box ${newBoxNumber}` 
+        : 'Oops! → Box 1'
+    });
+    setShowAnswerFeedback(true);
+    
+    // Animate feedback modal entrance
+    Animated.spring(feedbackScale, {
+      toValue: 1,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
 
     // Get card position for swoosh animation
     if (cardRef.current) {
@@ -320,7 +364,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     // Update local state
     setFlashcards(flashcards.map(c => 
       c.id === cardId 
-        ? { ...c, box_number: newBoxNumber, next_review_date: nextReviewDate.toISOString() }
+        ? { ...c, box_number: newBoxNumber, next_review_date: nextReviewDate.toISOString(), isFrozen: true }
         : c
     ));
 
@@ -333,11 +377,90 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
     // Wait for animation to complete before advancing
     setTimeout(() => {
-      setShowSwoosh(false);
-      if (currentIndex < flashcards.length - 1) {
+      // Animate feedback modal exit
+      Animated.timing(feedbackScale, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSwoosh(false);
+        setShowAnswerFeedback(false);
+      });
+      
+      // Check if all non-frozen cards have been reviewed
+      const remainingDueCards = flashcards.filter((c, idx) => 
+        idx > currentIndex && !c.isFrozen
+      ).length;
+      
+      if (remainingDueCards === 0) {
+        // All cards reviewed - save session and show completion
+        saveStudySession();
+      } else if (currentIndex < flashcards.length - 1) {
         handleNext();
       }
-    }, 2000);
+    }, 1800);
+  };
+
+  const saveStudySession = async () => {
+    try {
+      // Calculate points
+      const successRate = sessionStats.totalReviewed > 0 
+        ? (sessionStats.correctAnswers / sessionStats.totalReviewed) * 100
+        : 0;
+      
+      let pointsEarned = 0;
+      
+      // Points for correct/incorrect answers
+      pointsEarned += sessionStats.correctAnswers * 10; // 10 points per correct
+      pointsEarned += sessionStats.incorrectAnswers * 2; // 2 consolation points
+      
+      // Bonus points based on performance
+      if (successRate === 100 && sessionStats.totalReviewed >= 5) {
+        pointsEarned += 50; // Perfect session bonus
+      } else if (successRate >= 70 && sessionStats.totalReviewed >= 5) {
+        pointsEarned += 25; // Great session bonus
+      }
+      
+      // Calculate session duration
+      const sessionDuration = Math.floor((new Date().getTime() - sessionStartTime.current.getTime()) / 1000);
+      
+      // Save session to database
+      const { error: sessionError } = await supabase
+        .from('study_sessions')
+        .insert({
+          user_id: user?.id,
+          subject_name: subjectName,
+          topic_name: topicName,
+          cards_reviewed: sessionStats.totalReviewed,
+          correct_answers: sessionStats.correctAnswers,
+          incorrect_answers: sessionStats.incorrectAnswers,
+          success_rate: successRate,
+          points_earned: pointsEarned,
+          session_duration: sessionDuration,
+          started_at: sessionStartTime.current.toISOString(),
+        });
+
+      if (sessionError) {
+        console.error('Error saving session:', sessionError);
+      } else {
+        // Update user stats
+        await supabase.rpc('update_user_stats_after_session', {
+          p_user_id: user?.id,
+          p_cards_reviewed: sessionStats.totalReviewed,
+          p_correct_answers: sessionStats.correctAnswers,
+          p_incorrect_answers: sessionStats.incorrectAnswers,
+          p_points_earned: pointsEarned,
+        });
+        
+        // Store points for display
+        setPointsEarned(pointsEarned);
+      }
+    } catch (error) {
+      console.error('Error in saveStudySession:', error);
+    }
+    
+    // Show completion modal
+    setShowAllCaughtUp(true);
   };
 
   const handleClose = () => {
@@ -479,6 +602,154 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           color={subjectColor}
           onComplete={() => setShowSwoosh(false)}
         />
+
+        {/* Answer Feedback Modal */}
+        <Modal
+          visible={showAnswerFeedback}
+          transparent={true}
+          animationType="none"
+        >
+          <View style={styles.feedbackOverlay}>
+            <Animated.View 
+              style={[
+                styles.feedbackModal,
+                { 
+                  backgroundColor: answerFeedback.correct ? '#E8F5E9' : '#FFEBEE',
+                  borderColor: answerFeedback.correct ? '#4CAF50' : '#F44336',
+                  transform: [{ scale: feedbackScale }],
+                  opacity: feedbackScale
+                }
+              ]}
+            >
+              <View style={styles.feedbackContent}>
+                <Ionicons 
+                  name={answerFeedback.correct ? "checkmark-circle" : "close-circle"} 
+                  size={32} 
+                  color={answerFeedback.correct ? '#4CAF50' : '#F44336'} 
+                />
+                <Text style={[
+                  styles.feedbackText,
+                  { color: answerFeedback.correct ? '#2E7D32' : '#C62828' }
+                ]}>
+                  {answerFeedback.message}
+                </Text>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
+
+        {/* All Caught Up Modal */}
+        <Modal
+          visible={showAllCaughtUp}
+          transparent={true}
+          animationType="slide"
+        >
+          <View style={styles.caughtUpOverlay}>
+            <View style={styles.caughtUpModal}>
+              {/* Leitner Boxes at the top */}
+              <View style={styles.modalLeitnerContainer}>
+                <CompactLeitnerBoxes 
+                  boxes={boxCounts} 
+                  activeBox={undefined}
+                />
+              </View>
+
+              {/* Performance-based content */}
+              {(() => {
+                const percentage = sessionStats.totalReviewed > 0 
+                  ? Math.round((sessionStats.correctAnswers / sessionStats.totalReviewed) * 100)
+                  : 0;
+
+                let icon: any, iconColor: string, title: string, subtitle: string, emoji: string;
+
+                if (percentage === 100) {
+                  icon = "trophy";
+                  iconColor = "#FFD700";
+                  title = "LEGENDARY! 🏆";
+                  subtitle = "You absolutely crushed it! Perfect score - you're basically a genius!";
+                  emoji = "🔥";
+                } else if (percentage >= 70) {
+                  icon = "medal";
+                  iconColor = "#C0C0C0";
+                  title = "Impressive! 🥈";
+                  subtitle = "Great job! You're well on your way to mastery. Keep it up!";
+                  emoji = "💪";
+                } else if (percentage >= 50) {
+                  icon = "ribbon";
+                  iconColor = "#CD7F32";
+                  title = "Not Bad! 🎖️";
+                  subtitle = "Solid effort! A bit more practice and you'll be crushing these cards.";
+                  emoji = "📈";
+                } else if (percentage >= 25) {
+                  icon = "barbell";
+                  iconColor = "#8B4513";
+                  title = "Room to Grow! 🌱";
+                  subtitle = "Hey, we all start somewhere! Keep practicing and you'll get there.";
+                  emoji = "💡";
+                } else if (percentage > 0) {
+                  icon = "sad-outline";
+                  iconColor = "#696969";
+                  title = "Rough Session! 😅";
+                  subtitle = "That was... challenging. But hey, failure is just success in progress!";
+                  emoji = "🎯";
+                } else {
+                  icon = "skull-outline";
+                  iconColor = "#2C2C2C";
+                  title = "Oof! That Hurt! 💀";
+                  subtitle = "Well, that was a disaster! But tomorrow's another day, champ!";
+                  emoji = "🆘";
+                }
+
+                return (
+                  <>
+                    <Ionicons name={icon} size={80} color={iconColor} />
+                    <Text style={styles.caughtUpTitle}>{title}</Text>
+                    <Text style={styles.caughtUpSubtitle}>{subtitle}</Text>
+                    
+                    {/* Statistics */}
+                    <View style={styles.statsSection}>
+                      <View style={styles.statRow}>
+                        <Text style={styles.statLabel}>Cards Reviewed:</Text>
+                        <Text style={styles.statValue}>{sessionStats.totalReviewed}</Text>
+                      </View>
+                      <View style={styles.statRow}>
+                        <Text style={[styles.statLabel, { color: '#4CAF50' }]}>Correct:</Text>
+                        <Text style={[styles.statValue, { color: '#4CAF50' }]}>{sessionStats.correctAnswers}</Text>
+                      </View>
+                      <View style={styles.statRow}>
+                        <Text style={[styles.statLabel, { color: '#F44336' }]}>Incorrect:</Text>
+                        <Text style={[styles.statValue, { color: '#F44336' }]}>{sessionStats.incorrectAnswers}</Text>
+                      </View>
+                      <View style={[styles.statRow, styles.percentageRow]}>
+                        <Text style={styles.percentageLabel}>Success Rate:</Text>
+                        <Text style={[styles.percentageValue, { color: iconColor }]}>
+                          {percentage}% {emoji}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Points Earned */}
+                    <View style={styles.pointsContainer}>
+                      <Ionicons name="star" size={24} color="#FFD700" />
+                      <Text style={styles.pointsText}>+{pointsEarned} points</Text>
+                    </View>
+                  </>
+                );
+              })()}
+
+              <TouchableOpacity 
+                style={[styles.caughtUpButton, { backgroundColor: subjectColor }]}
+                onPress={() => navigation.navigate('Flashcards', { 
+                  subjectName, 
+                  subjectColor,
+                  topicFilter: topicName !== subjectName ? topicName : undefined 
+                })}
+              >
+                <Text style={styles.caughtUpButtonText}>Back to Card Bank</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -631,5 +902,140 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginRight: 4,
     fontWeight: '600',
+  },
+  feedbackOverlay: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 200,
+    backgroundColor: 'transparent',
+    pointerEvents: 'none',
+  },
+  feedbackModal: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 30,
+    borderWidth: 2,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  feedbackContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  feedbackText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  caughtUpOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  caughtUpModal: {
+    backgroundColor: 'white',
+    paddingHorizontal: 32,
+    paddingVertical: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    marginHorizontal: 32,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  caughtUpTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  caughtUpSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  caughtUpButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 25,
+  },
+  caughtUpButtonText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
+  },
+  modalLeitnerContainer: {
+    marginBottom: 16,
+    marginHorizontal: -32,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+  },
+  statsSection: {
+    marginTop: 20,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  statLabel: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+  statValue: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  percentageRow: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderBottomWidth: 0,
+    borderTopWidth: 2,
+    borderTopColor: '#f0f0f0',
+  },
+  percentageLabel: {
+    fontSize: 17,
+    color: '#333',
+    fontWeight: '600',
+  },
+  percentageValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  pointsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#FFF8DC',
+    borderRadius: 20,
+  },
+  pointsText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFB800',
+    marginLeft: 8,
   },
 }); 

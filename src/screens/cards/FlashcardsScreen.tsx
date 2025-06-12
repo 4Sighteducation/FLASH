@@ -216,29 +216,61 @@ export default function FlashcardsScreen() {
       </View>
 
       <ScrollView style={styles.cardsContainer} showsVerticalScrollIndicator={false}>
-        {filter === 'studying' && flashcards.length > 0 && (
-          <TouchableOpacity 
-            style={[styles.studyPrompt, { backgroundColor: '#4CAF50' + '15', borderColor: '#4CAF50' }]}
-            onPress={() => (navigation as any).navigate('StudyModal', {
-              topicName: topicFilter || subjectName,
-              subjectName,
-              subjectColor,
-            })}
-          >
-            <View style={styles.studyPromptContent}>
-              <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
-              <View style={styles.studyPromptTextContainer}>
-                <Text style={[styles.studyPromptTitle, { color: '#4CAF50' }]}>
-                  Sweet, you're all caught up! 🎉
-                </Text>
-                <Text style={styles.studyPromptText}>
-                  You've mastered these cards like a pro. Time to kick back and relax, or dive into Study Mode for a quick refresh!
-                </Text>
+        {filter === 'studying' && flashcards.length > 0 && (() => {
+          // Check if there are any cards due for review
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const dueCards = flashcards.filter(card => {
+            const reviewDate = new Date(card.next_review_date);
+            reviewDate.setHours(0, 0, 0, 0);
+            return reviewDate <= today;
+          });
+
+          if (dueCards.length > 0) {
+            // Show "Ready to Level Up" prompt
+            return (
+              <TouchableOpacity 
+                style={[styles.studyPrompt, { backgroundColor: subjectColor + '15', borderColor: subjectColor }]}
+                onPress={() => (navigation as any).navigate('StudyModal', {
+                  topicName: topicFilter || subjectName,
+                  subjectName,
+                  subjectColor,
+                })}
+              >
+                <View style={styles.studyPromptContent}>
+                  <Ionicons name="rocket-outline" size={32} color={subjectColor} />
+                  <View style={styles.studyPromptTextContainer}>
+                    <Text style={[styles.studyPromptTitle, { color: subjectColor }]}>
+                      Ready to level up? 🚀
+                    </Text>
+                    <Text style={styles.studyPromptText}>
+                      You have {dueCards.length} card{dueCards.length > 1 ? 's' : ''} due for review. Jump into Study Mode and show what you've learned!
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color={subjectColor} />
+                </View>
+              </TouchableOpacity>
+            );
+          } else {
+            // Show "All Caught Up" message
+            return (
+              <View style={[styles.caughtUpPrompt, { backgroundColor: '#4CAF5015', borderColor: '#4CAF50' }]}>
+                <View style={styles.studyPromptContent}>
+                  <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+                  <View style={styles.studyPromptTextContainer}>
+                    <Text style={[styles.studyPromptTitle, { color: '#4CAF50' }]}>
+                      Sweet, you're all caught up! 🎉
+                    </Text>
+                    <Text style={styles.studyPromptText}>
+                      You've mastered these cards like a pro. Time to kick back and relax, or double down and generate some more cards!
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#4CAF50" />
-            </View>
-          </TouchableOpacity>
-        )}
+            );
+          }
+        })()}
 
         {flashcards.length === 0 ? (
           <View style={styles.emptyState}>
@@ -434,6 +466,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 2,
     borderColor: '#6366F1',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  caughtUpPrompt: {
+    padding: 16,
+    borderWidth: 2,
     borderRadius: 12,
     marginBottom: 16,
   },
