@@ -15,6 +15,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import FlashcardCard from './FlashcardCard';
 import CardSwooshAnimation from './CardSwooshAnimation';
+import FrozenCard from './FrozenCard';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,6 +42,8 @@ interface StudyCard {
   topic_name?: string;
   next_review_date: string;
   in_study_bank: boolean;
+  isFrozen?: boolean;
+  daysUntilReview?: number;
 }
 
 export default function StudyBoxModal({ 
@@ -58,6 +61,7 @@ export default function StudyBoxModal({
   const [showAnimation, setShowAnimation] = useState(false);
   const [animationTarget, setAnimationTarget] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, total: 0 });
+  const [showAllCaughtUp, setShowAllCaughtUp] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -90,7 +94,6 @@ export default function StudyBoxModal({
         .eq('user_id', user?.id)
         .eq('box_number', boxNumber)
         .eq('in_study_bank', true)
-        .lte('next_review_date', now)
         .order('next_review_date', { ascending: true });
 
       // Apply filters
@@ -108,9 +111,40 @@ export default function StudyBoxModal({
 
       if (error) throw error;
       
-      setCards(data || []);
+      // Separate due and frozen cards
+      const allCards = data || [];
+      const nowTime = new Date(now);
+      const dueCards = allCards.filter(card => new Date(card.next_review_date) <= nowTime);
+      const frozenCards = allCards.filter(card => new Date(card.next_review_date) > nowTime);
+      
+      // Mark frozen cards
+      const markedCards = allCards.map(card => {
+        const reviewDate = new Date(card.next_review_date);
+        const isFrozen = reviewDate > nowTime;
+        const daysUntilReview = isFrozen ? Math.ceil((reviewDate.getTime() - nowTime.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
+        return {
+          ...card,
+          isFrozen,
+          daysUntilReview
+        };
+      });
+      
+      // Sort: due cards first, then frozen cards
+      markedCards.sort((a, b) => {
+        if (a.isFrozen && !b.isFrozen) return 1;
+        if (!a.isFrozen && b.isFrozen) return -1;
+        return 0;
+      });
+      
+      setCards(markedCards);
       setCurrentIndex(0);
       setSessionStats({ correct: 0, incorrect: 0, total: 0 });
+      
+      // Show "all caught up" modal if no due cards
+      if (dueCards.length === 0 && frozenCards.length > 0) {
+        setShowAllCaughtUp(true);
+      }
     } catch (error) {
       console.error('Error fetching cards:', error);
       Alert.alert('Error', 'Failed to load cards');
@@ -122,6 +156,17 @@ export default function StudyBoxModal({
   const handleCardAnswer = async (correct: boolean) => {
     const card = cards[currentIndex];
     if (!card) return;
+    
+    // Skip if card is frozen
+    if (card.isFrozen) {
+      // Just move to next card
+      if (currentIndex < cards.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        onClose();
+      }
+      return;
+    }
 
     // Update stats
     setSessionStats(prev => ({
@@ -251,12 +296,46 @@ export default function StudyBoxModal({
           </View>
         ) : (
           <View style={styles.cardContainer}>
-            <FlashcardCard
-              card={cards[currentIndex]}
-              color={getBoxColor()}
-              onAnswer={handleCardAnswer}
-              showDeleteButton={false}
-            />
+            {cards[currentIndex]?.isFrozen ? (
+              <FrozenCard
+                card={cards[currentIndex]}
+                color={getBoxColor()}
+              />
+            ) : (
+              <FlashcardCard
+                card={cards[currentIndex]}
+                color={getBoxColor()}
+                onAnswer={handleCardAnswer}
+                showDeleteButton={false}
+              />
+            )}
+          </View>
+        )}
+
+        {/* Navigation for frozen cards */}
+        {cards.length > 0 && cards[currentIndex]?.isFrozen && (
+          <View style={styles.frozenNavigation}>
+            <TouchableOpacity
+              style={[styles.navButton, currentIndex === 0 && styles.disabledNavButton]}
+              onPress={() => currentIndex > 0 && setCurrentIndex(currentIndex - 1)}
+              disabled={currentIndex === 0}
+            >
+              <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+              <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledNavText]}>Previous</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.frozenNavText}>
+              {currentIndex + 1} of {cards.length} cards
+            </Text>
+            
+            <TouchableOpacity
+              style={[styles.navButton, currentIndex === cards.length - 1 && styles.disabledNavButton]}
+              onPress={() => currentIndex < cards.length - 1 && setCurrentIndex(currentIndex + 1)}
+              disabled={currentIndex === cards.length - 1}
+            >
+              <Text style={[styles.navButtonText, currentIndex === cards.length - 1 && styles.disabledNavText]}>Next</Text>
+              <Ionicons name="chevron-forward" size={24} color={currentIndex === cards.length - 1 ? '#ccc' : '#333'} />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -287,6 +366,37 @@ export default function StudyBoxModal({
             onComplete={() => setShowAnimation(false)}
           />
         )}
+
+        {/* All Caught Up Modal */}
+        <Modal
+          visible={showAllCaughtUp}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowAllCaughtUp(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowAllCaughtUp(false)}
+          >
+            <View style={styles.allCaughtUpModal}>
+              <Ionicons name="checkmark-circle" size={60} color={getBoxColor()} />
+              <Text style={styles.allCaughtUpTitle}>All caught up!</Text>
+              <Text style={styles.allCaughtUpSubtitle}>
+                No cards due for review in {getBoxTitle().toLowerCase()}
+              </Text>
+              <Text style={styles.allCaughtUpHint}>
+                {cards.length} frozen {cards.length === 1 ? 'card' : 'cards'} to browse
+              </Text>
+              <TouchableOpacity 
+                style={[styles.allCaughtUpButton, { backgroundColor: getBoxColor() }]} 
+                onPress={() => setShowAllCaughtUp(false)}
+              >
+                <Text style={styles.allCaughtUpButtonText}>View Frozen Cards</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </Modal>
   );
@@ -386,5 +496,82 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  allCaughtUpModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    marginHorizontal: 32,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  allCaughtUpTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  allCaughtUpSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  allCaughtUpHint: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 24,
+  },
+  allCaughtUpButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  allCaughtUpButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  frozenNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  disabledNavButton: {
+    opacity: 0.5,
+  },
+  navButtonText: {
+    fontSize: 16,
+    color: '#333',
+    marginHorizontal: 4,
+  },
+  disabledNavText: {
+    color: '#ccc',
+  },
+  frozenNavText: {
+    fontSize: 14,
+    color: '#666',
   },
 }); 
