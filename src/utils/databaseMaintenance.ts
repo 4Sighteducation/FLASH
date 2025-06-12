@@ -9,12 +9,15 @@ export async function cleanupOrphanedCards(userId: string) {
     // First, get the user's active subjects
     const { data: userSubjects, error: subjectsError } = await supabase
       .from('user_subjects')
-      .select('subject_name')
+      .select(`
+        subject_id,
+        subject:exam_board_subjects!subject_id(subject_name)
+      `)
       .eq('user_id', userId);
 
     if (subjectsError) throw subjectsError;
 
-    const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+    const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
 
     // Find orphaned cards
     const { data: orphanedCards, error: fetchError } = await supabase
@@ -58,12 +61,15 @@ export async function getOrphanedCardsStats(userId: string) {
     // Get user's active subjects
     const { data: userSubjects, error: subjectsError } = await supabase
       .from('user_subjects')
-      .select('subject_name')
+      .select(`
+        subject_id,
+        subject:exam_board_subjects!subject_id(subject_name)
+      `)
       .eq('user_id', userId);
 
     if (subjectsError) throw subjectsError;
 
-    const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+    const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
 
     // Get all user's cards
     const { data: allCards, error: cardsError } = await supabase

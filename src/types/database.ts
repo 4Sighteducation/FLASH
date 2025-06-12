@@ -210,4 +210,21 @@ export interface Database {
       };
     };
   };
+}
+
+export interface UserSubject {
+  id: string;
+  subject_id: string;
+  exam_board: string;
+  color: string;
+  subject: {
+    subject_name: string;
+  };
+}
+
+export interface UserSubjectWithName {
+  subject_id: string;
+  subject: {
+    subject_name: string;
+  };
 } 

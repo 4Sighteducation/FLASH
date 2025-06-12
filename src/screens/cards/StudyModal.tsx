@@ -28,6 +28,17 @@ interface StudyModalProps {
 }
 
 export default function StudyModal({ navigation, route }: StudyModalProps) {
+  // Hide bottom tab bar when this screen is focused
+  React.useLayoutEffect(() => {
+    navigation.getParent()?.setOptions({
+      tabBarStyle: { display: 'none' }
+    });
+    return () => {
+      navigation.getParent()?.setOptions({
+        tabBarStyle: undefined
+      });
+    };
+  }, [navigation]);
   const { topicName, subjectName, subjectColor } = route.params;
   const { user } = useAuth();
   const [flashcards, setFlashcards] = useState<any[]>([]);

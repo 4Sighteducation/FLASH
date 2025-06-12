@@ -63,12 +63,15 @@ export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxM
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
         .from('user_subjects')
-        .select('subject_name')
+        .select(`
+          subject_id,
+          subject:exam_board_subjects!subject_id(subject_name)
+        `)
         .eq('user_id', user?.id);
 
       if (subjectsError) throw subjectsError;
 
-      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
       // Fetch cards for this box that are in study bank and from active subjects
       const { data, error } = await supabase

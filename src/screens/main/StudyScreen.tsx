@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
 import StudyBoxModal from '../../components/StudyBoxModal';
 import DailyCardsModal from '../../components/DailyCardsModal';
+import { UserSubjectWithName } from '../../types/database';
 
 const { width } = Dimensions.get('window');
 
@@ -76,7 +77,10 @@ export default function StudyScreen() {
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
         .from('user_subjects')
-        .select('subject_name')
+        .select(`
+          subject_id,
+          subject:exam_board_subjects!subject_id(subject_name)
+        `)
         .eq('user_id', user?.id);
 
       if (subjectsError) {
@@ -85,7 +89,7 @@ export default function StudyScreen() {
       }
 
       console.log('User subjects:', userSubjects);
-      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
       if (activeSubjects.length === 0) {
         console.log('No active subjects found');
@@ -169,7 +173,10 @@ export default function StudyScreen() {
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
         .from('user_subjects')
-        .select('subject_name')
+        .select(`
+          subject_id,
+          subject:exam_board_subjects!subject_id(subject_name)
+        `)
         .eq('user_id', user?.id);
 
       if (subjectsError) {
@@ -177,7 +184,7 @@ export default function StudyScreen() {
         throw subjectsError;
       }
 
-      const activeSubjects = userSubjects?.map(s => s.subject_name) || [];
+      const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
       if (activeSubjects.length === 0) {
         console.log('No active subjects for daily cards');
