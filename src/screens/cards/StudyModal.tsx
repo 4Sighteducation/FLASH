@@ -119,13 +119,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handleNext = () => {
     if (currentIndex < flashcards.length - 1) {
+      // Slide current card to the left
       Animated.timing(translateX, {
         toValue: -screenWidth,
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
-        setCurrentIndex(currentIndex + 1);
+        // Update to next card
+        setCurrentIndex(prev => prev + 1);
+        // Position new card on the right
         translateX.setValue(screenWidth);
+        // Slide new card in from the right
         Animated.timing(translateX, {
           toValue: 0,
           duration: 300,
@@ -137,13 +141,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
+      // Slide current card to the right
       Animated.timing(translateX, {
         toValue: screenWidth,
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
-        setCurrentIndex(currentIndex - 1);
+        // Update to previous card
+        setCurrentIndex(prev => prev - 1);
+        // Position new card on the left
         translateX.setValue(-screenWidth);
+        // Slide new card in from the left
         Animated.timing(translateX, {
           toValue: 0,
           duration: 300,
