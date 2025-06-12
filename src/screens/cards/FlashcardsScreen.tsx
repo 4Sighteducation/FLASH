@@ -210,12 +210,36 @@ export default function FlashcardsScreen() {
           onPress={() => setFilter('studying')}
         >
           <Text style={[styles.filterText, filter === 'studying' && styles.activeFilterText]}>
-            Studying
+            Only Study Cards
           </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.cardsContainer} showsVerticalScrollIndicator={false}>
+        {filter === 'studying' && flashcards.length > 0 && (
+          <TouchableOpacity 
+            style={[styles.studyPrompt, { backgroundColor: subjectColor + '15', borderColor: subjectColor }]}
+            onPress={() => (navigation as any).navigate('StudyModal', {
+              topicName: topicFilter || subjectName,
+              subjectName,
+              subjectColor,
+            })}
+          >
+            <View style={styles.studyPromptContent}>
+              <Ionicons name="rocket-outline" size={32} color={subjectColor} />
+              <View style={styles.studyPromptTextContainer}>
+                <Text style={[styles.studyPromptTitle, { color: subjectColor }]}>
+                  Ready to level up? 🚀
+                </Text>
+                <Text style={styles.studyPromptText}>
+                  Practice is great, but let's put those cards to the test! Jump into Study Mode and show what you've learned!
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={subjectColor} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         {flashcards.length === 0 ? (
           <View style={styles.emptyState}>
             <Ionicons name="albums-outline" size={48} color="#ccc" />
@@ -246,6 +270,7 @@ export default function FlashcardsScreen() {
               />
               {card.in_study_bank && (
                 <View style={[styles.boxIndicator, { backgroundColor: subjectColor }]}>
+                  <Ionicons name="layers-outline" size={16} color="white" style={{ marginRight: 6 }} />
                   <Text style={styles.boxIndicatorText}>Box {card.box_number}</Text>
                 </View>
               )}
@@ -294,45 +319,65 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     backgroundColor: 'white',
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statBox: {
     alignItems: 'center',
+    flex: 1,
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
     marginTop: 4,
+    fontWeight: '500',
   },
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 12,
     backgroundColor: 'white',
-    marginBottom: 8,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    marginHorizontal: 4,
-    borderRadius: 20,
+    marginHorizontal: 6,
+    borderRadius: 25,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   activeFilter: {
     backgroundColor: '#6366F1',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   filterText: {
     fontSize: 14,
     color: '#666',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   activeFilterText: {
     color: 'white',
@@ -349,19 +394,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    elevation: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   boxIndicatorText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   emptyState: {
     alignItems: 'center',
@@ -381,5 +429,29 @@ const styles = StyleSheet.create({
   createButtonText: {
     color: 'white',
     fontWeight: '600',
+  },
+  studyPrompt: {
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  studyPromptContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  studyPromptTextContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  studyPromptTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  studyPromptText: {
+    fontSize: 14,
+    color: '#666',
   },
 }); 
