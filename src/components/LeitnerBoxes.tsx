@@ -63,8 +63,8 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
 
   const boxData = [
     { number: 1, label: 'DAILY', count: boxes.box1, color: '#FF6B6B', schedule: 'Every day' },
-    { number: 2, label: 'ALTERNATE', count: boxes.box2, color: '#4ECDC4', schedule: 'Every 2 days' },
-    { number: 3, label: 'TRIDAY', count: boxes.box3, color: '#45B7D1', schedule: 'Every 3 days' },
+    { number: 2, label: 'BI-DAY', count: boxes.box2, color: '#4ECDC4', schedule: 'Every 2 days' },
+    { number: 3, label: 'TRI-DAY', count: boxes.box3, color: '#45B7D1', schedule: 'Every 3 days' },
     { number: 4, label: 'WEEKLY', count: boxes.box4, color: '#96CEB4', schedule: 'Once a week' },
     { number: 5, label: 'RETIRED', count: boxes.box5, color: '#DDA0DD', schedule: 'Mastered' },
   ];
@@ -130,13 +130,24 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
         {boxData.map((box, index) => renderBox(box, index))}
       </View>
 
-      <View style={styles.legend}>
-        {boxData.map((box) => (
-          <View key={box.number} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: box.color }]} />
-            <Text style={styles.legendText}>Box {box.number}: {box.schedule}</Text>
-          </View>
-        ))}
+      {/* Compact legend in two columns */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendColumn}>
+          {boxData.slice(0, 3).map((box) => (
+            <View key={box.number} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: box.color }]} />
+              <Text style={styles.legendText}>Box {box.number}: {box.schedule}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.legendColumn}>
+          {boxData.slice(3).map((box) => (
+            <View key={box.number} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: box.color }]} />
+              <Text style={styles.legendText}>Box {box.number}: {box.schedule}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -244,6 +255,14 @@ const styles = StyleSheet.create({
   },
   legend: {
     marginTop: 12,
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    marginTop: 12,
+    justifyContent: 'space-between',
+  },
+  legendColumn: {
+    flex: 1,
   },
   legendItem: {
     flexDirection: 'row',

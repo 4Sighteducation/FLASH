@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
-import LeitnerBoxes from '../../components/LeitnerBoxes';
+import CompactLeitnerBoxes from '../../components/CompactLeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
 import FrozenCard from '../../components/FrozenCard';
 
@@ -266,6 +266,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     const nextReviewDate = new Date();
     nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
 
+    // Update database
     await supabase
       .from('flashcards')
       .update({
@@ -288,12 +289,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       [`box${newBoxNumber}`]: prev[`box${newBoxNumber}` as keyof typeof prev] + 1,
     }));
 
-    // Auto-advance after a delay
+    // Wait for animation to complete before advancing
     setTimeout(() => {
+      setShowSwoosh(false);
       if (currentIndex < flashcards.length - 1) {
         handleNext();
       }
-    }, 1500);
+    }, 2000);
   };
 
   const handleClose = () => {
@@ -344,7 +346,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
         {/* Leitner Boxes Visualization */}
         <View style={styles.leitnerContainer}>
-          <LeitnerBoxes 
+          <CompactLeitnerBoxes 
             boxes={boxCounts} 
             activeBox={currentCard?.box_number}
           />
@@ -404,16 +406,23 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               <Text style={styles.swipeHint}>Swipe to navigate</Text>
             </View>
 
-            <TouchableOpacity
-              style={[styles.navButton, currentIndex === flashcards.length - 1 && styles.disabledButton]}
-              onPress={handleNext}
-              disabled={currentIndex === flashcards.length - 1}
-            >
-              <Text style={[styles.navButtonText, currentIndex === flashcards.length - 1 && styles.disabledText]}>
-                Next
-              </Text>
-              <Ionicons name="chevron-forward" size={24} color={currentIndex === flashcards.length - 1 ? '#ccc' : '#333'} />
-            </TouchableOpacity>
+            {currentIndex === flashcards.length - 1 ? (
+              <TouchableOpacity
+                style={styles.finishButton}
+                onPress={handleClose}
+              >
+                <Text style={styles.finishButtonText}>Finish</Text>
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={handleNext}
+              >
+                <Text style={styles.navButtonText}>Next</Text>
+                <Ionicons name="chevron-forward" size={24} color="#333" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -479,8 +488,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   leitnerContainer: {
-    paddingVertical: 8,
-    backgroundColor: 'white',
+    backgroundColor: '#1a1a2e',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -490,7 +498,7 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 20,
+    paddingBottom: 100, // Space for bottom navigation
   },
   cardContainer: {
     justifyContent: 'center',
@@ -507,6 +515,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   navigationContainer: {
     flexDirection: 'row',
@@ -560,5 +572,19 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#666',
+  },
+  finishButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 20,
+  },
+  finishButtonText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    marginRight: 4,
+    fontWeight: '600',
   },
 }); 
