@@ -87,13 +87,20 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     try {
       console.log('Fetching flashcards for:', { topicName, subjectName });
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
         .eq('subject_name', subjectName)
         .eq('in_study_bank', true)
         .order('created_at', { ascending: false });
+
+      // If topicName is provided and it's not the same as subjectName, filter by topic
+      if (topicName && topicName !== subjectName) {
+        query = query.eq('topic', topicName);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       

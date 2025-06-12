@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
 import StudyBoxModal from '../../components/StudyBoxModal';
 import DailyCardsModal from '../../components/DailyCardsModal';
+import StudySubjectAccordion from '../../components/StudySubjectAccordion';
 import { UserSubjectWithName } from '../../types/database';
 
 const { width } = Dimensions.get('window');
@@ -63,11 +65,27 @@ export default function StudyScreen() {
   const [selectedBox, setSelectedBox] = useState<number | null>(null);
   const [showDailyCards, setShowDailyCards] = useState(false);
   const [dailyCardCount, setDailyCardCount] = useState(0);
+  const [showAccordion, setShowAccordion] = useState(false);
+  const [studyFilters, setStudyFilters] = useState<{
+    subject?: string;
+    topic?: string;
+    color?: string;
+  }>({});
 
   useEffect(() => {
     fetchBoxStats();
     fetchDailyCardCount();
   }, []);
+
+  // Refresh when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBoxStats();
+      fetchDailyCardCount();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchBoxStats = async () => {
     try {
@@ -216,10 +234,14 @@ export default function StudyScreen() {
 
   const handleBoxPress = (boxNumber: number) => {
     setSelectedBox(boxNumber);
+    setShowAccordion(true);
+    setStudyFilters({});
   };
 
   const handleCloseBoxModal = () => {
     setSelectedBox(null);
+    setShowAccordion(false);
+    setStudyFilters({});
     fetchBoxStats(); // Refresh stats after studying
   };
 
@@ -231,6 +253,24 @@ export default function StudyScreen() {
 
   const navigateToCardBank = () => {
     navigation.navigate('Home' as never);
+  };
+
+  const handleSubjectStudy = (subjectName: string, subjectColor: string, boxNumber?: number) => {
+    setStudyFilters({ subject: subjectName, color: subjectColor });
+    setShowAccordion(false);
+    // If no box number specified, we're studying all boxes for this subject
+    if (!boxNumber) {
+      setSelectedBox(null);
+    }
+  };
+
+  const handleTopicStudy = (subjectName: string, topicName: string, subjectColor: string, boxNumber?: number) => {
+    setStudyFilters({ subject: subjectName, topic: topicName, color: subjectColor });
+    setShowAccordion(false);
+    // If no box number specified, we're studying all boxes for this topic
+    if (!boxNumber) {
+      setSelectedBox(null);
+    }
   };
 
   const getBoxInfo = (boxNumber: number): { title: string; description: string; reviewInterval: string } => {
@@ -370,12 +410,40 @@ export default function StudyScreen() {
         )}
       </ScrollView>
 
-      {/* Study Box Modal */}
-      {selectedBox !== null && (
+      {/* Study Box Modal - Shows accordion when first opened */}
+      {showAccordion && selectedBox !== null && (
+        <Modal
+          visible={true}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={handleCloseBoxModal}
+        >
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Box {selectedBox} - Select Subject</Text>
+              <View style={{ width: 28 }} />
+            </View>
+            <StudySubjectAccordion
+              boxNumber={selectedBox}
+              onSubjectStudy={handleSubjectStudy}
+              onTopicStudy={handleTopicStudy}
+            />
+          </SafeAreaView>
+        </Modal>
+      )}
+
+      {/* Study Box Modal - Shows cards when subject/topic selected */}
+      {selectedBox !== null && !showAccordion && (
         <StudyBoxModal
           visible={true}
           boxNumber={selectedBox}
           onClose={handleCloseBoxModal}
+          subjectFilter={studyFilters.subject}
+          topicFilter={studyFilters.topic}
+          subjectColor={studyFilters.color}
         />
       )}
 
@@ -546,5 +614,27 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
   },
 }); 

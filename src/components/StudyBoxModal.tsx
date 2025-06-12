@@ -22,6 +22,9 @@ interface StudyBoxModalProps {
   visible: boolean;
   boxNumber: number;
   onClose: () => void;
+  subjectFilter?: string;
+  topicFilter?: string;
+  subjectColor?: string;
 }
 
 interface StudyCard {
@@ -40,7 +43,14 @@ interface StudyCard {
   in_study_bank: boolean;
 }
 
-export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxModalProps) {
+export default function StudyBoxModal({ 
+  visible, 
+  boxNumber, 
+  onClose,
+  subjectFilter,
+  topicFilter,
+  subjectColor 
+}: StudyBoxModalProps) {
   const { user } = useAuth();
   const [cards, setCards] = useState<StudyCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -53,7 +63,7 @@ export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxM
     if (visible) {
       fetchCardsForBox();
     }
-  }, [visible, boxNumber]);
+  }, [visible, boxNumber, subjectFilter, topicFilter]);
 
   const fetchCardsForBox = async () => {
     try {
@@ -74,15 +84,27 @@ export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxM
       const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
       // Fetch cards for this box that are in study bank and from active subjects
-      const { data, error } = await supabase
+      let query = supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
         .eq('box_number', boxNumber)
         .eq('in_study_bank', true)
-        .in('subject_name', activeSubjects)
         .lte('next_review_date', now)
         .order('next_review_date', { ascending: true });
+
+      // Apply filters
+      if (subjectFilter) {
+        query = query.eq('subject_name', subjectFilter);
+      } else {
+        query = query.in('subject_name', activeSubjects);
+      }
+
+      if (topicFilter) {
+        query = query.eq('topic', topicFilter);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -176,6 +198,7 @@ export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxM
   };
 
   const getBoxColor = () => {
+    if (subjectColor) return subjectColor;
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57'];
     return colors[boxNumber - 1] || '#6366F1';
   };
@@ -196,8 +219,11 @@ export default function StudyBoxModal({ visible, boxNumber, onClose }: StudyBoxM
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{getBoxTitle()}</Text>
+            <Text style={styles.headerTitle}>
+              {subjectFilter ? subjectFilter : getBoxTitle()}
+            </Text>
             <Text style={styles.headerSubtitle}>
+              {topicFilter && <Text>{topicFilter} • </Text>}
               {cards.length > 0 ? `Card ${currentIndex + 1} of ${cards.length}` : 'No cards due'}
             </Text>
           </View>
