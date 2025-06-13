@@ -20,6 +20,7 @@ import StudyBoxModal from '../../components/StudyBoxModal';
 import DailyCardsModal from '../../components/DailyCardsModal';
 import StudySubjectAccordion from '../../components/StudySubjectAccordion';
 import { UserSubjectWithName } from '../../types/database';
+import { debugCards } from '../../utils/debugCards';
 
 const { width } = Dimensions.get('window');
 
@@ -49,7 +50,7 @@ interface StudyCard {
   in_study_bank: boolean;
 }
 
-export default function StudyScreen() {
+export default function StudyScreen({ route }: any) {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -75,7 +76,19 @@ export default function StudyScreen() {
   useEffect(() => {
     fetchBoxStats();
     fetchDailyCardCount();
-  }, []);
+    
+    // Open daily cards if navigated from notification
+    if (route?.params?.openDailyCards && dailyCardCount > 0) {
+      setShowDailyCards(true);
+    }
+  }, [route?.params?.openDailyCards]);
+
+  // Open daily cards when count changes and param is set
+  useEffect(() => {
+    if (route?.params?.openDailyCards && dailyCardCount > 0) {
+      setShowDailyCards(true);
+    }
+  }, [dailyCardCount, route?.params?.openDailyCards]);
 
   // Refresh when screen comes into focus
   useEffect(() => {
@@ -91,6 +104,11 @@ export default function StudyScreen() {
     try {
       setLoading(true);
       console.log('Starting fetchBoxStats...');
+      
+      // Debug card states
+      if (user?.id) {
+        await debugCards.checkCardStates(user.id);
+      }
       
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -184,8 +202,7 @@ export default function StudyScreen() {
 
   const fetchDailyCardCount = async () => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date(); // Use current time instead of midnight
       console.log('Fetching daily card count...');
       
       // First get user's active subjects
@@ -210,14 +227,14 @@ export default function StudyScreen() {
         return;
       }
       
-      // Count cards due today from active subjects only
+      // Count cards due now from active subjects only
       const { count, error } = await supabase
         .from('flashcards')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user?.id)
         .eq('in_study_bank', true)
         .in('subject_name', activeSubjects)
-        .lte('next_review_date', today.toISOString());
+        .lte('next_review_date', now.toISOString());
 
       if (error) {
         console.error('Error fetching daily card count:', error);

@@ -14,6 +14,8 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
+import { notificationService } from '../../services/notificationService';
+import NotificationBadge from '../../components/NotificationBadge';
 
 interface CurriculumTopic {
   id: string;
@@ -74,6 +76,18 @@ export default function TopicListScreen() {
   const [priorities, setPriorities] = useState<Map<string, number>>(new Map());
   const [viewMode, setViewMode] = useState<'hierarchy' | 'priority'>('hierarchy');
   const [topicStudyPreferences, setTopicStudyPreferences] = useState<Map<string, boolean>>(new Map());
+  const [cardsDue, setCardsDue] = useState<any>({ total: 0, byTopic: {} });
+
+  const fetchNotifications = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const dueCount = await notificationService.getCardsDueCount(user.id);
+      setCardsDue(dueCount);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -81,6 +95,7 @@ export default function TopicListScreen() {
       fetchFlashcardCounts();
       fetchPriorities();
       fetchTopicStudyPreferences();
+      fetchNotifications();
     }, [subjectName, user?.id])
   );
 
@@ -433,15 +448,26 @@ export default function TopicListScreen() {
               />
             )}
             <View style={styles.topicTextContainer}>
-              <Text style={[
-                styles.topicTitle, 
-                depth === 0 && styles.moduleTitle,
-                depth === 1 && styles.topicTitleText,
-                depth === 2 && styles.subTopicTitle,
-                { color: textColor },
-              ]}>
-                {node.name}
-              </Text>
+              <View style={styles.topicTitleRow}>
+                <Text style={[
+                  styles.topicTitle, 
+                  depth === 0 && styles.moduleTitle,
+                  depth === 1 && styles.topicTitleText,
+                  depth === 2 && styles.subTopicTitle,
+                  { color: textColor },
+                ]}>
+                  {node.name}
+                </Text>
+                {cardsDue.byTopic[`${subjectName}:${node.name}`] > 0 && (
+                  <View style={styles.dueBadgeContainer}>
+                    <View style={styles.dueBadge}>
+                      <Text style={styles.dueBadgeText}>
+                        {cardsDue.byTopic[`${subjectName}:${node.name}`]} due
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
               <View style={styles.topicMeta}>
                 {priorityInfo && (
                   <View style={[styles.priorityIndicator, { backgroundColor: priorityInfo.color }]}>
@@ -1126,5 +1152,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginTop: 8,
+  },
+  topicTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dueBadgeContainer: {
+    marginLeft: 'auto',
+    paddingLeft: 8,
+  },
+  dueBadge: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  dueBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
 }); 

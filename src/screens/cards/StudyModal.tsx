@@ -19,6 +19,7 @@ import FlashcardCard from '../../components/FlashcardCard';
 import CompactLeitnerBoxes from '../../components/CompactLeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
 import FrozenCard from '../../components/FrozenCard';
+import PointsAnimation from '../../components/PointsAnimation';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -73,6 +74,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   });
   const [pointsEarned, setPointsEarned] = useState(0);
   const sessionStartTime = useRef(new Date());
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [animationPoints, setAnimationPoints] = useState(0);
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
@@ -172,7 +176,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   };
 
   const handleNext = () => {
-    if (currentIndex < flashcards.length - 1) {
+    if (currentIndex < flashcards.length - 1 && !isAnimating) {
+      setIsAnimating(true);
       // Slide current card to the left with scale down
       Animated.parallel([
         Animated.timing(translateX, {
@@ -206,13 +211,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             tension: 40,
             useNativeDriver: true,
           })
-        ]).start();
+        ]).start(() => {
+          setIsAnimating(false);
+        });
       });
     }
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) {
+    if (currentIndex > 0 && !isAnimating) {
+      setIsAnimating(true);
       // Slide current card to the right with scale down
       Animated.parallel([
         Animated.timing(translateX, {
@@ -246,24 +254,29 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             tension: 40,
             useNativeDriver: true,
           })
-        ]).start();
+        ]).start(() => {
+          setIsAnimating(false);
+        });
       });
     }
   };
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (isAnimating) return false;
         // More sensitive to horizontal swipes
         return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
       },
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (e, gestureState) => {
+        if (isAnimating) return;
         // Stop any ongoing animations when starting a new gesture
         translateX.stopAnimation();
         cardScale.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
+        if (isAnimating) return;
         // Only allow horizontal movement
         translateX.setValue(gestureState.dx);
         
@@ -272,6 +285,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         cardScale.setValue(Math.max(0.85, scale));
       },
       onPanResponderRelease: (_, gestureState) => {
+        if (isAnimating) return;
+
         const threshold = screenWidth * 0.15; // Lower threshold for easier swiping
         const velocity = gestureState.vx;
         const currentIdx = currentIndexRef.current;
@@ -285,6 +300,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           handleNext();
         } else {
           // Snap back with spring animation
+          setIsAnimating(true);
           Animated.parallel([
             Animated.spring(translateX, {
               toValue: 0,
@@ -298,7 +314,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               friction: 8,
               tension: 40,
             })
-          ]).start();
+          ]).start(() => {
+            setIsAnimating(false);
+          });
         }
       },
     })
@@ -306,7 +324,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handleCardAnswer = async (cardId: string, correct: boolean) => {
     const card = flashcards.find(c => c.id === cardId);
-    if (!card || card.isFrozen) return;
+    if (!card || card.isFrozen || isAnimating) return;
+
+    setIsAnimating(true); // Lock animations during the process
 
     // Update session statistics
     setSessionStats(prev => ({
@@ -329,6 +349,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     });
     setShowAnswerFeedback(true);
     
+    // Show points animation
+    const pointsForAnswer = correct ? 10 : 2;
+    setAnimationPoints(pointsForAnswer);
+    setShowPointsAnimation(true);
+    
     // Animate feedback modal entrance
     Animated.spring(feedbackScale, {
       toValue: 1,
@@ -348,9 +373,12 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       });
     }
 
-    const daysUntilReview = [1, 2, 3, 7, 30][newBoxNumber - 1];
+    // Box 1 cards should be available immediately (0 days), not tomorrow
+    const daysUntilReview = [0, 2, 3, 7, 30][newBoxNumber - 1];
     const nextReviewDate = new Date();
-    nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+    if (daysUntilReview > 0) {
+      nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+    }
 
     // Update database
     await supabase
@@ -387,16 +415,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         setShowAnswerFeedback(false);
       });
       
-      // Check if all non-frozen cards have been reviewed
-      const remainingDueCards = flashcards.filter((c, idx) => 
-        idx > currentIndex && !c.isFrozen
-      ).length;
+      // Check if there are any more due cards after the current index
+      const remainingDueCards = flashcards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
       
       if (remainingDueCards === 0) {
-        // All cards reviewed - save session and show completion
+        // No more due cards - save session and show completion
         saveStudySession();
-      } else if (currentIndex < flashcards.length - 1) {
+      } else if (currentIndexRef.current < flashcards.length - 1) {
         handleNext();
+      } else {
+        // We're on the last card, so the session should end.
+        saveStudySession();
       }
     }, 1800);
   };
@@ -442,6 +471,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
       if (sessionError) {
         console.error('Error saving session:', sessionError);
+        setIsAnimating(false); // Unlock animation on error
       } else {
         // Update user stats
         await supabase.rpc('update_user_stats_after_session', {
@@ -457,10 +487,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       }
     } catch (error) {
       console.error('Error in saveStudySession:', error);
+      setIsAnimating(false); // Unlock animation on error
     }
     
     // Show completion modal
     setShowAllCaughtUp(true);
+    // Unlock animations after session is saved
+    setIsAnimating(false);
   };
 
   const handleClose = () => {
@@ -601,6 +634,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           toBox={swooshData.toBox}
           color={subjectColor}
           onComplete={() => setShowSwoosh(false)}
+        />
+
+        {/* Points Animation */}
+        <PointsAnimation
+          points={animationPoints}
+          visible={showPointsAnimation}
+          onComplete={() => setShowPointsAnimation(false)}
         />
 
         {/* Answer Feedback Modal */}
@@ -750,6 +790,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             </View>
           </View>
         </Modal>
+
+        {/* Points Animation */}
+        <PointsAnimation
+          points={animationPoints}
+          visible={showPointsAnimation}
+          onComplete={() => setShowPointsAnimation(false)}
+        />
       </SafeAreaView>
     </View>
   );

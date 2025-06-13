@@ -118,9 +118,12 @@ export default function FlashcardsScreen() {
         : 1;
 
       // Calculate next review date based on box number
-      const daysUntilReview = [1, 3, 7, 14, 30][newBoxNumber - 1];
+      // Box 1 cards should be available immediately (0 days)
+      const daysUntilReview = [0, 3, 7, 14, 30][newBoxNumber - 1];
       const nextReviewDate = new Date();
-      nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+      if (daysUntilReview > 0) {
+        nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+      }
 
       const { error } = await supabase
         .from('flashcards')

@@ -55,8 +55,7 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
   const fetchDailyCards = async () => {
     try {
       setLoading(true);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date(); // Use current time, not midnight
       
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -71,14 +70,14 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
 
       const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
-      // Fetch all cards due today that are in study bank and from active subjects
+      // Fetch all cards due now that are in study bank and from active subjects
       const { data: flashcards, error } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
         .eq('in_study_bank', true)
         .in('subject_name', activeSubjects)
-        .lte('next_review_date', today.toISOString())
+        .lte('next_review_date', now.toISOString())
         .order('box_number', { ascending: true });
 
       if (error) throw error;
@@ -108,9 +107,12 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
 
     // Calculate new box and review date
     const newBoxNumber = correct ? Math.min(card.box_number + 1, 5) : 1;
-    const daysUntilReview = [1, 2, 3, 7, 21][newBoxNumber - 1];
+    // Box 1 cards should be available immediately (0 days)
+    const daysUntilReview = [0, 2, 3, 7, 21][newBoxNumber - 1];
     const nextReviewDate = new Date();
-    nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+    if (daysUntilReview > 0) {
+      nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+    }
 
     // Show animation
     setAnimationTarget(newBoxNumber);

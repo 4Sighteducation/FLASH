@@ -250,9 +250,12 @@ export default function StudyBoxModal({
 
     // Calculate new box and review date
     const newBoxNumber = correct ? Math.min(boxNumber + 1, 5) : 1;
-    const daysUntilReview = [1, 2, 3, 7, 21][newBoxNumber - 1];
-    const nextReviewDate = new Date();
-    nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+          // Box 1 cards should be available immediately (0 days)
+      const daysUntilReview = [0, 2, 3, 7, 21][newBoxNumber - 1];
+      const nextReviewDate = new Date();
+      if (daysUntilReview > 0) {
+        nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
+      }
 
     // Show animation
     setAnimationTarget(newBoxNumber);

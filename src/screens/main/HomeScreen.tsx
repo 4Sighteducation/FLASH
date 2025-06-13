@@ -15,6 +15,9 @@ import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import { useFocusEffect } from '@react-navigation/native';
+import { notificationService } from '../../services/notificationService';
+import NotificationBadge from '../../components/NotificationBadge';
+import DueCardsNotification from '../../components/DueCardsNotification';
 
 interface UserSubject {
   id: string;
@@ -43,11 +46,42 @@ export default function HomeScreen({ navigation }: any) {
     subject: UserSubject | null;
   }>({ visible: false, subject: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Notification and gamification state
+  const [cardsDue, setCardsDue] = useState<any>({ total: 0, bySubject: {} });
+  const [userStats, setUserStats] = useState({ 
+    total_points: 0, 
+    current_streak: 0, 
+    total_cards_reviewed: 0 
+  });
+  const [showNotification, setShowNotification] = useState(false);
+
+  const fetchNotifications = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Fetch cards due count
+      const dueCount = await notificationService.getCardsDueCount(user.id);
+      setCardsDue(dueCount);
+      
+      // Show notification if there are cards due
+      if (dueCount.total > 0) {
+        setTimeout(() => setShowNotification(true), 1000); // Show after a delay
+      }
+      
+      // Fetch user stats
+      const stats = await notificationService.getUserStats(user.id);
+      setUserStats(stats);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchUserData();
+      fetchNotifications();
     }, [user?.id])
   );
 
@@ -195,15 +229,15 @@ export default function HomeScreen({ navigation }: any) {
 
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{userStats.total_cards_reviewed}</Text>
             <Text style={styles.statLabel}>Cards Studied</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{userStats.current_streak}</Text>
             <Text style={styles.statLabel}>Day Streak</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{userStats.total_points}</Text>
             <Text style={styles.statLabel}>Total XP</Text>
           </View>
         </View>
@@ -219,15 +253,16 @@ export default function HomeScreen({ navigation }: any) {
                   onPress={() => handleSubjectPress(subject)}
                   onLongPress={() => handleSubjectLongPress(subject)}
                 >
-                  <LinearGradient
-                    colors={[subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]}
-                    style={styles.subjectGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <View style={styles.subjectHeader}>
-                      <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
-                      <View style={styles.headerButtons}>
+                  <View style={styles.subjectCardWrapper}>
+                    <LinearGradient
+                      colors={[subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]}
+                      style={styles.subjectGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <View style={styles.subjectHeader}>
+                        <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
+                        <View style={styles.headerButtons}>
                         <TouchableOpacity
                           style={styles.colorButton}
                           onPress={(e) => {
@@ -274,6 +309,13 @@ export default function HomeScreen({ navigation }: any) {
                       )}
                     </View>
                   </LinearGradient>
+                    {cardsDue.bySubject[subject.subject.subject_name] > 0 && (
+                      <NotificationBadge 
+                        count={cardsDue.bySubject[subject.subject.subject_name]} 
+                        size="medium" 
+                      />
+                    )}
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
@@ -344,6 +386,15 @@ export default function HomeScreen({ navigation }: any) {
         itemName={deleteModal.subject?.subject.subject_name || ''}
         isDeleting={isDeleting}
         warningMessage="All flashcards and progress for this subject will be permanently deleted."
+      />
+      
+      <DueCardsNotification
+        cardsDue={cardsDue.total}
+        visible={showNotification && cardsDue.total > 0}
+        onPress={() => {
+          setShowNotification(false);
+          navigation.navigate('Study', { openDailyCards: true });
+        }}
       />
     </SafeAreaView>
   );
@@ -584,5 +635,8 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
+  },
+  subjectCardWrapper: {
+    position: 'relative',
   },
 }); 
