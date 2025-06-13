@@ -1,5 +1,22 @@
 -- Debug Review Dates for User
--- Replace 'YOUR_USER_ID' with the actual user ID
+-- First, find your user ID by email or username
+
+-- Step 1: Find your user ID (uncomment and use one of these)
+-- By email:
+-- SELECT id, email, username FROM users WHERE email = 'your-email@example.com';
+
+-- By username:
+-- SELECT id, email, username FROM users WHERE username = 'your-username';
+
+-- Or get all users to find yours:
+SELECT id, email, username FROM users;
+
+-- Step 2: Once you have your user ID, replace YOUR_USER_ID in all queries below
+-- For example: WHERE user_id = '123e4567-e89b-12d3-a456-426614174000'
+
+-- =====================================================
+-- MAIN QUERIES - Replace YOUR_USER_ID with actual UUID
+-- =====================================================
 
 -- 1. Show all cards with their review dates and box numbers
 SELECT 
