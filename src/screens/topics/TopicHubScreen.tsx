@@ -82,6 +82,33 @@ export default function TopicHubScreen() {
 
       if (error) throw error;
       
+      // Load user customizations (including deletions)
+      const { data: customTopics } = await supabase
+        .from('user_custom_topics')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('subject_id', subjectId);
+
+      // Create a map of customizations
+      const customMap = new Map();
+      customTopics?.forEach(custom => {
+        customMap.set(custom.original_topic_id, custom);
+      });
+
+      // Filter and modify topics based on customizations
+      const processedTopics = (data || []).filter(topic => {
+        const custom = customMap.get(topic.id);
+        // Skip if marked as deleted
+        if (custom?.is_deleted) {
+          return false;
+        }
+        // Update title if customized
+        if (custom?.title) {
+          topic.topic_name = custom.title;
+        }
+        return true;
+      });
+      
       // Load user priorities
       const { data: priorities } = await supabase
         .from('user_topic_priorities')
@@ -91,12 +118,12 @@ export default function TopicHubScreen() {
       const priorityMap = new Map();
       priorities?.forEach(p => priorityMap.set(p.topic_id, p.priority));
       
-      setTopics(data || []);
+      setTopics(processedTopics);
       setSelectedPriorities(priorityMap);
       
       // Build tree structure
-      if (data) {
-        const tree = buildTopicTree(data);
+      if (processedTopics) {
+        const tree = buildTopicTree(processedTopics);
         setTopicTree(tree);
       }
     } catch (error) {

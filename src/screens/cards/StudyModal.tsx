@@ -32,13 +32,19 @@ interface StudyModalProps {
 export default function StudyModal({ navigation, route }: StudyModalProps) {
   // Hide bottom tab bar when this screen is focused
   React.useLayoutEffect(() => {
-    navigation.getParent()?.setOptions({
-      tabBarStyle: { display: 'none' }
-    });
-    return () => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: undefined
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.setOptions({
+        tabBarStyle: { display: 'none' }
       });
+    }
+    return () => {
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.setOptions({
+          tabBarStyle: undefined
+        });
+      }
     };
   }, [navigation]);
   const { topicName, subjectName, subjectColor, boxNumber } = route.params;
@@ -295,7 +301,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !isAnimating,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (isAnimating) return false;
         // More sensitive to horizontal swipes
