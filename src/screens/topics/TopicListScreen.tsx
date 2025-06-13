@@ -462,6 +462,7 @@ export default function TopicListScreen() {
               backgroundColor: nodeColor,
               borderLeftColor: priorityInfo ? priorityInfo.color : borderColor,
               borderLeftWidth: priorityInfo ? 6 : hasFlashcards ? 4 : depth === 0 ? 4 : depth === 1 ? 3 : 2,
+              position: 'relative',
             },
           ]}
           onPress={() => hasChildren ? toggleExpanded(node.id) : handleTopicPress(node)}
@@ -486,16 +487,14 @@ export default function TopicListScreen() {
                 ]}>
                   {node.name}
                 </Text>
-                {cardsDue.byTopic[`${subjectName}:${node.name}`] > 0 && (
-                  <View style={styles.dueBadgeContainer}>
-                    <View style={styles.dueBadge}>
-                      <Text style={styles.dueBadgeText}>
-                        {cardsDue.byTopic[`${subjectName}:${node.name}`]} due
-                      </Text>
-                    </View>
-                  </View>
-                )}
               </View>
+              {cardsDue.byTopic[`${subjectName}:${node.name}`] > 0 && (
+                <View style={styles.topicDueBadge}>
+                  <Text style={styles.topicDueBadgeText}>
+                    {cardsDue.byTopic[`${subjectName}:${node.name}`]} due
+                  </Text>
+                </View>
+              )}
               <View style={styles.topicMeta}>
                 {priorityInfo && (
                   <View style={[styles.priorityIndicator, { backgroundColor: priorityInfo.color }]}>
@@ -1186,17 +1185,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  dueBadgeContainer: {
-    marginLeft: 'auto',
-    paddingLeft: 8,
-  },
-  dueBadge: {
+  topicDueBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
     backgroundColor: '#FF3B30',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  dueBadgeText: {
+  topicDueBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',

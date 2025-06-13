@@ -246,22 +246,41 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <View style={styles.headerStats}>
               <View style={styles.headerStatItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="albums" size={16} color="#FFD700" />
+                </View>
                 <Text style={styles.headerStatNumber}>{userStats.total_cards_reviewed}</Text>
                 <Text style={styles.headerStatLabel}>Cards</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="flame" size={16} color="#FF6B6B" />
+                </View>
                 <Text style={styles.headerStatNumber}>{userStats.current_streak}</Text>
                 <Text style={styles.headerStatLabel}>Streak</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="star" size={16} color="#4ECDC4" />
+                </View>
                 <Text style={styles.headerStatNumber}>{userStats.total_points}</Text>
                 <Text style={styles.headerStatLabel}>XP</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
-                <Text style={styles.headerStatNumber}>{userStats.correct_percentage}%</Text>
+                <View style={styles.statProgressContainer}>
+                  <View style={styles.statProgressBar}>
+                    <View 
+                      style={[
+                        styles.statProgressFill, 
+                        { width: `${userStats.correct_percentage}%` }
+                      ]} 
+                    />
+                  </View>
+                  <Text style={styles.percentageText}>{userStats.correct_percentage}%</Text>
+                </View>
                 <Text style={styles.headerStatLabel}>Correct</Text>
               </View>
             </View>
@@ -336,10 +355,13 @@ export default function HomeScreen({ navigation }: any) {
                     </View>
                   </LinearGradient>
                     {cardsDue.bySubject[subject.subject.subject_name] > 0 && (
-                      <NotificationBadge 
-                        count={cardsDue.bySubject[subject.subject.subject_name]} 
-                        size="medium" 
-                      />
+                      <View style={styles.notificationBadgeContainer}>
+                        <View style={styles.dueBadge}>
+                          <Text style={styles.dueBadgeText}>
+                            {cardsDue.bySubject[subject.subject.subject_name]} due
+                          </Text>
+                        </View>
+                      </View>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -678,16 +700,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    gap: 20,
   },
   headerStatItem: {
     alignItems: 'center',
+    flex: 1,
   },
   headerStatNumber: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginTop: 4,
   },
   headerStatLabel: {
     fontSize: 11,
@@ -696,8 +721,62 @@ const styles = StyleSheet.create({
   },
   headerStatDivider: {
     width: 1,
-    height: 24,
+    height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     marginHorizontal: 16,
+  },
+  notificationBadgeContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+  dueBadge: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dueBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statProgressContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  statProgressBar: {
+    height: 20,
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  statProgressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+  },
+  percentageText: {
+    position: 'absolute',
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    top: 3,
   },
 }); 
