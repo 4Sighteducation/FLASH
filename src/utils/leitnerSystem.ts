@@ -5,7 +5,7 @@
 
 export const LeitnerSystem = {
   // Days until next review for each box
-  REVIEW_INTERVALS: [0, 2, 3, 7, 30], // Box 1-5
+  REVIEW_INTERVALS: [1, 2, 3, 7, 30], // Box 1-5 (Box 1 = tomorrow, not today)
   
   /**
    * Calculate the next review date based on box number
@@ -15,12 +15,15 @@ export const LeitnerSystem = {
     const daysUntilReview = this.REVIEW_INTERVALS[boxNumber - 1];
     const nextReview = new Date();
     
-    if (daysUntilReview === 0) {
-      // Box 1: Available immediately
+    if (boxNumber === 1) {
+      // Box 1: Available tomorrow (not immediately)
+      // This prevents users from repeatedly attempting the same card
+      nextReview.setDate(nextReview.getDate() + 1);
+      nextReview.setHours(0, 0, 0, 0);
       return nextReview;
     }
     
-    // Set to midnight of the review day
+    // For other boxes, add the specified days
     nextReview.setDate(nextReview.getDate() + daysUntilReview);
     nextReview.setHours(0, 0, 0, 0);
     
@@ -57,7 +60,7 @@ export const LeitnerSystem = {
    * Format the review schedule for display
    */
   getReviewScheduleText(boxNumber: number): string {
-    const intervals = ['Daily', 'Every 2 days', 'Every 3 days', 'Weekly', 'Monthly'];
+    const intervals = ['Tomorrow', 'Every 2 days', 'Every 3 days', 'Weekly', 'Monthly'];
     return intervals[boxNumber - 1];
   }
 }; 

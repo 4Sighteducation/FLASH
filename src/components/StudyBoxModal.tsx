@@ -316,7 +316,7 @@ export default function StudyBoxModal({
 
   const getBoxTitle = () => {
     const titles = {
-      1: 'Daily Review',
+      1: 'Tomorrow\'s Review',
       2: 'Every 2 Days',
       3: 'Every 3 Days',
       4: 'Weekly Review',
