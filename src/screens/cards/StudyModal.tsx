@@ -213,6 +213,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     if (currentIndex < flashcards.length - 1 && !isAnimating) {
       setIsAnimating(true);
       
+      // First, ensure current position is at 0
+      translateX.setValue(0);
+      cardScale.setValue(1);
+      
       // Animate current card out
       Animated.parallel([
         Animated.timing(translateX, {
@@ -226,29 +230,34 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           useNativeDriver: true,
         })
       ]).start(() => {
-        // Update index
-        setCurrentIndex(prev => prev + 1);
+        // Update index first
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+        currentIndexRef.current = nextIndex;
         
-        // Immediately reset position for new card
+        // Position new card off-screen to the right
         translateX.setValue(screenWidth);
         cardScale.setValue(0.9);
         
-        // Animate new card in
-        Animated.parallel([
-          Animated.spring(translateX, {
-            toValue: 0,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(cardScale, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          })
-        ]).start(() => {
-          setIsAnimating(false);
+        // Force a small delay to ensure state update is processed
+        requestAnimationFrame(() => {
+          // Animate new card in
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              friction: 8,
+              tension: 40,
+              useNativeDriver: true,
+            }),
+            Animated.spring(cardScale, {
+              toValue: 1,
+              friction: 8,
+              tension: 40,
+              useNativeDriver: true,
+            })
+          ]).start(() => {
+            setIsAnimating(false);
+          });
         });
       });
     }
@@ -257,6 +266,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const handlePrevious = () => {
     if (currentIndex > 0 && !isAnimating) {
       setIsAnimating(true);
+      
+      // First, ensure current position is at 0
+      translateX.setValue(0);
+      cardScale.setValue(1);
       
       // Animate current card out
       Animated.parallel([
@@ -271,29 +284,34 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           useNativeDriver: true,
         })
       ]).start(() => {
-        // Update index
-        setCurrentIndex(prev => prev - 1);
+        // Update index first
+        const prevIndex = currentIndex - 1;
+        setCurrentIndex(prevIndex);
+        currentIndexRef.current = prevIndex;
         
-        // Immediately reset position for new card
+        // Position new card off-screen to the left
         translateX.setValue(-screenWidth);
         cardScale.setValue(0.9);
         
-        // Animate new card in
-        Animated.parallel([
-          Animated.spring(translateX, {
-            toValue: 0,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          }),
-          Animated.spring(cardScale, {
-            toValue: 1,
-            friction: 8,
-            tension: 40,
-            useNativeDriver: true,
-          })
-        ]).start(() => {
-          setIsAnimating(false);
+        // Force a small delay to ensure state update is processed
+        requestAnimationFrame(() => {
+          // Animate new card in
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              friction: 8,
+              tension: 40,
+              useNativeDriver: true,
+            }),
+            Animated.spring(cardScale, {
+              toValue: 1,
+              friction: 8,
+              tension: 40,
+              useNativeDriver: true,
+            })
+          ]).start(() => {
+            setIsAnimating(false);
+          });
         });
       });
     }
@@ -495,20 +513,30 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       }).start(() => {
         setShowSwoosh(false);
         setShowAnswerFeedback(false);
+        
+        // Reset animation lock before proceeding
+        setIsAnimating(false);
+        
+        // Check if there are any more due cards after the current index
+        const remainingDueCards = flashcards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
+        
+        if (remainingDueCards === 0 && currentIndexRef.current === flashcards.length - 1) {
+          // No more cards at all - save session and show completion
+          saveStudySession();
+        } else if (currentIndexRef.current < flashcards.length - 1) {
+          // Ensure animations are reset before moving to next card
+          translateX.setValue(0);
+          cardScale.setValue(1);
+          
+          // Small delay to ensure state is settled
+          setTimeout(() => {
+            handleNext();
+          }, 50);
+        } else {
+          // We're on the last card, so the session should end
+          saveStudySession();
+        }
       });
-      
-      // Check if there are any more due cards after the current index
-      const remainingDueCards = flashcards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
-      
-      if (remainingDueCards === 0) {
-        // No more due cards - save session and show completion
-        saveStudySession();
-      } else if (currentIndexRef.current < flashcards.length - 1) {
-        handleNext();
-      } else {
-        // We're on the last card, so the session should end.
-        saveStudySession();
-      }
     }, 1800);
   };
 
