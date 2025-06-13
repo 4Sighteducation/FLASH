@@ -373,7 +373,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     }
 
     // Use centralized Leitner system for next review date
-    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
 
     // Update database
     await supabase

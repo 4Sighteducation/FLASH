@@ -293,9 +293,9 @@ export default function StudyScreen({ route }: any) {
   const getBoxInfo = (boxNumber: number): { title: string; description: string; reviewInterval: string } => {
     const boxInfo = {
       1: {
-        title: 'Tomorrow\'s Review',
-        description: 'Cards you got wrong. Review these tomorrow after you\'ve had time to study.',
-        reviewInterval: 'Review: Tomorrow',
+        title: 'Learning Box',
+        description: 'New cards (review today) and cards you got wrong (review tomorrow). Master these before they advance.',
+        reviewInterval: 'Review: New cards today, Retry cards tomorrow',
       },
       2: {
         title: 'Short-term Memory',

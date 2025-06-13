@@ -251,7 +251,7 @@ export default function StudyBoxModal({
 
     // Calculate new box and review date using LeitnerSystem
     const newBoxNumber = LeitnerSystem.getNewBoxNumber(boxNumber, correct);
-    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
 
     // Show animation
     setAnimationTarget(newBoxNumber);
@@ -316,7 +316,7 @@ export default function StudyBoxModal({
 
   const getBoxTitle = () => {
     const titles = {
-      1: 'Tomorrow\'s Review',
+      1: 'Learning Box',
       2: 'Every 2 Days',
       3: 'Every 3 Days',
       4: 'Weekly Review',

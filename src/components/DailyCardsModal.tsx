@@ -113,7 +113,7 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
 
     // Calculate new box and review date using centralized system
     const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
-    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
 
     // Show animation
     setAnimationTarget(newBoxNumber);

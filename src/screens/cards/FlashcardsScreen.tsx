@@ -115,7 +115,7 @@ export default function FlashcardsScreen() {
 
       // Update box number based on answer using LeitnerSystem
       const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
-      const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
+      const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
 
       const { error } = await supabase
         .from('flashcards')

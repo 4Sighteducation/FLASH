@@ -10,17 +10,24 @@ export const LeitnerSystem = {
   /**
    * Calculate the next review date based on box number
    * Cards are available at midnight on the review day
+   * @param boxNumber - The box number (1-5)
+   * @param isNewCard - Whether this is a newly created card (only applies to box 1)
    */
-  getNextReviewDate(boxNumber: number): Date {
+  getNextReviewDate(boxNumber: number, isNewCard: boolean = false): Date {
     const daysUntilReview = this.REVIEW_INTERVALS[boxNumber - 1];
     const nextReview = new Date();
     
     if (boxNumber === 1) {
-      // Box 1: Available tomorrow (not immediately)
-      // This prevents users from repeatedly attempting the same card
-      nextReview.setDate(nextReview.getDate() + 1);
-      nextReview.setHours(0, 0, 0, 0);
-      return nextReview;
+      if (isNewCard) {
+        // New cards in Box 1: Available immediately
+        return nextReview;
+      } else {
+        // Incorrect answers to Box 1: Available tomorrow
+        // This prevents users from repeatedly attempting the same card
+        nextReview.setDate(nextReview.getDate() + 1);
+        nextReview.setHours(0, 0, 0, 0);
+        return nextReview;
+      }
     }
     
     // For other boxes, add the specified days
