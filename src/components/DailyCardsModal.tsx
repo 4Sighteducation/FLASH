@@ -131,6 +131,18 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
 
       if (updateError) throw updateError;
 
+      // Record the review
+      const { error: reviewError } = await supabase
+        .from('card_reviews')
+        .insert({
+          flashcard_id: card.id,
+          user_id: user?.id,
+          quality: correct ? 5 : 1,
+          reviewed_at: new Date().toISOString(),
+        });
+
+      if (reviewError) throw reviewError;
+
       // Mark daily card as completed
       const today = new Date().toISOString().split('T')[0];
       const { error: dailyError } = await supabase

@@ -15,6 +15,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
 import StudySlideshowModal from '../../components/StudySlideshowModal';
+import { LeitnerSystem } from '../../utils/leitnerSystem';
 
 interface Flashcard {
   id: string;
@@ -112,18 +113,9 @@ export default function FlashcardsScreen() {
       const card = flashcards.find(c => c.id === cardId);
       if (!card) return;
 
-      // Update box number based on answer (Leitner system)
-      const newBoxNumber = correct 
-        ? Math.min(card.box_number + 1, 5) 
-        : 1;
-
-      // Calculate next review date based on box number
-      // Box 1 cards should be available immediately (0 days)
-      const daysUntilReview = [0, 3, 7, 14, 30][newBoxNumber - 1];
-      const nextReviewDate = new Date();
-      if (daysUntilReview > 0) {
-        nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
-      }
+      // Update box number based on answer using LeitnerSystem
+      const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
+      const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
 
       const { error } = await supabase
         .from('flashcards')
@@ -134,6 +126,18 @@ export default function FlashcardsScreen() {
         .eq('id', cardId);
 
       if (error) throw error;
+
+      // Record the review
+      const { error: reviewError } = await supabase
+        .from('card_reviews')
+        .insert({
+          flashcard_id: cardId,
+          user_id: user?.id,
+          quality: correct ? 5 : 1,
+          reviewed_at: new Date().toISOString(),
+        });
+
+      if (reviewError) throw reviewError;
 
       // Update local state
       setFlashcards(flashcards.map(c => 
