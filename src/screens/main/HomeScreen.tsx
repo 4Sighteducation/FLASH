@@ -215,32 +215,37 @@ export default function HomeScreen({ navigation }: any) {
           style={styles.headerGradient}
         >
           <View style={styles.header}>
-            <Text style={styles.greeting}>Welcome back!</Text>
-            <Text style={styles.username}>{userData?.username || 'Student'}</Text>
-            {userData?.exam_type && (
-              <View style={styles.examTypeBadge}>
-                <Text style={styles.examTypeText}>
-                  {getExamTypeDisplay(userData.exam_type)}
-                </Text>
+            <View style={styles.headerTop}>
+              <View>
+                <Text style={styles.greeting}>Welcome back!</Text>
+                <Text style={styles.username}>{userData?.username || 'Student'}</Text>
               </View>
-            )}
+              {userData?.exam_type && (
+                <View style={styles.examTypeBadge}>
+                  <Text style={styles.examTypeText}>
+                    {getExamTypeDisplay(userData.exam_type)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.headerStats}>
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{userStats.total_cards_reviewed}</Text>
+                <Text style={styles.headerStatLabel}>Cards</Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{userStats.current_streak}</Text>
+                <Text style={styles.headerStatLabel}>Streak</Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{userStats.total_points}</Text>
+                <Text style={styles.headerStatLabel}>XP</Text>
+              </View>
+            </View>
           </View>
         </LinearGradient>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{userStats.total_cards_reviewed}</Text>
-            <Text style={styles.statLabel}>Cards Studied</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{userStats.current_streak}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{userStats.total_points}</Text>
-            <Text style={styles.statLabel}>Total XP</Text>
-          </View>
-        </View>
 
         <Text style={styles.sectionTitle}>Your Subjects</Text>
         {userSubjects.length > 0 ? (
@@ -395,6 +400,7 @@ export default function HomeScreen({ navigation }: any) {
           setShowNotification(false);
           navigation.navigate('Study', { openDailyCards: true });
         }}
+        onDismiss={() => setShowNotification(false)}
       />
     </SafeAreaView>
   );
@@ -638,5 +644,38 @@ const styles = StyleSheet.create({
   },
   subjectCardWrapper: {
     position: 'relative',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  headerStatItem: {
+    alignItems: 'center',
+  },
+  headerStatNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  headerStatLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  headerStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginHorizontal: 16,
   },
 }); 

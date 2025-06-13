@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { LeitnerSystem } from '../utils/leitnerSystem';
 
 interface CardsDueCount {
   total: number;
@@ -13,14 +14,19 @@ export const notificationService = {
    */
   async getCardsDueCount(userId: string): Promise<CardsDueCount> {
     try {
-      const now = new Date(); // Use current time
-      
-      const { data: cards, error } = await supabase
+      // Get all cards in study bank
+      const { data: allCards, error } = await supabase
         .from('flashcards')
         .select('subject_name, topic, box_number, next_review_date')
         .eq('user_id', userId)
-        .eq('in_study_bank', true)
-        .lte('next_review_date', now.toISOString());
+        .eq('in_study_bank', true);
+        
+      if (error) throw error;
+      
+      // Filter for cards that are due
+      const cards = allCards?.filter(card => 
+        LeitnerSystem.isCardDue(card.next_review_date)
+      ) || [];
 
       if (error) throw error;
 

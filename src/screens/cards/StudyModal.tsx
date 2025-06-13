@@ -20,6 +20,7 @@ import CompactLeitnerBoxes from '../../components/CompactLeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
 import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
+import { LeitnerSystem } from '../../utils/leitnerSystem';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -142,16 +143,18 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       console.log('Box counts:', counts);
       
       // Mark cards as frozen or not based on review date
-      const now = new Date();
-      
       const cardsWithStatus = allCards.map(card => {
+        const isDue = LeitnerSystem.isCardDue(card.next_review_date);
+        const isFrozen = !isDue;
+        
         const reviewDate = new Date(card.next_review_date);
-        const isFrozen = reviewDate > now;
+        const now = new Date();
+        const daysUntilReview = isFrozen ? Math.ceil((reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
         
         return {
           ...card,
           isFrozen,
-          daysUntilReview: isFrozen ? Math.ceil((reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
+          daysUntilReview
         };
       });
       
@@ -334,9 +337,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     }));
 
     const oldBoxNumber = card.box_number;
-    const newBoxNumber = correct 
-      ? Math.min(card.box_number + 1, 5) 
-      : 1;
+    const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
 
     // Show feedback with more subtle styling
     setAnswerFeedback({
@@ -371,12 +372,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       });
     }
 
-    // Box 1 cards should be available immediately (0 days), not tomorrow
-    const daysUntilReview = [0, 2, 3, 7, 30][newBoxNumber - 1];
-    const nextReviewDate = new Date();
-    if (daysUntilReview > 0) {
-      nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
-    }
+    // Use centralized Leitner system for next review date
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
 
     // Update database
     await supabase

@@ -16,6 +16,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import FlashcardCard from './FlashcardCard';
 import CardSwooshAnimation from './CardSwooshAnimation';
+import { LeitnerSystem } from '../utils/leitnerSystem';
 
 interface DailyCardsModalProps {
   visible: boolean;
@@ -55,7 +56,6 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
   const fetchDailyCards = async () => {
     try {
       setLoading(true);
-      const now = new Date(); // Use current time, not midnight
       
       // First get user's active subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -70,15 +70,21 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
 
       const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
       
-      // Fetch all cards due now that are in study bank and from active subjects
-      const { data: flashcards, error } = await supabase
+      // Fetch all cards in study bank from active subjects
+      const { data: allCards, error } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
         .eq('in_study_bank', true)
         .in('subject_name', activeSubjects)
-        .lte('next_review_date', now.toISOString())
         .order('box_number', { ascending: true });
+        
+      if (error) throw error;
+      
+      // Filter for cards that are due using centralized logic
+      const flashcards = allCards?.filter(card => 
+        LeitnerSystem.isCardDue(card.next_review_date)
+      ) || [];
 
       if (error) throw error;
       
@@ -105,14 +111,9 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
       total: prev.total + 1,
     }));
 
-    // Calculate new box and review date
-    const newBoxNumber = correct ? Math.min(card.box_number + 1, 5) : 1;
-    // Box 1 cards should be available immediately (0 days)
-    const daysUntilReview = [0, 2, 3, 7, 21][newBoxNumber - 1];
-    const nextReviewDate = new Date();
-    if (daysUntilReview > 0) {
-      nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
-    }
+    // Calculate new box and review date using centralized system
+    const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
 
     // Show animation
     setAnimationTarget(newBoxNumber);

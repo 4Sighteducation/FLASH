@@ -7,9 +7,10 @@ interface DueCardsNotificationProps {
   cardsDue: number;
   onPress: () => void;
   visible: boolean;
+  onDismiss?: () => void;
 }
 
-export default function DueCardsNotification({ cardsDue, onPress, visible }: DueCardsNotificationProps) {
+export default function DueCardsNotification({ cardsDue, onPress, visible, onDismiss }: DueCardsNotificationProps) {
   const slideAnim = useRef(new Animated.Value(-80)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -78,6 +79,14 @@ export default function DueCardsNotification({ cardsDue, onPress, visible }: Due
           <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
         </LinearGradient>
       </TouchableOpacity>
+      {onDismiss && (
+        <TouchableOpacity
+          style={styles.dismissButton}
+          onPress={onDismiss}
+        >
+          <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 }
@@ -85,12 +94,11 @@ export default function DueCardsNotification({ cardsDue, onPress, visible }: Due
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
+    bottom: 80, // Above tab bar
     left: 0,
     right: 0,
     zIndex: 1000,
     paddingHorizontal: 16,
-    paddingTop: 8,
   },
   gradient: {
     flexDirection: 'row',
@@ -138,5 +146,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     marginTop: 2,
+  },
+  dismissButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 12,
+    padding: 2,
   },
 }); 
