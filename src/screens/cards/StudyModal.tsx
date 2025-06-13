@@ -109,13 +109,35 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         .from('flashcards')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('subject_name', subjectName)
         .eq('in_study_bank', true)
         .order('created_at', { ascending: false });
 
-      // If topicName is provided and it's not the same as subjectName, filter by topic
-      if (topicName && topicName !== subjectName) {
-        query = query.eq('topic', topicName);
+      // Check if this is Daily Review mode
+      if (subjectName === 'All Subjects' && topicName === 'Daily Review') {
+        // For daily review, get all due cards from all active subjects
+        const { data: userSubjects, error: subjectsError } = await supabase
+          .from('user_subjects')
+          .select(`
+            subject_id,
+            subject:exam_board_subjects!subject_id(subject_name)
+          `)
+          .eq('user_id', user?.id);
+
+        if (subjectsError) throw subjectsError;
+
+        const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
+        
+        if (activeSubjects.length > 0) {
+          query = query.in('subject_name', activeSubjects);
+        }
+      } else {
+        // Normal mode - filter by subject
+        query = query.eq('subject_name', subjectName);
+        
+        // If topicName is provided and it's not the same as subjectName, filter by topic
+        if (topicName && topicName !== subjectName) {
+          query = query.eq('topic', topicName);
+        }
       }
 
       const { data, error } = await query;
@@ -384,6 +406,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       })
       .eq('id', cardId);
 
+    // Record the review
+    await supabase
+      .from('card_reviews')
+      .insert({
+        flashcard_id: cardId,
+        user_id: user?.id,
+        was_correct: correct,
+        quality: correct ? 5 : 1,
+        reviewed_at: new Date().toISOString(),
+      });
+
     // Update local state
     setFlashcards(flashcards.map(c => 
       c.id === cardId 
@@ -513,7 +546,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Ionicons name="close" size={28} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{topicName}</Text>
+            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
             <View style={{ minWidth: 50 }} />
           </View>
           <View style={styles.emptyContainer}>
@@ -533,7 +566,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{topicName}</Text>
+          <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
           <Text style={styles.counter}>{currentIndex + 1}/{flashcards.length}</Text>
         </View>
 

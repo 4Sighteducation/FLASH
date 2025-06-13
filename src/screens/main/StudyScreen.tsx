@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,10 @@ import { supabase } from '../../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
 import StudyBoxModal from '../../components/StudyBoxModal';
-import DailyCardsModal from '../../components/DailyCardsModal';
 import StudySubjectAccordion from '../../components/StudySubjectAccordion';
 import { UserSubjectWithName } from '../../types/database';
 import { debugCards } from '../../utils/debugCards';
+import { LeitnerSystem } from '../../utils/leitnerSystem';
 
 const { width } = Dimensions.get('window');
 
@@ -50,8 +50,7 @@ interface StudyCard {
   in_study_bank: boolean;
 }
 
-export default function StudyScreen({ route }: any) {
-  const navigation = useNavigation();
+export default function StudyScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [boxStats, setBoxStats] = useState<BoxStats>({
@@ -64,7 +63,6 @@ export default function StudyScreen({ route }: any) {
     totalInStudyBank: 0,
   });
   const [selectedBox, setSelectedBox] = useState<number | null>(null);
-  const [showDailyCards, setShowDailyCards] = useState(false);
   const [dailyCardCount, setDailyCardCount] = useState(0);
   const [showAccordion, setShowAccordion] = useState(false);
   const [studyFilters, setStudyFilters] = useState<{
@@ -76,19 +74,7 @@ export default function StudyScreen({ route }: any) {
   useEffect(() => {
     fetchBoxStats();
     fetchDailyCardCount();
-    
-    // Open daily cards if navigated from notification
-    if (route?.params?.openDailyCards && dailyCardCount > 0) {
-      setShowDailyCards(true);
-    }
-  }, [route?.params?.openDailyCards]);
-
-  // Open daily cards when count changes and param is set
-  useEffect(() => {
-    if (route?.params?.openDailyCards && dailyCardCount > 0) {
-      setShowDailyCards(true);
-    }
-  }, [dailyCardCount, route?.params?.openDailyCards]);
+  }, []);
 
   // Refresh when screen comes into focus
   useEffect(() => {
@@ -202,7 +188,7 @@ export default function StudyScreen({ route }: any) {
 
   const fetchDailyCardCount = async () => {
     try {
-      const now = new Date(); // Use current time instead of midnight
+      const now = new Date();
       console.log('Fetching daily card count...');
       
       // First get user's active subjects
@@ -262,16 +248,6 @@ export default function StudyScreen({ route }: any) {
     fetchBoxStats(); // Refresh stats after studying
   };
 
-  const handleCloseDailyModal = () => {
-    setShowDailyCards(false);
-    fetchBoxStats();
-    fetchDailyCardCount();
-  };
-
-  const navigateToCardBank = () => {
-    navigation.navigate('Home' as never);
-  };
-
   const handleSubjectStudy = (subjectName: string, subjectColor: string, boxNumber?: number) => {
     setStudyFilters({ subject: subjectName, color: subjectColor });
     setShowAccordion(false);
@@ -322,6 +298,19 @@ export default function StudyScreen({ route }: any) {
     return boxInfo[boxNumber as keyof typeof boxInfo] || { title: '', description: '', reviewInterval: '' };
   };
 
+  const handleDailyCardsPress = () => {
+    // Navigate to StudyModal with "Daily Review" as the topic
+    navigation.navigate('StudyModal', {
+      topicName: 'Daily Review',
+      subjectName: 'All Subjects',
+      subjectColor: '#FF6B6B',
+    });
+  };
+
+  const navigateToCardBank = () => {
+    navigation.navigate('Home' as never);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -346,7 +335,7 @@ export default function StudyScreen({ route }: any) {
         {dailyCardCount > 0 && (
           <TouchableOpacity 
             style={styles.dailyCardsCard}
-            onPress={() => setShowDailyCards(true)}
+            onPress={handleDailyCardsPress}
           >
             <View style={styles.dailyCardsContent}>
               <View style={styles.dailyCardsLeft}>
@@ -404,27 +393,6 @@ export default function StudyScreen({ route }: any) {
             );
           })}
         </View>
-
-        {/* Card Bank Link */}
-        <TouchableOpacity style={styles.cardBankButton} onPress={navigateToCardBank}>
-          <Ionicons name="albums-outline" size={24} color="#6366F1" />
-          <Text style={styles.cardBankButtonText}>Go to Card Bank</Text>
-          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
-        </TouchableOpacity>
-
-        {/* Empty State */}
-        {boxStats.totalInStudyBank === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="school-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyTitle}>No Cards in Study Bank</Text>
-            <Text style={styles.emptySubtitle}>
-              Add cards from your Card Bank to start studying with spaced repetition
-            </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={navigateToCardBank}>
-              <Text style={styles.emptyButtonText}>Browse Card Bank</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </ScrollView>
 
       {/* Study Box Modal - Shows accordion when first opened */}
@@ -463,14 +431,6 @@ export default function StudyScreen({ route }: any) {
           subjectColor={studyFilters.color}
         />
       )}
-
-      {/* Daily Cards Modal */}
-      {showDailyCards && (
-        <DailyCardsModal
-          visible={true}
-          onClose={handleCloseDailyModal}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -500,37 +460,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 16,
     color: '#666',
-  },
-  dailyCardsCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#FFF5F5',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FFE0E0',
-  },
-  dailyCardsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dailyCardsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  dailyCardsText: {
-    marginLeft: 12,
-  },
-  dailyCardsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  dailyCardsSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
   },
   boxesContainer: {
     padding: 16,
@@ -585,53 +514,6 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
-  cardBankButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#6366F1',
-  },
-  cardBankButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366F1',
-    marginHorizontal: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 40,
-    marginTop: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 20,
-  },
-  emptyButton: {
-    backgroundColor: '#6366F1',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 20,
-    marginTop: 20,
-  },
-  emptyButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
   modalContainer: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -653,5 +535,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  dailyCardsCard: {
+    margin: 16,
+    padding: 16,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFE0E0',
+  },
+  dailyCardsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dailyCardsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dailyCardsText: {
+    marginLeft: 12,
+  },
+  dailyCardsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  dailyCardsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
 }); 

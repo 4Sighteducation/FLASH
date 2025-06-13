@@ -137,6 +137,7 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
         .insert({
           flashcard_id: card.id,
           user_id: user?.id,
+          was_correct: correct,
           quality: correct ? 5 : 1,
           reviewed_at: new Date().toISOString(),
         });
