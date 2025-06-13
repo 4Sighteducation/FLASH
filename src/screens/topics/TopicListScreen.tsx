@@ -92,11 +92,12 @@ export default function TopicListScreen() {
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      fetchCurriculumTopics();
       fetchFlashcardCounts();
       fetchPriorities();
       fetchTopicStudyPreferences();
       fetchNotifications();
-    }, [subjectName, user?.id])
+    }, [subjectName, user?.id, subjectId])
   );
 
   useEffect(() => {
@@ -114,9 +115,36 @@ export default function TopicListScreen() {
 
       if (error) throw error;
       
-      if (data) {
-        setTopics(data);
-        const tree = buildTopicTree(data);
+      // Load user customizations (including deletions)
+      const { data: customTopics } = await supabase
+        .from('user_custom_topics')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('subject_id', subjectId);
+
+      // Create a map of customizations
+      const customMap = new Map();
+      customTopics?.forEach(custom => {
+        customMap.set(custom.original_topic_id, custom);
+      });
+
+      // Filter and modify topics based on customizations
+      const processedTopics = (data || []).filter(topic => {
+        const custom = customMap.get(topic.id);
+        // Skip if marked as deleted
+        if (custom?.is_deleted) {
+          return false;
+        }
+        // Update title if customized
+        if (custom?.title) {
+          topic.topic_name = custom.title;
+        }
+        return true;
+      });
+      
+      if (processedTopics) {
+        setTopics(processedTopics);
+        const tree = buildTopicTree(processedTopics);
         setTopicTree(tree);
       }
     } catch (error) {
