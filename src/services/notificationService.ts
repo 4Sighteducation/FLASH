@@ -14,12 +14,35 @@ export const notificationService = {
    */
   async getCardsDueCount(userId: string): Promise<CardsDueCount> {
     try {
-      // Get all cards in study bank
+      // First get user's active subjects
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select(`
+          subject_id,
+          subject:exam_board_subjects!subject_id(subject_name)
+        `)
+        .eq('user_id', userId);
+
+      if (subjectsError) throw subjectsError;
+
+      const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
+      
+      if (activeSubjects.length === 0) {
+        return {
+          total: 0,
+          bySubject: {},
+          byTopic: {},
+          byBox: { box1: 0, box2: 0, box3: 0, box4: 0, box5: 0 }
+        };
+      }
+
+      // Get all cards in study bank from active subjects only
       const { data: allCards, error } = await supabase
         .from('flashcards')
         .select('subject_name, topic, box_number, next_review_date')
         .eq('user_id', userId)
-        .eq('in_study_bank', true);
+        .eq('in_study_bank', true)
+        .in('subject_name', activeSubjects);
         
       if (error) throw error;
       
@@ -27,8 +50,6 @@ export const notificationService = {
       const cards = allCards?.filter(card => 
         LeitnerSystem.isCardDue(card.next_review_date)
       ) || [];
-
-      if (error) throw error;
 
       const count: CardsDueCount = {
         total: cards?.length || 0,

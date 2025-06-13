@@ -7,12 +7,17 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databaseMaintenance';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const navigation = useNavigation();
+  const [isCleaningUp, setIsCleaningUp] = React.useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -23,6 +28,50 @@ export default function ProfileScreen() {
         { text: 'Logout', onPress: signOut, style: 'destructive' },
       ]
     );
+  };
+
+  const handleCleanupOrphanedCards = async () => {
+    if (!user?.id) return;
+    
+    setIsCleaningUp(true);
+    try {
+      // First get stats
+      const stats = await getOrphanedCardsStats(user.id);
+      
+      if (!stats || stats.orphanedInStudy === 0) {
+        Alert.alert('No Cleanup Needed', 'All your cards are from active subjects.');
+        return;
+      }
+      
+      // Show confirmation
+      Alert.alert(
+        'Clean Up Cards',
+        `Found ${stats.orphanedInStudy} cards in study mode from subjects you no longer have active:\n\n${stats.orphanedSubjects.join(', ')}\n\nRemove these cards from study mode?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Clean Up',
+            style: 'destructive',
+            onPress: async () => {
+              const result = await cleanupOrphanedCards(user.id);
+              if (result.success) {
+                Alert.alert(
+                  'Cleanup Complete',
+                  `Removed ${result.orphanedCount} cards from study mode.`
+                );
+              } else {
+                Alert.alert('Error', 'Failed to clean up cards. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      Alert.alert('Error', 'Failed to check for orphaned cards.');
+    } finally {
+      setIsCleaningUp(false);
+    }
   };
 
   const profileItems = [
@@ -68,6 +117,14 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('APISettings' as never)}
+          >
+            <Ionicons name="key-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>API Settings</Text>
+            <Ionicons name="chevron-forward" size={24} color="#ccc" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.settingRow}>
             <Ionicons name="notifications-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Notifications</Text>
@@ -78,6 +135,26 @@ export default function ProfileScreen() {
             <Text style={styles.settingText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Maintenance</Text>
+          <TouchableOpacity 
+            style={[styles.settingRow, { opacity: isCleaningUp ? 0.6 : 1 }]}
+            onPress={handleCleanupOrphanedCards}
+            disabled={isCleaningUp}
+          >
+            <Ionicons name="trash-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Clean Up Orphaned Cards</Text>
+            {isCleaningUp ? (
+              <ActivityIndicator size="small" color="#666" />
+            ) : (
+              <Ionicons name="chevron-forward" size={24} color="#ccc" />
+            )}
+          </TouchableOpacity>
+          <Text style={styles.maintenanceHint}>
+            Remove cards from subjects you no longer have active
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -183,5 +260,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF3B30',
     marginLeft: 10,
+  },
+  maintenanceHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5,
+    paddingHorizontal: 40,
   },
 }); 

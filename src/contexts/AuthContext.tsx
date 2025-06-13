@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
+import { cleanupOrphanedCards } from '../utils/databaseMaintenance';
 
 interface AuthContextType {
   user: User | null;
@@ -27,17 +28,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
+    // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Clean up orphaned cards when user is authenticated
+      if (session?.user?.id) {
+        cleanupOrphanedCards(session.user.id).then(result => {
+          if (result.success && result.orphanedCount && result.orphanedCount > 0) {
+            console.log(`Cleaned up ${result.orphanedCount} orphaned cards from subjects: ${result.orphanedSubjects?.join(', ')}`);
+          }
+        });
+      }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
       setUser(session?.user ?? null);
+      
+      // Clean up orphaned cards on login
+      if (_event === 'SIGNED_IN' && session?.user?.id) {
+        cleanupOrphanedCards(session.user.id).then(result => {
+          if (result.success && result.orphanedCount && result.orphanedCount > 0) {
+            console.log(`Cleaned up ${result.orphanedCount} orphaned cards from subjects: ${result.orphanedSubjects?.join(', ')}`);
+          }
+        });
+      }
     });
 
     return () => subscription.unsubscribe();

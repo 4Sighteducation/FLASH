@@ -5,6 +5,23 @@ export const debugCards = {
     try {
       console.log('=== DEBUG: Checking Card States ===');
       
+      // Get user's active subjects first
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select(`
+          subject_id,
+          subject:exam_board_subjects!subject_id(subject_name)
+        `)
+        .eq('user_id', userId);
+
+      if (subjectsError) {
+        console.error('Error fetching user subjects:', subjectsError);
+        return;
+      }
+
+      const activeSubjects = userSubjects?.map((s: any) => s.subject.subject_name) || [];
+      console.log(`Active subjects: ${activeSubjects.join(', ')}`);
+      
       // Get all cards
       const { data: allCards, error: allError } = await supabase
         .from('flashcards')
@@ -34,13 +51,31 @@ export const debugCards = {
       
       console.log(`Cards in study bank: ${studyBankCards?.length || 0}`);
       
-      // Check cards due now
-      const now = new Date();
-      const dueCards = studyBankCards?.filter(card => 
-        new Date(card.next_review_date) <= now
+      // Check for orphaned cards
+      const orphanedCards = studyBankCards?.filter(card => 
+        !activeSubjects.includes(card.subject_name)
       ) || [];
       
-      console.log(`Cards due now: ${dueCards.length}`);
+      if (orphanedCards.length > 0) {
+        console.log(`\n⚠️  ORPHANED CARDS: ${orphanedCards.length} cards from inactive subjects`);
+        const orphanedSubjects = [...new Set(orphanedCards.map(c => c.subject_name))];
+        console.log(`Orphaned subjects: ${orphanedSubjects.join(', ')}`);
+      }
+      
+      // Get cards from active subjects only
+      const activeStudyCards = studyBankCards?.filter(card => 
+        activeSubjects.includes(card.subject_name)
+      ) || [];
+      
+      console.log(`Cards from active subjects: ${activeStudyCards.length}`);
+      
+      // Check cards due now (from active subjects only)
+      const now = new Date();
+      const dueCards = activeStudyCards.filter(card => 
+        new Date(card.next_review_date) <= now
+      );
+      
+      console.log(`Cards due now (active subjects): ${dueCards.length}`);
       
       // Show sample of due cards
       if (dueCards.length > 0) {
@@ -52,21 +87,21 @@ export const debugCards = {
         });
       }
       
-      // Check box distribution
+      // Check box distribution (active subjects only)
       const boxCounts: any = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-      studyBankCards?.forEach(card => {
+      activeStudyCards.forEach(card => {
         boxCounts[card.box_number]++;
       });
       
-      console.log('\nBox distribution:');
+      console.log('\nBox distribution (active subjects):');
       Object.entries(boxCounts).forEach(([box, count]) => {
         console.log(`Box ${box}: ${count} cards`);
       });
       
       // Check for cards with future dates
-      const futureCards = studyBankCards?.filter(card => 
+      const futureCards = activeStudyCards.filter(card => 
         new Date(card.next_review_date) > now
-      ) || [];
+      );
       
       console.log(`\nCards with future review dates: ${futureCards.length}`);
       
