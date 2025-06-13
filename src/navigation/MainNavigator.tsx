@@ -152,6 +152,15 @@ function StudyStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="StudyMain" component={StudyScreen} />
+      <Stack.Screen 
+        name="StudyModal" 
+        component={StudyModal}
+        options={{ 
+          headerShown: false,
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom'
+        }}
+      />
     </Stack.Navigator>
   );
 }

@@ -41,7 +41,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       });
     };
   }, [navigation]);
-  const { topicName, subjectName, subjectColor } = route.params;
+  const { topicName, subjectName, subjectColor, boxNumber } = route.params;
   const { user } = useAuth();
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -103,7 +103,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const fetchFlashcards = async () => {
     try {
-      console.log('Fetching flashcards for:', { topicName, subjectName });
+      console.log('Fetching flashcards for:', { topicName, subjectName, boxNumber });
       
       let query = supabase
         .from('flashcards')
@@ -138,6 +138,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         if (topicName && topicName !== subjectName) {
           query = query.eq('topic', topicName);
         }
+      }
+
+      // Filter by box number if provided
+      if (boxNumber) {
+        query = query.eq('box_number', boxNumber);
       }
 
       const { data, error } = await query;
@@ -711,9 +716,24 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           visible={showAllCaughtUp}
           transparent={true}
           animationType="slide"
+          onRequestClose={() => {
+            setShowAllCaughtUp(false);
+            navigation.goBack();
+          }}
         >
           <View style={styles.caughtUpOverlay}>
             <View style={styles.caughtUpModal}>
+              {/* Close button */}
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => {
+                  setShowAllCaughtUp(false);
+                  navigation.goBack();
+                }}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+
               {/* Leitner Boxes at the top */}
               <View style={styles.modalLeitnerContainer}>
                 <CompactLeitnerBoxes 
@@ -807,13 +827,35 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
               <TouchableOpacity 
                 style={[styles.caughtUpButton, { backgroundColor: subjectColor }]}
-                onPress={() => navigation.navigate('Flashcards', { 
-                  subjectName, 
-                  subjectColor,
-                  topicFilter: topicName !== subjectName ? topicName : undefined 
-                })}
+                onPress={() => {
+                  // Close the modal and clear the navigation stack
+                  setShowAllCaughtUp(false);
+                  
+                  // Use setTimeout to ensure modal is closed before navigating
+                  setTimeout(() => {
+                    // Pop to the root of the stack first
+                    navigation.popToTop();
+                    
+                    // Then navigate to Flashcards
+                    navigation.navigate('Flashcards', { 
+                      subjectName, 
+                      subjectColor,
+                      topicFilter: topicName !== subjectName ? topicName : undefined 
+                    });
+                  }, 100);
+                }}
               >
                 <Text style={styles.caughtUpButtonText}>Back to Card Bank</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.continueStudyingButton}
+                onPress={() => {
+                  setShowAllCaughtUp(false);
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.continueStudyingText}>Continue Studying</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1112,5 +1154,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFB800',
     marginLeft: 8,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 8,
+  },
+  continueStudyingButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 25,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    marginTop: 12,
+  },
+  continueStudyingText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '600',
   },
 }); 

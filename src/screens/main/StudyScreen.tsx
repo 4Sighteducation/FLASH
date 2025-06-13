@@ -16,7 +16,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
-import StudyBoxModal from '../../components/StudyBoxModal';
 import StudySubjectAccordion from '../../components/StudySubjectAccordion';
 import { UserSubjectWithName } from '../../types/database';
 import { debugCards } from '../../utils/debugCards';
@@ -249,21 +248,25 @@ export default function StudyScreen({ route, navigation }: any) {
   };
 
   const handleSubjectStudy = (subjectName: string, subjectColor: string, boxNumber?: number) => {
-    setStudyFilters({ subject: subjectName, color: subjectColor });
-    setShowAccordion(false);
-    // If no box number specified, we're studying all boxes for this subject
-    if (!boxNumber) {
-      setSelectedBox(null);
-    }
+    // Navigate to StudyModal with subject filter
+    navigation.navigate('StudyModal', {
+      topicName: subjectName,
+      subjectName: subjectName,
+      subjectColor: subjectColor,
+      boxNumber: boxNumber || selectedBox,
+    });
+    handleCloseBoxModal();
   };
 
   const handleTopicStudy = (subjectName: string, topicName: string, subjectColor: string, boxNumber?: number) => {
-    setStudyFilters({ subject: subjectName, topic: topicName, color: subjectColor });
-    setShowAccordion(false);
-    // If no box number specified, we're studying all boxes for this topic
-    if (!boxNumber) {
-      setSelectedBox(null);
-    }
+    // Navigate to StudyModal with topic filter
+    navigation.navigate('StudyModal', {
+      topicName: topicName,
+      subjectName: subjectName,
+      subjectColor: subjectColor,
+      boxNumber: boxNumber || selectedBox,
+    });
+    handleCloseBoxModal();
   };
 
   const getBoxInfo = (boxNumber: number): { title: string; description: string; reviewInterval: string } => {
@@ -418,18 +421,6 @@ export default function StudyScreen({ route, navigation }: any) {
             />
           </SafeAreaView>
         </Modal>
-      )}
-
-      {/* Study Box Modal - Shows cards when subject/topic selected */}
-      {selectedBox !== null && !showAccordion && (
-        <StudyBoxModal
-          visible={true}
-          boxNumber={selectedBox}
-          onClose={handleCloseBoxModal}
-          subjectFilter={studyFilters.subject}
-          topicFilter={studyFilters.topic}
-          subjectColor={studyFilters.color}
-        />
       )}
     </SafeAreaView>
   );
