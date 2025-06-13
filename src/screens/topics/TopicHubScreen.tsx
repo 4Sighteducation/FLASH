@@ -154,7 +154,7 @@ export default function TopicHubScreen() {
           subject_id: subjectId,
           original_topic_id: editModal.topic.id,
           title: editModal.newName.trim(),
-          topic_level: editModal.topic.topic_level,
+          is_custom: true,
         });
 
       if (error) throw error;
@@ -180,7 +180,6 @@ export default function TopicHubScreen() {
           original_topic_id: deleteModal.topic.id,
           title: deleteModal.topic.topic_name,
           is_deleted: true,
-          topic_level: deleteModal.topic.topic_level,
         });
 
       if (error) throw error;

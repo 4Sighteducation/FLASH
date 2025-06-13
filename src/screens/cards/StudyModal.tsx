@@ -206,26 +206,28 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const handleNext = () => {
     if (currentIndex < flashcards.length - 1 && !isAnimating) {
       setIsAnimating(true);
-      // Slide current card to the left with scale down
+      
+      // Animate current card out
       Animated.parallel([
         Animated.timing(translateX, {
-          toValue: -screenWidth,
-          duration: 250,
+          toValue: -screenWidth * 1.2,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.85,
-          duration: 250,
+          toValue: 0.8,
+          duration: 300,
           useNativeDriver: true,
         })
       ]).start(() => {
-        // Update to next card
+        // Update index
         setCurrentIndex(prev => prev + 1);
-        // Reset position for new card to slide in from right
-        translateX.setValue(screenWidth);
-        cardScale.setValue(0.85);
         
-        // Animate new card sliding in
+        // Immediately reset position for new card
+        translateX.setValue(screenWidth);
+        cardScale.setValue(0.9);
+        
+        // Animate new card in
         Animated.parallel([
           Animated.spring(translateX, {
             toValue: 0,
@@ -249,26 +251,28 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const handlePrevious = () => {
     if (currentIndex > 0 && !isAnimating) {
       setIsAnimating(true);
-      // Slide current card to the right with scale down
+      
+      // Animate current card out
       Animated.parallel([
         Animated.timing(translateX, {
-          toValue: screenWidth,
-          duration: 250,
+          toValue: screenWidth * 1.2,
+          duration: 300,
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.85,
-          duration: 250,
+          toValue: 0.8,
+          duration: 300,
           useNativeDriver: true,
         })
       ]).start(() => {
-        // Update to previous card
+        // Update index
         setCurrentIndex(prev => prev - 1);
-        // Reset position for new card to slide in from left
-        translateX.setValue(-screenWidth);
-        cardScale.setValue(0.85);
         
-        // Animate new card sliding in
+        // Immediately reset position for new card
+        translateX.setValue(-screenWidth);
+        cardScale.setValue(0.9);
+        
+        // Animate new card in
         Animated.parallel([
           Animated.spring(translateX, {
             toValue: 0,
@@ -315,19 +319,58 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onPanResponderRelease: (_, gestureState) => {
         if (isAnimating) return;
 
-        const threshold = screenWidth * 0.15; // Lower threshold for easier swiping
+        const threshold = screenWidth * 0.25; // Threshold for swipe
         const velocity = gestureState.vx;
         const currentIdx = currentIndexRef.current;
         
-        // Consider velocity for more natural swiping
-        if ((gestureState.dx > threshold || velocity > 0.5) && currentIdx > 0) {
-          // Swipe right - go to previous
-          handlePrevious();
-        } else if ((gestureState.dx < -threshold || velocity < -0.5) && currentIdx < flashcards.length - 1) {
-          // Swipe left - go to next
-          handleNext();
+        // Determine if we should complete the swipe based on distance and velocity
+        const shouldSwipeRight = gestureState.dx > threshold || (velocity > 0.3 && gestureState.dx > 50);
+        const shouldSwipeLeft = gestureState.dx < -threshold || (velocity < -0.3 && gestureState.dx < -50);
+        
+        if (shouldSwipeRight && currentIdx > 0) {
+          // Complete swipe right animation then trigger previous
+          setIsAnimating(true);
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: screenWidth * 1.2,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(cardScale, {
+              toValue: 0.8,
+              duration: 200,
+              useNativeDriver: true,
+            })
+          ]).start(() => {
+            // Reset and trigger previous
+            translateX.setValue(0);
+            cardScale.setValue(1);
+            setIsAnimating(false);
+            handlePrevious();
+          });
+        } else if (shouldSwipeLeft && currentIdx < flashcards.length - 1) {
+          // Complete swipe left animation then trigger next
+          setIsAnimating(true);
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: -screenWidth * 1.2,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(cardScale, {
+              toValue: 0.8,
+              duration: 200,
+              useNativeDriver: true,
+            })
+          ]).start(() => {
+            // Reset and trigger next
+            translateX.setValue(0);
+            cardScale.setValue(1);
+            setIsAnimating(false);
+            handleNext();
+          });
         } else {
-          // Snap back with spring animation
+          // Snap back to center
           setIsAnimating(true);
           Animated.parallel([
             Animated.spring(translateX, {
