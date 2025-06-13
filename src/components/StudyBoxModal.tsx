@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import FlashcardCard from './FlashcardCard';
 import CardSwooshAnimation from './CardSwooshAnimation';
 import FrozenCard from './FrozenCard';
+import { LeitnerSystem } from '../utils/leitnerSystem';
 
 const { width, height } = Dimensions.get('window');
 
@@ -248,14 +249,9 @@ export default function StudyBoxModal({
       total: prev.total + 1,
     }));
 
-    // Calculate new box and review date
-    const newBoxNumber = correct ? Math.min(boxNumber + 1, 5) : 1;
-          // Box 1 cards should be available immediately (0 days)
-      const daysUntilReview = [0, 2, 3, 7, 21][newBoxNumber - 1];
-      const nextReviewDate = new Date();
-      if (daysUntilReview > 0) {
-        nextReviewDate.setDate(nextReviewDate.getDate() + daysUntilReview);
-      }
+    // Calculate new box and review date using LeitnerSystem
+    const newBoxNumber = LeitnerSystem.getNewBoxNumber(boxNumber, correct);
+    const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber);
 
     // Show animation
     setAnimationTarget(newBoxNumber);
@@ -272,6 +268,17 @@ export default function StudyBoxModal({
         .eq('id', card.id);
 
       if (error) throw error;
+
+      // Record the review
+      await supabase
+        .from('card_reviews')
+        .insert({
+          flashcard_id: card.id,
+          user_id: user?.id,
+          was_correct: correct,
+          quality: correct ? 5 : 1,
+          reviewed_at: new Date().toISOString(),
+        });
 
       // Wait for animation to complete
       setTimeout(() => {

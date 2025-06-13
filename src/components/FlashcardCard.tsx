@@ -25,6 +25,7 @@ interface FlashcardCardProps {
     box_number: number;
     topic?: string;
     in_study_bank?: boolean;
+    created_at?: string;
   };
   color: string;
   onAnswer?: (correct: boolean) => void;
@@ -176,9 +177,16 @@ export default function FlashcardCard({
             contentContainerStyle={styles.cardContentContainer}
             showsVerticalScrollIndicator={false}
           >
-            {card.topic && (
-              <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
-            )}
+            <View style={styles.cardHeader}>
+              {card.topic && (
+                <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
+              )}
+              {card.created_at && (
+                <Text style={styles.createdDate}>
+                  Created: {new Date(card.created_at).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
             
             <Text style={[styles.question, { fontSize: questionFontSize }]}>
               {card.question}
@@ -682,5 +690,16 @@ const styles = StyleSheet.create({
   answerContent: {
     flex: 1,
     marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  createdDate: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
 }); 

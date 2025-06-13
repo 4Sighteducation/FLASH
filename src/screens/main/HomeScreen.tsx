@@ -52,7 +52,8 @@ export default function HomeScreen({ navigation }: any) {
   const [userStats, setUserStats] = useState({ 
     total_points: 0, 
     current_streak: 0, 
-    total_cards_reviewed: 0 
+    total_cards_reviewed: 0,
+    correct_percentage: 0 
   });
   const [showNotification, setShowNotification] = useState(false);
 
@@ -71,7 +72,22 @@ export default function HomeScreen({ navigation }: any) {
       
       // Fetch user stats
       const stats = await notificationService.getUserStats(user.id);
-      setUserStats(stats);
+      
+      // Calculate correct percentage
+      let correctPercentage = 0;
+      if (stats.total_cards_reviewed > 0) {
+        const { data: reviews } = await supabase
+          .from('card_reviews')
+          .select('was_correct')
+          .eq('user_id', user.id);
+        
+        if (reviews && reviews.length > 0) {
+          const correctCount = reviews.filter(r => r.was_correct).length;
+          correctPercentage = Math.round((correctCount / reviews.length) * 100);
+        }
+      }
+      
+      setUserStats({ ...stats, correct_percentage: correctPercentage });
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -242,6 +258,11 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.headerStatItem}>
                 <Text style={styles.headerStatNumber}>{userStats.total_points}</Text>
                 <Text style={styles.headerStatLabel}>XP</Text>
+              </View>
+              <View style={styles.headerStatDivider} />
+              <View style={styles.headerStatItem}>
+                <Text style={styles.headerStatNumber}>{userStats.correct_percentage}%</Text>
+                <Text style={styles.headerStatLabel}>Correct</Text>
               </View>
             </View>
           </View>
@@ -431,7 +452,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 30,
     paddingHorizontal: 20,
-    marginBottom: -10,
+    marginBottom: 10,
   },
   header: {
     marginBottom: 10,
@@ -494,6 +515,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 15,
     paddingHorizontal: 20,
+    marginTop: 20,
   },
   subjectsGrid: {
     paddingHorizontal: 20,
