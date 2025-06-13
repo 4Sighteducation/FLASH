@@ -142,18 +142,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       console.log('Box counts:', counts);
       
       // Mark cards as frozen or not based on review date
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
       
       const cardsWithStatus = allCards.map(card => {
         const reviewDate = new Date(card.next_review_date);
-        reviewDate.setHours(0, 0, 0, 0);
-        const isFrozen = reviewDate > today;
+        const isFrozen = reviewDate > now;
         
         return {
           ...card,
           isFrozen,
-          daysUntilReview: isFrozen ? Math.ceil((reviewDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0
+          daysUntilReview: isFrozen ? Math.ceil((reviewDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
         };
       });
       
