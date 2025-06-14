@@ -61,7 +61,7 @@
   - CardTopicSelector.tsx               - Select topic for card creation
   - ImageCardGeneratorScreen.tsx        - Generate cards from images using OCR
   - StudySlideshowModal.tsx             - Slideshow mode for reviewing cards
-  - VoiceAnswerModal.tsx                - Future AI voice assessment feature (concept)
+  - VoiceAnswerModal.tsx                - AI voice assessment feature with Whisper & GPT-4
 
 /src/screens/settings/
   - APISettingsScreen.tsx               - OpenAI API key management
@@ -88,3 +88,15 @@
   📚 Documentation
   /FLASH-Development-Handover.md          - Comprehensive project documentation
 /supabase/IMPORT-SUMMARY.md            - Database import documentation
+/docs/VOICE-ANSWER-FEATURE.md          - Voice answer feature documentation
+
+🎤 Voice Answer Services
+/src/services/whisperService.ts         - OpenAI Whisper integration
+/src/services/aiAnalyzerService.ts      - GPT-4 answer analysis
+/src/services/audioService.ts           - Audio recording utilities
+/src/components/VoiceRecorder.tsx       - Voice recording UI component
+
+📡 API Endpoints
+/api/generate-cards.js                  - AI flashcard generation
+/api/transcribe-audio.js                - Whisper audio transcription
+/api/analyze-answer.js                  - GPT-4 answer analysis

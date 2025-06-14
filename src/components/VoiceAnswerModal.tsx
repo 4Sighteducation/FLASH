@@ -1,100 +1,256 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import VoiceRecorder from './VoiceRecorder';
+import { whisperService } from '../services/whisperService';
+import { aiAnalyzerService, AnalysisResult } from '../services/aiAnalyzerService';
+import { audioService } from '../services/audioService';
 
 interface VoiceAnswerModalProps {
   visible: boolean;
   onClose: () => void;
-  question: string;
-  expectedAnswer: string;
-  onAnswerEvaluated: (correct: boolean) => void;
+  onComplete: (correct: boolean) => void;
+  card: {
+    question: string;
+    answer?: string;
+    card_type: 'short_answer' | 'essay' | 'acronym';
+    key_points?: string[];
+    detailed_answer?: string;
+  };
   color: string;
 }
 
-// This is a concept component for future AI voice implementation
+type ModalState = 'recording' | 'transcribing' | 'analyzing' | 'results';
+
 export default function VoiceAnswerModal({
   visible,
   onClose,
-  question,
-  expectedAnswer,
-  onAnswerEvaluated,
+  onComplete,
+  card,
   color,
 }: VoiceAnswerModalProps) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [aiResult, setAiResult] = useState<{
-    correct: boolean;
-    confidence: number;
-    feedback: string;
-    transcript: string;
-  } | null>(null);
-  const pulseAnim = new Animated.Value(1);
+  const [state, setState] = useState<ModalState>('recording');
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [transcription, setTranscription] = useState<string>('');
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isRecording) {
-      // Pulse animation for recording indicator
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.2,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+  const handleRecordingComplete = async (uri: string) => {
+    setRecordingUri(uri);
+    setState('transcribing');
+    setError(null);
+
+    try {
+      // Transcribe the audio
+      const result = await whisperService.transcribeAudio(uri);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      if (!result.text || result.text.trim().length === 0) {
+        throw new Error('No speech detected. Please try again.');
+      }
+
+      setTranscription(result.text);
+      setState('analyzing');
+
+      // Analyze the answer
+      const analysisResult = await aiAnalyzerService.analyzeAnswer(
+        result.text,
+        card.answer || card.detailed_answer || '',
+        card.card_type,
+        card.key_points
+      );
+
+      setAnalysis(analysisResult);
+      setState('results');
+    } catch (err) {
+      console.error('Error processing voice answer:', err);
+      setError(err instanceof Error ? err.message : 'Failed to process your answer');
+      setState('results');
+    } finally {
+      // Clean up the recording
+      if (uri) {
+        await audioService.deleteRecording(uri);
+      }
     }
-  }, [isRecording]);
-
-  const startRecording = () => {
-    setIsRecording(true);
-    // Future: Implement actual voice recording
-    // For now, simulate recording for 3 seconds
-    setTimeout(() => {
-      stopRecording();
-    }, 3000);
   };
 
-  const stopRecording = () => {
-    setIsRecording(false);
-    setIsProcessing(true);
-    
-    // Simulate AI processing
-    setTimeout(() => {
-      // Mock AI result
-      setAiResult({
-        correct: Math.random() > 0.5,
-        confidence: Math.floor(Math.random() * 30) + 70,
-        feedback: "You covered the main points well, but could expand on the specific examples.",
-        transcript: "This is what the AI heard you say...",
-      });
-      setIsProcessing(false);
-    }, 2000);
+  const handleAcceptResult = () => {
+    if (analysis) {
+      onComplete(analysis.isCorrect);
+    }
+    resetModal();
   };
 
-  const handleUserOverride = (agree: boolean) => {
-    if (aiResult) {
-      onAnswerEvaluated(agree ? aiResult.correct : !aiResult.correct);
-    }
-    onClose();
+  const handleRejectResult = () => {
+    // User disagrees with AI assessment, let them manually mark
+    resetModal();
+  };
+
+  const handleRetry = () => {
+    resetModal();
+    setState('recording');
   };
 
   const resetModal = () => {
-    setAiResult(null);
-    setIsProcessing(false);
-    setIsRecording(false);
+    setState('recording');
+    setRecordingUri(null);
+    setTranscription('');
+    setAnalysis(null);
+    setError(null);
+    onClose();
+  };
+
+  const renderContent = () => {
+    switch (state) {
+      case 'recording':
+        return (
+          <VoiceRecorder
+            onRecordingComplete={handleRecordingComplete}
+            onCancel={resetModal}
+            color={color}
+          />
+        );
+
+      case 'transcribing':
+        return (
+          <View style={styles.processingContainer}>
+            <ActivityIndicator size="large" color={color} />
+            <Text style={styles.processingTitle}>Transcribing your answer...</Text>
+            <Text style={styles.processingSubtitle}>Using OpenAI Whisper</Text>
+          </View>
+        );
+
+      case 'analyzing':
+        return (
+          <View style={styles.processingContainer}>
+            <ActivityIndicator size="large" color={color} />
+            <Text style={styles.processingTitle}>Analyzing your answer...</Text>
+            <Text style={styles.processingSubtitle}>Comparing with the correct answer</Text>
+          </View>
+        );
+
+      case 'results':
+        return (
+          <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={48} color="#EF4444" />
+                <Text style={styles.errorTitle}>Oops!</Text>
+                <Text style={styles.errorMessage}>{error}</Text>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: color }]}
+                  onPress={handleRetry}
+                >
+                  <Text style={styles.buttonText}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.transcriptionSection}>
+                  <Text style={styles.sectionTitle}>What we heard:</Text>
+                  <View style={styles.transcriptionBox}>
+                    <Text style={styles.transcriptionText}>{transcription}</Text>
+                  </View>
+                </View>
+
+                {analysis && (
+                  <>
+                    <View style={styles.analysisSection}>
+                      <View style={[
+                        styles.scoreCircle,
+                        { borderColor: analysis.isCorrect ? '#10B981' : '#EF4444' }
+                      ]}>
+                        <Text style={[
+                          styles.scoreText,
+                          { color: analysis.isCorrect ? '#10B981' : '#EF4444' }
+                        ]}>
+                          {analysis.confidence}%
+                        </Text>
+                        <Text style={styles.scoreLabel}>Confidence</Text>
+                      </View>
+
+                      <View style={styles.feedbackBox}>
+                        <Ionicons
+                          name={analysis.isCorrect ? 'checkmark-circle' : 'information-circle'}
+                          size={24}
+                          color={analysis.isCorrect ? '#10B981' : '#F59E0B'}
+                        />
+                        <Text style={styles.feedbackText}>{analysis.feedback}</Text>
+                      </View>
+
+                      {analysis.keyPointsCovered && analysis.keyPointsCovered.length > 0 && (
+                        <View style={styles.pointsSection}>
+                          <Text style={styles.pointsTitle}>✓ Points you covered:</Text>
+                          {analysis.keyPointsCovered.map((point, index) => (
+                            <Text key={index} style={styles.pointItem}>• {point}</Text>
+                          ))}
+                        </View>
+                      )}
+
+                      {analysis.keyPointsMissed && analysis.keyPointsMissed.length > 0 && (
+                        <View style={styles.pointsSection}>
+                          <Text style={[styles.pointsTitle, { color: '#EF4444' }]}>
+                            ✗ Points to improve:
+                          </Text>
+                          {analysis.keyPointsMissed.map((point, index) => (
+                            <Text key={index} style={[styles.pointItem, { color: '#666' }]}>
+                              • {point}
+                            </Text>
+                          ))}
+                        </View>
+                      )}
+
+                      {analysis.suggestions && analysis.suggestions.length > 0 && (
+                        <View style={styles.suggestionsBox}>
+                          <Text style={styles.suggestionsTitle}>💡 Suggestions:</Text>
+                          {analysis.suggestions.map((suggestion, index) => (
+                            <Text key={index} style={styles.suggestionText}>{suggestion}</Text>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.resultActions}>
+                      <Text style={styles.resultPrompt}>
+                        Does this assessment look correct?
+                      </Text>
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                          style={[styles.button, styles.acceptButton]}
+                          onPress={handleAcceptResult}
+                        >
+                          <Ionicons name="checkmark" size={20} color="white" />
+                          <Text style={styles.buttonText}>Yes, that's right</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.button, styles.rejectButton]}
+                          onPress={handleRejectResult}
+                        >
+                          <Ionicons name="close" size={20} color="#666" />
+                          <Text style={[styles.buttonText, { color: '#666' }]}>
+                            No, let me mark manually
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </ScrollView>
+        );
+    }
   };
 
   return (
@@ -102,103 +258,18 @@ export default function VoiceAnswerModal({
       visible={visible}
       animationType="slide"
       transparent={true}
-      onRequestClose={onClose}
+      onRequestClose={resetModal}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Ionicons name="close" size={24} color="#666" />
-          </TouchableOpacity>
-
-          <Text style={styles.title}>Voice Answer</Text>
-          <Text style={styles.question}>{question}</Text>
-
-          {!isRecording && !isProcessing && !aiResult && (
-            <View style={styles.startSection}>
-              <Text style={styles.instruction}>
-                Tap the microphone and speak your answer clearly
-              </Text>
-              <TouchableOpacity
-                style={[styles.micButton, { backgroundColor: color }]}
-                onPress={startRecording}
-              >
-                <Ionicons name="mic" size={48} color="white" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isRecording && (
-            <View style={styles.recordingSection}>
-              <Animated.View
-                style={[
-                  styles.recordingIndicator,
-                  { backgroundColor: color, transform: [{ scale: pulseAnim }] },
-                ]}
-              >
-                <Ionicons name="mic" size={48} color="white" />
-              </Animated.View>
-              <Text style={styles.recordingText}>Listening...</Text>
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={stopRecording}
-              >
-                <Text style={styles.stopButtonText}>Stop Recording</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isProcessing && (
-            <View style={styles.processingSection}>
-              <ActivityIndicator size="large" color={color} />
-              <Text style={styles.processingText}>AI is analyzing your answer...</Text>
-            </View>
-          )}
-
-          {aiResult && (
-            <View style={styles.resultSection}>
-              <View style={[styles.resultHeader, { backgroundColor: aiResult.correct ? '#D1FAE5' : '#FEE2E2' }]}>
-                <Ionicons
-                  name={aiResult.correct ? "checkmark-circle" : "close-circle"}
-                  size={32}
-                  color={aiResult.correct ? '#10B981' : '#EF4444'}
-                />
-                <Text style={[styles.resultText, { color: aiResult.correct ? '#065F46' : '#991B1B' }]}>
-                  AI thinks: {aiResult.correct ? 'Correct!' : 'Not quite right'}
-                </Text>
-                <Text style={styles.confidenceText}>
-                  {aiResult.confidence}% confident
-                </Text>
-              </View>
-
-              <View style={styles.transcriptSection}>
-                <Text style={styles.sectionTitle}>What I heard:</Text>
-                <Text style={styles.transcript}>{aiResult.transcript}</Text>
-              </View>
-
-              <View style={styles.feedbackSection}>
-                <Text style={styles.sectionTitle}>Feedback:</Text>
-                <Text style={styles.feedback}>{aiResult.feedback}</Text>
-              </View>
-
-              <View style={styles.overrideSection}>
-                <Text style={styles.overridePrompt}>Do you agree with the AI?</Text>
-                <View style={styles.overrideButtons}>
-                  <TouchableOpacity
-                    style={[styles.overrideButton, styles.agreeButton]}
-                    onPress={() => handleUserOverride(true)}
-                  >
-                    <Text style={styles.overrideButtonText}>Yes, that's right</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.overrideButton, styles.disagreeButton]}
-                    onPress={() => handleUserOverride(false)}
-                  >
-                    <Text style={styles.overrideButtonText}>No, I disagree</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          )}
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Voice Answer</Text>
+            <TouchableOpacity onPress={resetModal} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          {renderContent()}
         </View>
       </View>
     </Modal>
@@ -209,170 +280,190 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    minHeight: '70%',
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
   },
   closeButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1,
+    padding: 4,
   },
-  title: {
+  processingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  processingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 20,
+  },
+  processingSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 8,
+  },
+  resultsContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  question: {
-    fontSize: 16,
-    color: '#374151',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 16,
-  },
-  startSection: {
-    alignItems: 'center',
-  },
-  instruction: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  micButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  recordingSection: {
-    alignItems: 'center',
-  },
-  recordingIndicator: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recordingText: {
-    fontSize: 18,
-    color: '#374151',
+    color: '#EF4444',
     marginTop: 16,
-    fontWeight: '600',
   },
-  stopButton: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#EF4444',
-    borderRadius: 25,
-  },
-  stopButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  processingSection: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  processingText: {
+  errorMessage: {
     fontSize: 16,
     color: '#666',
-    marginTop: 16,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
   },
-  resultSection: {
-    marginTop: 16,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  resultText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 8,
-    flex: 1,
-  },
-  confidenceText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  transcriptSection: {
-    marginBottom: 16,
-  },
-  feedbackSection: {
-    marginBottom: 16,
+  transcriptionSection: {
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#333',
+    marginBottom: 12,
+  },
+  transcriptionBox: {
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
+  },
+  transcriptionText: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+  },
+  analysisSection: {
+    marginBottom: 24,
+  },
+  scoreCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+  scoreText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
+  scoreLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  feedbackBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 12,
+  },
+  feedbackText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 22,
+  },
+  pointsSection: {
+    marginBottom: 16,
+  },
+  pointsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
     marginBottom: 8,
   },
-  transcript: {
+  pointItem: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-    backgroundColor: '#F3F4F6',
-    padding: 12,
-    borderRadius: 8,
+    color: '#333',
+    marginLeft: 16,
+    marginBottom: 4,
+    lineHeight: 20,
   },
-  feedback: {
+  suggestionsBox: {
+    backgroundColor: '#FEF3C7',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  suggestionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 8,
+  },
+  suggestionText: {
     fontSize: 14,
-    color: '#666',
-    backgroundColor: '#F3F4F6',
-    padding: 12,
-    borderRadius: 8,
+    color: '#92400E',
+    lineHeight: 20,
   },
-  overrideSection: {
-    marginTop: 20,
-    paddingTop: 20,
+  resultActions: {
+    marginTop: 32,
+    paddingTop: 24,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
   },
-  overridePrompt: {
+  resultPrompt: {
     fontSize: 16,
-    fontWeight: '600',
+    color: '#666',
     textAlign: 'center',
     marginBottom: 16,
   },
-  overrideButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  actionButtons: {
     gap: 12,
   },
-  overrideButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
   },
-  agreeButton: {
+  acceptButton: {
     backgroundColor: '#10B981',
   },
-  disagreeButton: {
-    backgroundColor: '#6B7280',
+  rejectButton: {
+    backgroundColor: '#F3F4F6',
   },
-  overrideButtonText: {
-    color: 'white',
+  buttonText: {
+    fontSize: 16,
     fontWeight: '600',
+    color: 'white',
   },
 }); 

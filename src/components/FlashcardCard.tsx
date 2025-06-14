@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DetailedAnswerModal from './DetailedAnswerModal';
+import VoiceAnswerModal from './VoiceAnswerModal';
 
 interface FlashcardCardProps {
   card: {
@@ -77,6 +78,7 @@ export default function FlashcardCard({
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [userAnswerCorrect, setUserAnswerCorrect] = useState<boolean | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -186,6 +188,15 @@ export default function FlashcardCard({
     }, 2000);
   };
 
+  const handleVoiceAnswer = (correct: boolean) => {
+    setShowVoiceModal(false);
+    handleUserAnswer(correct);
+    // Flip the card to show the answer
+    if (!isFlipped) {
+      flipCard();
+    }
+  };
+
   const renderFront = () => {
     const isMultipleChoice = card.card_type === 'multiple_choice';
     const needsUserConfirmation = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
@@ -277,11 +288,17 @@ export default function FlashcardCard({
             )}
 
             {needsUserConfirmation && (
-              <View style={styles.speakPrompt}>
-                <Ionicons name="mic-outline" size={24} color={color} />
-                <Text style={styles.speakPromptText}>
-                  Before flipping, try speaking your answer out loud!
+              <View style={styles.voiceAnswerSection}>
+                <Text style={styles.voicePromptText}>
+                  Try speaking your answer out loud!
                 </Text>
+                <TouchableOpacity
+                  style={[styles.voiceButton, { backgroundColor: color }]}
+                  onPress={() => setShowVoiceModal(true)}
+                >
+                  <Ionicons name="mic" size={24} color="white" />
+                  <Text style={styles.voiceButtonText}>Voice Answer</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -472,6 +489,16 @@ export default function FlashcardCard({
         cardType={card.card_type}
         color={color}
       />
+
+      {['short_answer', 'essay', 'acronym'].includes(card.card_type) && (
+        <VoiceAnswerModal
+          visible={showVoiceModal}
+          onClose={() => setShowVoiceModal(false)}
+          onComplete={handleVoiceAnswer}
+          card={card as any}
+          color={color}
+        />
+      )}
     </>
   );
 }
@@ -674,6 +701,34 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 8,
     fontStyle: 'italic',
+  },
+  voiceAnswerSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 12,
+  },
+  voicePromptText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  voiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  voiceButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
   confirmationSection: {
     marginTop: 'auto',

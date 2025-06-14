@@ -6,6 +6,12 @@
   "functions": {
     "api/generate-cards.js": {
       "maxDuration": 30
+    },
+    "api/transcribe-audio.js": {
+      "maxDuration": 30
+    },
+    "api/analyze-answer.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
