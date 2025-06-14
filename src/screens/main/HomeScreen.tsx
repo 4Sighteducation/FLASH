@@ -46,6 +46,7 @@ export default function HomeScreen({ navigation }: any) {
     subject: UserSubject | null;
   }>({ visible: false, subject: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isGridView, setIsGridView] = useState(false);
   
   // Notification and gamification state
   const [cardsDue, setCardsDue] = useState<any>({ total: 0, bySubject: {} });
@@ -287,73 +288,102 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </LinearGradient>
 
-        <Text style={styles.sectionTitle}>Your Subjects</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your Subjects</Text>
+          <TouchableOpacity
+            style={styles.viewToggle}
+            onPress={() => setIsGridView(!isGridView)}
+          >
+            <Ionicons 
+              name={isGridView ? "list" : "grid"} 
+              size={20} 
+              color="#6366F1" 
+            />
+          </TouchableOpacity>
+        </View>
         {userSubjects.length > 0 ? (
           <>
-            <View style={styles.subjectsGrid}>
+            <View style={isGridView ? styles.subjectsGridView : styles.subjectsGrid}>
               {userSubjects.map((subject) => (
                 <TouchableOpacity
                   key={subject.id}
-                  style={styles.subjectCard}
+                  style={isGridView ? styles.subjectCardGrid : styles.subjectCard}
                   onPress={() => handleSubjectPress(subject)}
                   onLongPress={() => handleSubjectLongPress(subject)}
                 >
                   <View style={styles.subjectCardWrapper}>
                     <LinearGradient
                       colors={[subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]}
-                      style={styles.subjectGradient}
+                      style={isGridView ? styles.subjectGradientGrid : styles.subjectGradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     >
-                      <View style={styles.subjectHeader}>
-                        <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
-                        <View style={styles.headerButtons}>
-                        <TouchableOpacity
-                          style={styles.colorButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            navigation.navigate('ColorPicker', {
-                              subjectId: subject.subject_id,
-                              subjectName: subject.subject.subject_name,
-                              currentColor: subject.color,
-                            });
-                          }}
-                        >
-                          <Ionicons name="color-palette-outline" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.deleteButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleSubjectLongPress(subject);
-                          }}
-                        >
-                          <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
-                        <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                      <View style={isGridView ? styles.subjectHeaderGrid : styles.subjectHeader}>
+                        <Text style={isGridView ? styles.subjectNameGrid : styles.subjectName} numberOfLines={isGridView ? 2 : 1}>
+                          {subject.subject.subject_name}
+                        </Text>
+                        {!isGridView && (
+                          <View style={styles.headerButtons}>
+                            <TouchableOpacity
+                              style={styles.colorButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                navigation.navigate('ColorPicker', {
+                                  subjectId: subject.subject_id,
+                                  subjectName: subject.subject.subject_name,
+                                  currentColor: subject.color,
+                                });
+                              }}
+                            >
+                              <Ionicons name="color-palette-outline" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.deleteButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                handleSubjectLongPress(subject);
+                              }}
+                            >
+                              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+                            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                          </View>
+                        )}
                       </View>
-                    </View>
-                    <View style={styles.subjectMeta}>
-                      <View style={styles.metaBadge}>
-                        <Text style={styles.metaText}>{subject.exam_board}</Text>
-                      </View>
-                      <View style={styles.metaBadge}>
-                        <Text style={styles.metaText}>{getExamTypeDisplay(userData?.exam_type || '')}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.subjectStats}>
-                      <View style={styles.statItem}>
-                        <Ionicons name="list-outline" size={16} color="#FFFFFF" />
-                        <Text style={styles.statText}>{subject.topic_count || 0} sub-topics</Text>
-                      </View>
-                      {subject.flashcard_count !== undefined && subject.flashcard_count > 0 && (
-                        <View style={styles.statItem}>
-                          <Ionicons name="albums-outline" size={16} color="#FFFFFF" />
-                          <Text style={styles.statText}>{subject.flashcard_count} cards</Text>
+                      {!isGridView && (
+                        <View style={styles.subjectMeta}>
+                          <View style={styles.metaBadge}>
+                            <Text style={styles.metaText}>{subject.exam_board}</Text>
+                          </View>
+                          <View style={styles.metaBadge}>
+                            <Text style={styles.metaText}>{getExamTypeDisplay(userData?.exam_type || '')}</Text>
+                          </View>
                         </View>
                       )}
-                    </View>
-                  </LinearGradient>
+                      <View style={isGridView ? styles.subjectStatsGrid : styles.subjectStats}>
+                        <View style={styles.statItem}>
+                          <Ionicons name="albums-outline" size={isGridView ? 14 : 16} color="#FFFFFF" />
+                          <Text style={isGridView ? styles.statTextGrid : styles.statText}>{subject.flashcard_count || 0}</Text>
+                        </View>
+                      </View>
+                      {isGridView && (
+                        <View style={styles.gridActions}>
+                          <TouchableOpacity
+                            style={styles.gridActionButton}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              navigation.navigate('ColorPicker', {
+                                subjectId: subject.subject_id,
+                                subjectName: subject.subject.subject_name,
+                                currentColor: subject.color,
+                              });
+                            }}
+                          >
+                            <Ionicons name="color-palette-outline" size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </LinearGradient>
                     {cardsDue.bySubject[subject.subject.subject_name] > 0 && (
                       <View style={styles.notificationBadgeContainer}>
                         <View style={styles.dueBadge}>
@@ -552,9 +582,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 15,
+  },
+  viewToggle: {
+    padding: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   subjectsGrid: {
     paddingHorizontal: 20,
     marginBottom: 30,
+  },
+  subjectsGridView: {
+    paddingHorizontal: 20,
+    marginBottom: 30,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   subjectCard: {
     borderRadius: 16,
@@ -566,14 +618,33 @@ const styles = StyleSheet.create({
     elevation: 5,
     overflow: 'hidden',
   },
+  subjectCardGrid: {
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
+    width: '48%',
+  },
   subjectGradient: {
     padding: 20,
+  },
+  subjectGradientGrid: {
+    padding: 16,
+    height: 140,
+    justifyContent: 'space-between',
   },
   subjectHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  subjectHeaderGrid: {
+    marginBottom: 8,
   },
   subjectContent: {
     flex: 1,
@@ -583,6 +654,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     flex: 1,
+  },
+  subjectNameGrid: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   examBoard: {
     fontSize: 14,
@@ -608,6 +685,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
   },
+  subjectStatsGrid: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -617,6 +698,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  statTextGrid: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -716,31 +803,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 8,
     flexWrap: 'wrap',
     justifyContent: 'space-around',
   },
   headerStatItem: {
     alignItems: 'center',
-    minWidth: 60,
-    paddingHorizontal: 4,
+    minWidth: 50,
+    paddingHorizontal: 2,
   },
   headerStatNumber: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginTop: 2,
   },
   headerStatLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 1,
   },
   headerStatDivider: {
     width: 1,
-    height: 28,
+    height: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   notificationBadgeContainer: {
@@ -765,37 +852,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   statIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 2,
   },
   statProgressContainer: {
-    width: 60,
+    width: 50,
     alignItems: 'center',
   },
   statProgressBar: {
-    height: 16,
+    height: 12,
     width: '100%',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
+    borderRadius: 6,
     overflow: 'hidden',
     marginBottom: 2,
   },
   statProgressFill: {
     height: '100%',
     backgroundColor: '#4CAF50',
-    borderRadius: 8,
+    borderRadius: 6,
   },
   percentageText: {
     position: 'absolute',
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
-    top: 2,
+    top: 1,
   },
   actionIconContainer: {
     width: 40,
@@ -804,5 +891,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+  },
+  gridActions: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  gridActionButton: {
+    padding: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 16,
   },
 }); 

@@ -385,6 +385,18 @@ export default function StudyScreen({ route, navigation }: any) {
           {[1, 2, 3, 4, 5].map((boxNumber) => {
             const info = getBoxInfo(boxNumber);
             const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
+            const totalCards = boxStats.totalInStudyBank || 1;
+            const percentage = Math.round((count / totalCards) * 100);
+            
+            const boxIcons = {
+              1: { icon: 'flash', color: '#FF6B6B' },
+              2: { icon: 'trending-up', color: '#4ECDC4' },
+              3: { icon: 'rocket', color: '#45B7D1' },
+              4: { icon: 'shield-checkmark', color: '#96CEB4' },
+              5: { icon: 'trophy', color: '#DDA0DD' },
+            };
+            
+            const boxIcon = boxIcons[boxNumber as keyof typeof boxIcons];
             
             return (
               <TouchableOpacity
@@ -392,17 +404,32 @@ export default function StudyScreen({ route, navigation }: any) {
                 style={styles.boxDetailCard}
                 onPress={() => handleBoxPress(boxNumber)}
               >
-                <View style={styles.boxDetailHeader}>
-                  <View style={styles.boxDetailLeft}>
-                    <Text style={styles.boxDetailTitle}>Box {boxNumber}: {info.title}</Text>
+                <View style={styles.boxDetailContent}>
+                  <View style={[styles.boxIconContainer, { backgroundColor: boxIcon.color + '20' }]}>
+                    <Ionicons name={boxIcon.icon as any} size={24} color={boxIcon.color} />
+                  </View>
+                  <View style={styles.boxDetailInfo}>
+                    <Text style={styles.boxDetailTitle}>{info.title}</Text>
                     <Text style={styles.boxDetailInterval}>{info.reviewInterval}</Text>
                   </View>
-                  <View style={styles.boxDetailRight}>
-                    <Text style={styles.boxDetailCount}>{count}</Text>
-                    <Text style={styles.boxDetailCountLabel}>cards</Text>
+                  <View style={styles.boxDetailStats}>
+                    <View style={styles.boxCountContainer}>
+                      <Text style={styles.boxDetailCount}>{count}</Text>
+                      <Text style={styles.boxDetailCountLabel}>cards</Text>
+                    </View>
+                    <View style={styles.boxProgressBar}>
+                      <View 
+                        style={[
+                          styles.boxProgressFill,
+                          { 
+                            width: `${percentage}%`,
+                            backgroundColor: boxIcon.color 
+                          }
+                        ]} 
+                      />
+                    </View>
                   </View>
                 </View>
-                <Text style={styles.boxDetailDescription}>{info.description}</Text>
               </TouchableOpacity>
             );
           })}
@@ -503,13 +530,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  boxDetailHeader: {
+  boxDetailContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
   },
-  boxDetailLeft: {
+  boxIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  boxDetailInfo: {
     flex: 1,
   },
   boxDetailTitle: {
@@ -522,22 +555,35 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     marginTop: 2,
   },
-  boxDetailRight: {
+  boxDetailStats: {
+    alignItems: 'flex-end',
+    minWidth: 60,
+  },
+  boxCountContainer: {
     alignItems: 'center',
+    marginBottom: 4,
   },
   boxDetailCount: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: '#1a1a1a',
   },
   boxDetailCountLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
+    marginTop: 2,
   },
-  boxDetailDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
+  boxProgressBar: {
+    width: 60,
+    height: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  boxProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: '#6366F1',
   },
   modalContainer: {
     flex: 1,
