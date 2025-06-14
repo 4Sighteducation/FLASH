@@ -63,6 +63,8 @@ export default function TopicHubScreen() {
     newName: string;
   }>({ visible: false, topic: null, newName: '' });
   const [viewMode, setViewMode] = useState<'hierarchy' | 'priority'>('hierarchy');
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
 
   useEffect(() => {
     loadTopics();
@@ -252,12 +254,75 @@ export default function TopicHubScreen() {
     }
   };
 
+  const handleBulkPriorityChange = async (priority: number) => {
+    if (selectedTopics.size === 0) {
+      Alert.alert('No Selection', 'Please select topics first');
+      return;
+    }
+
+    try {
+      // Update all selected topics
+      const updates = Array.from(selectedTopics).map(topicId => ({
+        user_id: user?.id,
+        topic_id: topicId,
+        priority: priority,
+      }));
+
+      const { error } = await supabase
+        .from('user_topic_priorities')
+        .upsert(updates);
+
+      if (error) throw error;
+
+      // Update local state
+      const newPriorities = new Map(selectedPriorities);
+      selectedTopics.forEach(topicId => {
+        newPriorities.set(topicId, priority);
+      });
+      setSelectedPriorities(newPriorities);
+      
+      // Clear selection
+      setSelectedTopics(new Set());
+      setBulkMode(false);
+      
+      Alert.alert('Success', `Priority set for ${selectedTopics.size} topics`);
+    } catch (error) {
+      console.error('Error setting bulk priority:', error);
+      Alert.alert('Error', 'Failed to update priorities');
+    }
+  };
+
+  const toggleTopicSelection = (topicId: string) => {
+    const newSelection = new Set(selectedTopics);
+    if (newSelection.has(topicId)) {
+      newSelection.delete(topicId);
+    } else {
+      newSelection.add(topicId);
+    }
+    setSelectedTopics(newSelection);
+  };
+
+  const selectAllChildren = (topic: Topic) => {
+    const newSelection = new Set(selectedTopics);
+    
+    const addAllChildren = (t: Topic) => {
+      if (!t.children || t.children.length === 0) {
+        newSelection.add(t.id);
+      }
+      t.children?.forEach(child => addAllChildren(child));
+    };
+    
+    addAllChildren(topic);
+    setSelectedTopics(newSelection);
+  };
+
   const renderTopic = (topic: Topic, depth: number = 0) => {
     const hasChildren = topic.children && topic.children.length > 0;
     const isExpanded = expandedTopics.has(topic.id);
     const priority = selectedPriorities.get(topic.id);
     const priorityInfo = priority ? PRIORITY_LEVELS.find(p => p.value === priority) : null;
     const levelName = LEVEL_NAMES[topic.topic_level as keyof typeof LEVEL_NAMES] || 'Item';
+    const isSelected = selectedTopics.has(topic.id);
 
     return (
       <View key={topic.id}>
@@ -265,11 +330,31 @@ export default function TopicHubScreen() {
           style={[
             styles.topicItem,
             { marginLeft: depth * 20 },
-            priorityInfo && { borderLeftColor: priorityInfo.color, borderLeftWidth: 4 }
+            priorityInfo && { borderLeftColor: priorityInfo.color, borderLeftWidth: 4 },
+            isSelected && styles.selectedTopic
           ]}
-          onPress={() => hasChildren && toggleExpanded(topic.id)}
+          onPress={() => {
+            if (bulkMode && !hasChildren) {
+              toggleTopicSelection(topic.id);
+            } else if (hasChildren) {
+              toggleExpanded(topic.id);
+            }
+          }}
+          onLongPress={() => {
+            if (hasChildren && bulkMode) {
+              selectAllChildren(topic);
+            }
+          }}
         >
           <View style={styles.topicHeader}>
+            {bulkMode && !hasChildren && (
+              <Ionicons
+                name={isSelected ? "checkbox" : "square-outline"}
+                size={20}
+                color={isSelected ? "#9333EA" : "#6B7280"}
+                style={styles.checkbox}
+              />
+            )}
             {hasChildren && (
               <Ionicons
                 name={isExpanded ? "chevron-down" : "chevron-forward"}
@@ -296,30 +381,35 @@ export default function TopicHubScreen() {
                   <Text style={styles.priorityText}>{priorityInfo.label}</Text>
                 </View>
               )}
+              {bulkMode && hasChildren && (
+                <Text style={styles.selectAllHint}>Long press to select all sub-topics</Text>
+              )}
             </View>
-            <View style={styles.topicActions}>
-              <TouchableOpacity
-                onPress={() => setEditModal({ 
-                  visible: true, 
-                  topic, 
-                  newName: topic.topic_name 
-                })}
-                style={styles.actionButton}
-              >
-                <Ionicons name="pencil" size={18} color="#6B7280" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setDeleteModal({ visible: true, topic })}
-                style={styles.actionButton}
-              >
-                <Ionicons name="trash" size={18} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
+            {!bulkMode && (
+              <View style={styles.topicActions}>
+                <TouchableOpacity
+                  onPress={() => setEditModal({ 
+                    visible: true, 
+                    topic, 
+                    newName: topic.topic_name 
+                  })}
+                  style={styles.actionButton}
+                >
+                  <Ionicons name="pencil" size={18} color="#6B7280" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setDeleteModal({ visible: true, topic })}
+                  style={styles.actionButton}
+                >
+                  <Ionicons name="trash" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
         
-        {/* Priority selector for leaf nodes */}
-        {!hasChildren && (
+        {/* Priority selector for leaf nodes - only show if not in bulk mode */}
+        {!hasChildren && !bulkMode && (
           <View style={[styles.prioritySelector, { marginLeft: depth * 20 + 20 }]}>
             {PRIORITY_LEVELS.map(level => (
               <TouchableOpacity
@@ -400,7 +490,7 @@ export default function TopicHubScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[subjectColor || '#6366F1', '#8B5CF6']}
+        colors={['#9333EA', '#DB2777']}
         style={styles.headerGradient}
       >
         <View style={styles.header}>
@@ -408,12 +498,13 @@ export default function TopicHubScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Topic Hub</Text>
+            <Text style={styles.headerTitle}>Topic Priority Hub</Text>
+            <Text style={styles.headerSubtitle}>Manage your study priorities</Text>
             <Text style={styles.subjectName}>{subjectName}</Text>
           </View>
-          <TouchableOpacity onPress={() => setViewMode(viewMode === 'hierarchy' ? 'priority' : 'hierarchy')}>
+          <TouchableOpacity onPress={() => setBulkMode(!bulkMode)}>
             <Ionicons 
-              name={viewMode === 'hierarchy' ? 'list' : 'git-branch'} 
+              name={bulkMode ? 'checkmark-done' : 'checkbox-outline'} 
               size={24} 
               color="#FFFFFF" 
             />
@@ -421,35 +512,64 @@ export default function TopicHubScreen() {
         </View>
       </LinearGradient>
 
+      {bulkMode && (
+        <View style={styles.bulkModeBar}>
+          <Text style={styles.bulkModeText}>
+            {selectedTopics.size} topics selected
+          </Text>
+          <TouchableOpacity
+            style={styles.cancelBulkButton}
+            onPress={() => {
+              setBulkMode(false);
+              setSelectedTopics(new Set());
+            }}
+          >
+            <Text style={styles.cancelBulkText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.viewModeToggle}>
         <TouchableOpacity
           style={[styles.toggleButton, viewMode === 'hierarchy' && styles.activeToggle]}
           onPress={() => setViewMode('hierarchy')}
         >
-          <Ionicons name="git-branch" size={20} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#6B7280'} />
+          <Ionicons name="git-branch" size={20} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#9333EA'} />
           <Text style={[styles.toggleText, viewMode === 'hierarchy' && styles.activeToggleText]}>
-            Hierarchy
+            Topic Tree
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleButton, viewMode === 'priority' && styles.activeToggle]}
           onPress={() => setViewMode('priority')}
         >
-          <Ionicons name="list" size={20} color={viewMode === 'priority' ? '#FFFFFF' : '#6B7280'} />
+          <Ionicons name="flag" size={20} color={viewMode === 'priority' ? '#FFFFFF' : '#9333EA'} />
           <Text style={[styles.toggleText, viewMode === 'priority' && styles.activeToggleText]}>
-            Priority
+            Priority View
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.priorityLegend}>
-        <Text style={styles.legendTitle}>Priority Levels:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <Text style={styles.legendTitle}>Priority Levels</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.legendScroll}
+        >
           {PRIORITY_LEVELS.map(level => (
-            <View key={level.value} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: level.color }]} />
-              <Text style={styles.legendText}>{level.emoji} {level.label}</Text>
-            </View>
+            <TouchableOpacity
+              key={level.value}
+              style={[styles.legendCard, bulkMode && styles.legendCardClickable]}
+              onPress={() => bulkMode && handleBulkPriorityChange(level.value)}
+            >
+              <View style={[styles.legendColorBar, { backgroundColor: level.color }]} />
+              <Text style={styles.legendEmoji}>{level.emoji}</Text>
+              <Text style={styles.legendLabel}>{level.label}</Text>
+              {bulkMode && (
+                <Text style={styles.legendHint}>Tap to apply</Text>
+              )}
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
@@ -514,7 +634,7 @@ export default function TopicHubScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#FAF5FF',
   },
   loadingContainer: {
     flex: 1,
@@ -540,6 +660,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#E0E7FF',
+    marginTop: 4,
+  },
   subjectName: {
     fontSize: 14,
     color: '#E0E7FF',
@@ -562,7 +687,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   activeToggle: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#9333EA',
   },
   toggleText: {
     fontSize: 14,
@@ -584,20 +709,47 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 8,
   },
-  legendItem: {
-    flexDirection: 'row',
+  legendScroll: {
+    gap: 16,
+  },
+  legendCard: {
+    flexDirection: 'column',
     alignItems: 'center',
-    marginRight: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    minWidth: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 6,
+  legendCardClickable: {
+    backgroundColor: '#F3E8FF',
+    borderWidth: 2,
+    borderColor: '#9333EA',
   },
-  legendText: {
-    fontSize: 12,
+  legendColorBar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  legendEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  legendLabel: {
+    fontSize: 11,
     color: '#6B7280',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  legendHint: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginLeft: 8,
   },
   scrollView: {
     flex: 1,
@@ -765,5 +917,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  selectedTopic: {
+    backgroundColor: '#F3F4F6',
+  },
+  selectAllHint: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  checkbox: {
+    marginRight: 8,
+  },
+  bulkModeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  bulkModeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginRight: 16,
+  },
+  cancelBulkButton: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+  },
+  cancelBulkText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
   },
 }); 
