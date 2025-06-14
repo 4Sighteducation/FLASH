@@ -153,11 +153,6 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
               <Text style={styles.percentageText}>{percentage}%</Text>
             </View>
           </View>
-
-          <View style={styles.boxFooter}>
-            <Ionicons name={box.icon as any} size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.scheduleText}>{box.schedule}</Text>
-          </View>
         </LinearGradient>
       </Animated.View>
     );
@@ -224,9 +219,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   box: {
-    height: 120,
+    height: 100,
     borderRadius: 12,
-    padding: 10,
+    padding: 8,
     justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -302,16 +297,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 1,
-  },
-  boxFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  scheduleText: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.8)',
   },
   summaryContainer: {
     flexDirection: 'row',
