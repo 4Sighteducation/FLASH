@@ -7,7 +7,7 @@ import {
   Animated,
   Alert,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { audioService } from '../services/audioService';
 
@@ -24,30 +24,35 @@ export default function VoiceRecorder({
   maxDuration = 60,
   color,
 }: VoiceRecorderProps) {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [duration, setDuration] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const levelAnim = useRef(new Animated.Value(0)).current;
   const durationInterval = useRef<NodeJS.Timeout | null>(null);
+  const meteringInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     startRecording();
     return () => {
-      if (recording) {
-        recording.stopAndUnloadAsync();
+      if (audioRecorder.isRecording) {
+        audioRecorder.stop();
       }
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
+      }
+      if (meteringInterval.current) {
+        clearInterval(meteringInterval.current);
       }
     };
   }, []);
 
   useEffect(() => {
     // Pulse animation for recording indicator
-    if (recording) {
+    if (isRecording) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -63,7 +68,7 @@ export default function VoiceRecorder({
         ])
       ).start();
     }
-  }, [recording]);
+  }, [isRecording]);
 
   useEffect(() => {
     // Smooth audio level animation
@@ -79,7 +84,7 @@ export default function VoiceRecorder({
       setIsLoading(true);
       
       // Check permissions
-      const permission = await audioService.requestPermissions();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           'Permission Required',
@@ -92,14 +97,10 @@ export default function VoiceRecorder({
       // Prepare audio mode
       await audioService.prepareAudioMode();
 
-      // Create and start recording
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        audioService.getRecordingOptions(),
-        (status) => onRecordingStatusUpdate(status),
-        100 // Update interval in ms
-      );
-
-      setRecording(newRecording);
+      // Prepare and start recording
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
       setIsLoading(false);
 
       // Start duration timer
@@ -112,6 +113,16 @@ export default function VoiceRecorder({
           return newDuration;
         });
       }, 1000);
+
+      // Start metering update
+      meteringInterval.current = setInterval(() => {
+        const status = audioRecorder.getStatus();
+        if (status.isRecording && status.metering !== undefined) {
+          // Normalize audio level from -160 to 0 dB to 0-1 range
+          const normalizedLevel = Math.max(0, (status.metering + 160) / 160);
+          setAudioLevel(normalizedLevel);
+        }
+      }, 100);
     } catch (error) {
       console.error('Failed to start recording:', error);
       setIsLoading(false);
@@ -120,15 +131,8 @@ export default function VoiceRecorder({
     }
   };
 
-  const onRecordingStatusUpdate = (status: Audio.RecordingStatus) => {
-    if (status.isRecording && status.metering !== undefined) {
-      const level = audioService.getAudioLevel(status);
-      setAudioLevel(level);
-    }
-  };
-
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!audioRecorder.isRecording) return;
 
     try {
       setIsLoading(true);
@@ -136,9 +140,12 @@ export default function VoiceRecorder({
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
       }
+      if (meteringInterval.current) {
+        clearInterval(meteringInterval.current);
+      }
 
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
       
       if (uri) {
         onRecordingComplete(uri);
@@ -150,16 +157,16 @@ export default function VoiceRecorder({
       Alert.alert('Recording Error', 'Failed to save recording. Please try again.');
       onCancel();
     } finally {
-      setRecording(null);
+      setIsRecording(false);
       setIsLoading(false);
     }
   };
 
   const cancelRecording = async () => {
-    if (recording) {
+    if (audioRecorder.isRecording) {
       try {
-        await recording.stopAndUnloadAsync();
-        const uri = recording.getURI();
+        await audioRecorder.stop();
+        const uri = audioRecorder.uri;
         if (uri) {
           await audioService.deleteRecording(uri);
         }
@@ -234,7 +241,7 @@ export default function VoiceRecorder({
             isLoading && styles.buttonDisabled,
           ]}
           onPress={stopRecording}
-          disabled={isLoading || !recording}
+          disabled={isLoading || !isRecording}
         >
           <Ionicons name="stop" size={24} color="white" />
           <Text style={styles.stopButtonText}>Stop</Text>

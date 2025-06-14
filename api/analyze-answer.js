@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Build the analysis prompt
-    let systemPrompt = `You are an expert educational assessor. Analyze the student's spoken answer compared to the correct answer. Be encouraging but accurate. Consider that this is a spoken answer, so minor grammatical issues or filler words should be ignored.`;
+    let systemPrompt = `You are an expert educational assessor grading student answers. Analyze the student's spoken answer compared to the correct answer. Be encouraging but accurate. Consider that this is a spoken answer, so minor grammatical issues or filler words should be ignored. Grade based on actual exam standards.`;
 
     let userPrompt = `Card Type: ${cardType}
 Question Context: Educational flashcard
@@ -53,12 +53,19 @@ Correct Answer: "${correctAnswer}"`;
     }
 
     userPrompt += `\n\nAnalyze the student's answer and provide:
-1. Whether the answer is correct (considering the main concepts, not exact wording)
-2. A confidence score (0-100%)
-3. Constructive feedback
+1. Whether the answer would pass (60%+ grade)
+2. A confidence score (0-100%) representing the grade percentage:
+   - 90-100: Excellent answer (A*/9)
+   - 80-89: Very good answer (A/7-8)
+   - 70-79: Good answer (B/6)
+   - 60-69: Satisfactory answer (C/5)
+   - 50-59: Below pass but shows understanding (D/4)
+   - 40-49: Limited understanding (E/3)
+   - Below 40: Insufficient answer
+3. Constructive feedback focusing on what they did well and how to improve
 4. Which key points were covered (if applicable)
 5. Which key points were missed (if applicable)
-6. Suggestions for improvement (if needed)`;
+6. Specific suggestions for improvement (if needed)`;
 
     // Define the function schema for structured output
     const analysisSchema = {

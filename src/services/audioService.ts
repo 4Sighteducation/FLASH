@@ -1,4 +1,4 @@
-import { Audio } from 'expo-av';
+import { AudioModule, RecordingPresets, IOSOutputFormat, AudioQuality } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 
 export interface AudioPermissionStatus {
@@ -23,7 +23,7 @@ export class AudioService {
 
   async requestPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const { status, canAskAgain } = await Audio.requestPermissionsAsync();
+      const { status, canAskAgain } = await AudioModule.requestRecordingPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -36,7 +36,7 @@ export class AudioService {
 
   async checkPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const { status, canAskAgain } = await Audio.getPermissionsAsync();
+      const { status, canAskAgain } = await AudioModule.getRecordingPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -49,44 +49,22 @@ export class AudioService {
 
   async prepareAudioMode() {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        shouldRouteThroughEarpiece: false,
+        interruptionMode: 'duckOthers',
+        interruptionModeAndroid: 'duckOthers',
       });
     } catch (error) {
       console.error('Error setting audio mode:', error);
     }
   }
 
-  getRecordingOptions(): Audio.RecordingOptions {
-    return {
-      android: {
-        extension: '.m4a',
-        outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-        audioEncoder: Audio.AndroidAudioEncoder.AAC,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        bitRate: 128000,
-      },
-      ios: {
-        extension: '.m4a',
-        outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-        audioQuality: Audio.IOSAudioQuality.HIGH,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        bitRate: 128000,
-        linearPCMBitDepth: 16,
-        linearPCMIsBigEndian: false,
-        linearPCMIsFloat: false,
-      },
-      web: {
-        mimeType: 'audio/webm',
-        bitsPerSecond: 128000,
-      },
-    };
+  async configureAudioMode() {
+    // Alias for prepareAudioMode for backward compatibility
+    return this.prepareAudioMode();
   }
 
   generateRecordingFilename(): string {
@@ -135,21 +113,6 @@ export class AudioService {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  // Get audio level from recording status (0-1 range)
-  getAudioLevel(status: Audio.RecordingStatus): number {
-    if (!status.isRecording || !status.metering) {
-      return 0;
-    }
-    
-    // Convert dB to 0-1 range
-    // Typical range is -160 to 0 dB
-    const minDb = -60;
-    const maxDb = 0;
-    const db = Math.max(minDb, Math.min(maxDb, status.metering));
-    
-    return (db - minDb) / (maxDb - minDb);
   }
 }
 
