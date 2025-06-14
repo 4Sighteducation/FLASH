@@ -9,6 +9,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth } = Dimensions.get('window');
 
+// Helper function to strip exam type from subject name
+const stripExamType = (subjectName: string): string => {
+  // Remove common exam type patterns like "(A-Level)", "(GCSE)", etc.
+  return subjectName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+};
+
 interface FrozenCardProps {
   card: {
     id: string;
@@ -48,7 +54,7 @@ export default function FrozenCard({ card, color }: FrozenCardProps) {
       {/* Card Content */}
       <View style={styles.cardContent}>
         {card.topic && (
-          <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
+          <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
         )}
         
         <Text style={styles.question} numberOfLines={6}>

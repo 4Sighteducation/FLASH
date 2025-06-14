@@ -45,6 +45,28 @@ const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 14
   return minSize;
 };
 
+// Helper function to calculate font size for multiple choice options
+const getOptionsFontSize = (options: string[], baseSize: number = 16): number => {
+  const totalLength = options.join('').length;
+  const longestOption = Math.max(...options.map(opt => opt.length));
+  
+  // If any option is very long, reduce font size
+  if (longestOption > 100) return 12;
+  if (longestOption > 80) return 13;
+  if (longestOption > 60) return 14;
+  if (totalLength > 300) return 13;
+  if (totalLength > 200) return 14;
+  if (totalLength > 150) return 15;
+  
+  return baseSize;
+};
+
+// Helper function to strip exam type from subject name
+const stripExamType = (subjectName: string): string => {
+  // Remove common exam type patterns like "(A-Level)", "(GCSE)", etc.
+  return subjectName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+};
+
 export default function FlashcardCard({
   card,
   color,
@@ -123,7 +145,7 @@ export default function FlashcardCard({
     if (card.card_type === 'multiple_choice') {
       const isCorrect = option === card.correct_answer;
       if (onAnswer) {
-        onAnswer(isCorrect);
+        onAnswer(isCorrect === true);
       }
       // Auto-flip after selection
       setTimeout(() => flipCard(), 500);
@@ -149,14 +171,14 @@ export default function FlashcardCard({
 
   const questionFontSize = getDynamicFontSize(card.question, 22, 16);
   const optionFontSize = card.options 
-    ? getDynamicFontSize(card.options.join(''), 18, 14) 
-    : 18;
+    ? getOptionsFontSize(card.options) 
+    : 16;
 
   const handleUserAnswer = (correct: boolean) => {
     setUserAnswerCorrect(correct);
     setShowFeedback(true);
     if (onAnswer) {
-      onAnswer(correct);
+      onAnswer(correct === true);
     }
     // Auto-hide feedback after 2 seconds
     setTimeout(() => {
@@ -198,7 +220,7 @@ export default function FlashcardCard({
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 {card.topic && (
-                  <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
+                  <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
                 )}
               </View>
               <View style={[
@@ -507,21 +529,22 @@ const styles = StyleSheet.create({
   optionsContainer: {
     flex: 1,
     justifyContent: 'center',
+    maxHeight: '60%',
   },
   compactOptionsContainer: {
     justifyContent: 'flex-start',
   },
   optionButton: {
     backgroundColor: '#F3F4F6',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   compactOptionButton: {
-    padding: 12,
-    marginBottom: 8,
+    padding: 8,
+    marginBottom: 6,
   },
   selectedOption: {
     borderColor: '#6366F1',
