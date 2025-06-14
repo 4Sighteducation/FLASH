@@ -328,10 +328,21 @@ export default function StudyScreen({ route, navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Study Mode</Text>
+          <Text style={styles.headerTitle}>Study Hub</Text>
           <Text style={styles.headerSubtitle}>
-            {boxStats.totalInStudyBank} cards in study bank • {boxStats.totalDue} due for review
+            Review your flashcards using spaced repetition
           </Text>
+          <View style={styles.headerStats}>
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{boxStats.totalInStudyBank}</Text>
+              <Text style={styles.headerStatLabel}>Total Cards</Text>
+            </View>
+            <View style={styles.headerStatDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={[styles.headerStatValue, styles.dueStatValue]}>{boxStats.totalDue}</Text>
+              <Text style={styles.headerStatLabel}>Due Now</Text>
+            </View>
+          </View>
         </View>
 
         {/* Daily Cards Section */}
@@ -452,6 +463,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  headerStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  headerStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#6366F1',
+  },
+  headerStatLabel: {
+    fontSize: 12,
+    color: '#666',
+  },
+  headerStatDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#e0e0e0',
+  },
   boxesContainer: {
     padding: 16,
   },
@@ -557,5 +591,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  dueStatValue: {
+    color: '#FF6B6B',
   },
 }); 

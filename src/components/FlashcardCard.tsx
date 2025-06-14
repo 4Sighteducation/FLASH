@@ -36,11 +36,12 @@ interface FlashcardCardProps {
 const { width: screenWidth } = Dimensions.get('window');
 
 // Helper function to calculate dynamic font size based on text length
-const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 12): number => {
+const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 14): number => {
   const length = text.length;
   if (length < 50) return baseSize;
   if (length < 100) return Math.max(baseSize - 2, minSize);
   if (length < 150) return Math.max(baseSize - 4, minSize);
+  if (length < 200) return Math.max(baseSize - 6, minSize);
   return minSize;
 };
 
@@ -146,10 +147,10 @@ export default function FlashcardCard({
     return {};
   };
 
-  const questionFontSize = getDynamicFontSize(card.question, 18, 14);
+  const questionFontSize = getDynamicFontSize(card.question, 22, 16);
   const optionFontSize = card.options 
-    ? getDynamicFontSize(card.options.join(''), 16, 12) 
-    : 16;
+    ? getDynamicFontSize(card.options.join(''), 18, 14) 
+    : 18;
 
   const handleUserAnswer = (correct: boolean) => {
     setUserAnswerCorrect(correct);
@@ -169,6 +170,23 @@ export default function FlashcardCard({
     const hasLongContent = isMultipleChoice && card.options && 
       (card.question.length > 100 || card.options.some(opt => opt.length > 50));
 
+    // Box colors matching the new Leitner design
+    const boxColors = {
+      1: '#FF6B6B',
+      2: '#4ECDC4',
+      3: '#45B7D1',
+      4: '#96CEB4',
+      5: '#DDA0DD',
+    };
+
+    const boxLabels = {
+      1: 'New',
+      2: 'Learning',
+      3: 'Growing',
+      4: 'Strong',
+      5: 'Mastered',
+    };
+
     return (
       <TouchableWithoutFeedback onPress={!isMultipleChoice || selectedOption ? flipCard : undefined}>
         <View style={styles.touchableArea}>
@@ -178,14 +196,19 @@ export default function FlashcardCard({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.cardHeader}>
-              {card.topic && (
-                <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
-              )}
-              {card.created_at && (
-                <Text style={styles.createdDate}>
-                  Created: {new Date(card.created_at).toLocaleDateString()}
+              <View style={styles.cardHeaderLeft}>
+                {card.topic && (
+                  <Text style={[styles.topicLabel, { color }]}>{card.topic}</Text>
+                )}
+              </View>
+              <View style={[
+                styles.boxIndicator, 
+                { backgroundColor: boxColors[card.box_number as keyof typeof boxColors] || '#666' }
+              ]}>
+                <Text style={styles.boxIndicatorText}>
+                  Box {card.box_number} • {boxLabels[card.box_number as keyof typeof boxLabels] || 'Unknown'}
                 </Text>
-              )}
+              </View>
             </View>
             
             <Text style={[styles.question, { fontSize: questionFontSize }]}>
@@ -476,10 +499,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   question: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1F2937',
-    marginBottom: 20,
-    lineHeight: 24,
+    marginBottom: 24,
+    lineHeight: 28,
   },
   optionsContainer: {
     flex: 1,
@@ -694,8 +717,22 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  boxIndicator: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  boxIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'white',
   },
   createdDate: {
     fontSize: 11,

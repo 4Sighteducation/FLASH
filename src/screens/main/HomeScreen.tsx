@@ -411,17 +411,30 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('Study')}
+            onPress={() => navigation.navigate('CardSubjectSelector')}
           >
-            <Ionicons name="play-circle-outline" size={32} color="#FF9500" />
-            <Text style={styles.actionText}>Study Now</Text>
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="add-circle" size={24} color="#34C759" />
+            </View>
+            <Text style={styles.actionText}>Create Card</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CardSubjectSelector')}
+            onPress={() => navigation.navigate('ImageCardGenerator')}
           >
-            <Ionicons name="add-circle-outline" size={32} color="#34C759" />
-            <Text style={styles.actionText}>Create Card</Text>
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="camera" size={24} color="#007AFF" />
+            </View>
+            <Text style={styles.actionText}>Scan Image</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('TopicHub')}
+          >
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="flag" size={24} color="#FF9500" />
+            </View>
+            <Text style={styles.actionText}>Priorities</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -607,27 +620,30 @@ const styles = StyleSheet.create({
   },
   actionsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     paddingHorizontal: 20,
     marginBottom: 30,
+    gap: 12,
   },
   actionCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
+    minWidth: 90,
   },
   actionText: {
-    marginTop: 10,
-    fontSize: 14,
+    marginTop: 8,
+    fontSize: 12,
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
@@ -701,29 +717,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 20,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 20,
+    paddingHorizontal: 16,
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
   },
   headerStatItem: {
     alignItems: 'center',
-    flex: 1,
+    minWidth: 60,
+    paddingHorizontal: 4,
   },
   headerStatNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginTop: 4,
+    marginTop: 2,
   },
   headerStatLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
+    marginTop: 1,
   },
   headerStatDivider: {
     width: 1,
-    height: 32,
+    height: 28,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginHorizontal: 16,
   },
   notificationBadgeContainer: {
     position: 'absolute',
@@ -747,36 +765,44 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   statIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statProgressContainer: {
-    width: '100%',
+    width: 60,
     alignItems: 'center',
   },
   statProgressBar: {
-    height: 20,
+    height: 16,
     width: '100%',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
+    borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   statProgressFill: {
     height: '100%',
     backgroundColor: '#4CAF50',
-    borderRadius: 10,
+    borderRadius: 8,
   },
   percentageText: {
     position: 'absolute',
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
-    top: 3,
+    top: 2,
+  },
+  actionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
 }); 

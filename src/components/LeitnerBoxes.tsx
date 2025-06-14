@@ -6,6 +6,8 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 interface LeitnerBoxesProps {
   boxes: {
@@ -22,38 +24,27 @@ interface LeitnerBoxesProps {
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnims = useRef([
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+  ]).current;
 
   useEffect(() => {
-    // Pulse animation for active box
-    if (activeBox) {
+    // Animate active box
+    if (activeBox && activeBox >= 1 && activeBox <= 5) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 1000,
+          Animated.timing(scaleAnims[activeBox - 1], {
+            toValue: 1.05,
+            duration: 1500,
             useNativeDriver: true,
           }),
-          Animated.timing(pulseAnim, {
+          Animated.timing(scaleAnims[activeBox - 1], {
             toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-
-      // Glow animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 2000,
+            duration: 1500,
             useNativeDriver: true,
           }),
         ])
@@ -62,59 +53,112 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
   }, [activeBox]);
 
   const boxData = [
-    { number: 1, label: 'DAILY', count: boxes.box1, color: '#FF6B6B', schedule: 'Every day' },
-    { number: 2, label: 'BI-DAY', count: boxes.box2, color: '#4ECDC4', schedule: 'Every 2 days' },
-    { number: 3, label: 'TRI-DAY', count: boxes.box3, color: '#45B7D1', schedule: 'Every 3 days' },
-    { number: 4, label: 'WEEKLY', count: boxes.box4, color: '#96CEB4', schedule: 'Once a week' },
-    { number: 5, label: 'RETIRED', count: boxes.box5, color: '#DDA0DD', schedule: 'Mastered' },
+    { 
+      number: 1, 
+      label: 'New', 
+      count: boxes.box1, 
+      colors: ['#FF6B6B', '#FF8E53'],
+      icon: 'flash',
+      schedule: 'Daily review',
+      emoji: '🔥'
+    },
+    { 
+      number: 2, 
+      label: 'Learning', 
+      count: boxes.box2, 
+      colors: ['#4ECDC4', '#44A08D'],
+      icon: 'trending-up',
+      schedule: 'Every 2 days',
+      emoji: '📈'
+    },
+    { 
+      number: 3, 
+      label: 'Growing', 
+      count: boxes.box3, 
+      colors: ['#45B7D1', '#2196F3'],
+      icon: 'rocket',
+      schedule: 'Every 3 days',
+      emoji: '🚀'
+    },
+    { 
+      number: 4, 
+      label: 'Strong', 
+      count: boxes.box4, 
+      colors: ['#96CEB4', '#4CAF50'],
+      icon: 'shield-checkmark',
+      schedule: 'Weekly',
+      emoji: '💪'
+    },
+    { 
+      number: 5, 
+      label: 'Mastered', 
+      count: boxes.box5, 
+      colors: ['#DDA0DD', '#9C27B0'],
+      icon: 'trophy',
+      schedule: 'Complete!',
+      emoji: '🏆'
+    },
   ];
+
+  const totalCards = Object.values(boxes).reduce((sum, count) => sum + count, 0);
 
   const renderBox = (box: typeof boxData[0], index: number) => {
     const isActive = activeBox === box.number;
-    const boxWidth = (screenWidth - 48) / 5 - 8;
+    const percentage = totalCards > 0 ? Math.round((box.count / totalCards) * 100) : 0;
 
     return (
       <Animated.View
         key={box.number}
         style={[
-          styles.box,
+          styles.boxWrapper,
           {
-            width: boxWidth,
-            backgroundColor: box.color,
-            transform: isActive ? [{ scale: pulseAnim }] : [],
+            transform: [{ scale: scaleAnims[index] }],
+            zIndex: isActive ? 10 : 1,
           },
         ]}
       >
-        <View style={styles.boxInner}>
-          {/* Pixelated top section */}
-          <View style={styles.pixelatedTop}>
-            <Text style={styles.boxNumber}>{box.number}</Text>
+        <LinearGradient
+          colors={box.colors as any}
+          style={[
+            styles.box,
+            isActive && styles.activeBox,
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.boxHeader}>
+            <Text style={styles.boxEmoji}>{box.emoji}</Text>
+            <View style={styles.boxBadge}>
+              <Text style={styles.boxNumber}>{box.number}</Text>
+            </View>
           </View>
           
-          {/* Main content area */}
           <View style={styles.boxContent}>
             <Text style={styles.boxLabel}>{box.label}</Text>
             <View style={styles.countContainer}>
               <Text style={styles.boxCount}>{box.count}</Text>
+              <Text style={styles.boxCountLabel}>cards</Text>
+            </View>
+            
+            {/* Progress indicator */}
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBackground}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${percentage}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.percentageText}>{percentage}%</Text>
             </View>
           </View>
 
-          {/* Bottom indicator */}
-          <View style={styles.boxBottom}>
-            <View style={[styles.progressBar, { width: `${Math.min((box.count / 20) * 100, 100)}%` }]} />
+          <View style={styles.boxFooter}>
+            <Ionicons name={box.icon as any} size={16} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.scheduleText}>{box.schedule}</Text>
           </View>
-        </View>
-
-        {isActive && (
-          <Animated.View
-            style={[
-              styles.glowEffect,
-              {
-                opacity: glowAnim,
-              },
-            ]}
-          />
-        )}
+        </LinearGradient>
       </Animated.View>
     );
   };
@@ -122,31 +166,29 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>LEITNER SYSTEM</Text>
-        <Text style={styles.subtitle}>Spaced Repetition Progress</Text>
+        <Text style={styles.title}>Study Progress</Text>
+        <Text style={styles.subtitle}>Cards distributed across learning stages</Text>
       </View>
       
       <View style={styles.boxesContainer}>
         {boxData.map((box, index) => renderBox(box, index))}
       </View>
 
-      {/* Compact legend in two columns */}
-      <View style={styles.legendContainer}>
-        <View style={styles.legendColumn}>
-          {boxData.slice(0, 3).map((box) => (
-            <View key={box.number} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: box.color }]} />
-              <Text style={styles.legendText}>Box {box.number}: {box.schedule}</Text>
-            </View>
-          ))}
+      {/* Summary stats */}
+      <View style={styles.summaryContainer}>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{totalCards}</Text>
+          <Text style={styles.summaryLabel}>Total Cards</Text>
         </View>
-        <View style={styles.legendColumn}>
-          {boxData.slice(3).map((box) => (
-            <View key={box.number} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: box.color }]} />
-              <Text style={styles.legendText}>Box {box.number}: {box.schedule}</Text>
-            </View>
-          ))}
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{boxes.box1}</Text>
+          <Text style={styles.summaryLabel}>Due Today</Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{boxes.box5}</Text>
+          <Text style={styles.summaryLabel}>Mastered</Text>
         </View>
       </View>
     </View>
@@ -156,128 +198,145 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#1a1a2e',
-    borderRadius: 16,
-    margin: 16,
   },
   header: {
     marginBottom: 20,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-    fontFamily: 'monospace',
+    color: '#1F2937',
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-    fontFamily: 'monospace',
+    fontSize: 14,
+    color: '#6B7280',
   },
   boxesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  boxWrapper: {
+    flex: 1,
+    marginHorizontal: 4,
   },
   box: {
-    height: 120,
-    borderRadius: 4,
-    overflow: 'hidden',
-    elevation: 4,
+    height: 140,
+    borderRadius: 16,
+    padding: 12,
+    justifyContent: 'space-between',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  activeBox: {
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  boxInner: {
-    flex: 1,
-    position: 'relative',
+  boxHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  pixelatedTop: {
+  boxEmoji: {
+    fontSize: 20,
+  },
+  boxBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 24,
     height: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0, 0, 0, 0.3)',
   },
   boxNumber: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'monospace',
   },
   boxContent: {
-    flex: 1,
-    padding: 8,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   boxLabel: {
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 4,
-    fontFamily: 'monospace',
-    letterSpacing: 1,
   },
   countContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   boxCount: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'monospace',
   },
-  boxBottom: {
+  boxCountLabel: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  progressContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  progressBackground: {
+    width: '100%',
     height: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  progressBar: {
+  progressFill: {
     height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 2,
   },
-  glowEffect: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+  percentageText: {
+    fontSize: 9,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
-  legend: {
-    marginTop: 12,
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    marginTop: 12,
-    justifyContent: 'space-between',
-  },
-  legendColumn: {
-    flex: 1,
-  },
-  legendItem: {
+  boxFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
+    gap: 4,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-    marginRight: 8,
+  scheduleText: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  legendText: {
+  summaryContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  summaryItem: {
+    alignItems: 'center',
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  summaryLabel: {
     fontSize: 11,
-    color: '#AAA',
-    fontFamily: 'monospace',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E5E7EB',
   },
 }); 

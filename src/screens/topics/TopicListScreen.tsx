@@ -414,6 +414,20 @@ export default function TopicListScreen() {
     const priorityInfo = node.priority ? PRIORITY_LEVELS.find(p => p.value === node.priority) : null;
     const isInStudyBank = topicStudyPreferences.get(node.id) || false;
     
+    // Calculate cumulative due count for this node and all its children
+    const calculateDueCount = (n: TopicNode): number => {
+      let count = cardsDue.byTopic[`${subjectName}:${n.name}`] || 0;
+      
+      // Add due counts from all children
+      n.children.forEach(child => {
+        count += calculateDueCount(child);
+      });
+      
+      return count;
+    };
+    
+    const totalDueCount = calculateDueCount(node);
+    
     // Calculate progress for parent nodes
     const calculateProgress = (node: TopicNode): { completed: number; total: number } => {
       if (!hasChildren) {
@@ -467,6 +481,13 @@ export default function TopicListScreen() {
           ]}
           onPress={() => hasChildren ? toggleExpanded(node.id) : handleTopicPress(node)}
         >
+          {/* Notification badge in top-right corner */}
+          {totalDueCount > 0 && (
+            <View style={styles.topicNotificationBadge}>
+              <Text style={styles.topicNotificationText}>{totalDueCount}</Text>
+            </View>
+          )}
+          
           <View style={styles.topicContent}>
             {hasChildren && (
               <Ionicons
@@ -488,13 +509,6 @@ export default function TopicListScreen() {
                   {node.name}
                 </Text>
               </View>
-              {cardsDue.byTopic[`${subjectName}:${node.name}`] > 0 && (
-                <View style={styles.topicDueBadge}>
-                  <Text style={styles.topicDueBadgeText}>
-                    {cardsDue.byTopic[`${subjectName}:${node.name}`]} due
-                  </Text>
-                </View>
-              )}
               <View style={styles.topicMeta}>
                 {priorityInfo && (
                   <View style={[styles.priorityIndicator, { backgroundColor: priorityInfo.color }]}>
@@ -1185,7 +1199,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  topicDueBadge: {
+
+  topicNotificationBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
@@ -1199,7 +1214,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  topicDueBadgeText: {
+  topicNotificationText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
