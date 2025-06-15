@@ -56,10 +56,13 @@ next-env.d.ts
 Thumbs.db
 
 # Google Cloud credentials
-*.json
 google-credentials.json
 flash-*.json
 *-gserviceaccount.json
+google-play-service-account.json
+
+# EAS
+eas.json.local
 
 # Temporary files
 *.log

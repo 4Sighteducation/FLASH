@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,10 +26,14 @@ interface UserSubject {
 
 export default function CardSubjectSelector() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { user } = useAuth();
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  
+  // Get mode from route params (if 'image', we'll navigate to image generator)
+  const mode = (route.params as any)?.mode;
 
   useEffect(() => {
     fetchUserSubjects();
@@ -76,6 +80,7 @@ export default function CardSubjectSelector() {
       subjectColor: subject.color,
       examBoard: subject.exam_board,
       examType: userData?.exam_type,
+      mode: mode, // Pass the mode through
     } as never);
   };
 

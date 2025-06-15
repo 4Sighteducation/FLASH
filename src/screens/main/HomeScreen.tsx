@@ -457,7 +457,9 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('ImageCardGenerator')}
+            onPress={() => navigation.navigate('CardSubjectSelector', { 
+              mode: 'image' 
+            })}
           >
             <View style={styles.actionIconContainer}>
               <Ionicons name="camera" size={24} color="#007AFF" />

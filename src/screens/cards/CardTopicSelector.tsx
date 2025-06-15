@@ -34,7 +34,7 @@ interface TopicNode {
 export default function CardTopicSelector() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { subjectId, subjectName, subjectColor, examBoard, examType } = route.params as any;
+  const { subjectId, subjectName, subjectColor, examBoard, examType, mode } = route.params as any;
 
   const [topics, setTopics] = useState<CurriculumTopic[]>([]);
   const [topicTree, setTopicTree] = useState<TopicNode[]>([]);
@@ -164,14 +164,26 @@ export default function CardTopicSelector() {
     if (topic.children.length > 0) {
       toggleExpanded(topic.id);
     } else {
-      // Navigate to card creation choice
-      navigation.navigate('CardCreationChoice' as never, {
-        topicId: topic.id,
-        topicName: topic.name,
-        subjectName,
-        examBoard,
-        examType,
-      } as never);
+      // Navigate based on mode
+      if (mode === 'image') {
+        // Go directly to image generator
+        navigation.navigate('ImageCardGenerator' as never, {
+          topicId: topic.id,
+          topicName: topic.name,
+          subjectName,
+          examBoard,
+          examType,
+        } as never);
+      } else {
+        // Normal flow - go to card creation choice
+        navigation.navigate('CardCreationChoice' as never, {
+          topicId: topic.id,
+          topicName: topic.name,
+          subjectName,
+          examBoard,
+          examType,
+        } as never);
+      }
     }
   };
 

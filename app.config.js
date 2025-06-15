@@ -30,11 +30,10 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/icon.png",
         backgroundColor: "#0F172A"
       },
-      package: "com.foursighteducation.flash",
-      versionCode: 1
+      package: "com.foursighteducation.flash"
     },
     web: {
       favicon: "./assets/favicon.png"
