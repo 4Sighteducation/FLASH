@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,51 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Switch,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databaseMaintenance';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
-  const [isCleaningUp, setIsCleaningUp] = React.useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactSubject, setContactSubject] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  React.useEffect(() => {
+    loadNotificationPreference();
+  }, []);
+
+  const loadNotificationPreference = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('notificationsEnabled');
+      if (saved !== null) {
+        setNotificationsEnabled(saved === 'true');
+      }
+    } catch (error) {
+      console.error('Error loading notification preference:', error);
+    }
+  };
+
+  const handleNotificationToggle = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    try {
+      await AsyncStorage.setItem('notificationsEnabled', value.toString());
+    } catch (error) {
+      console.error('Error saving notification preference:', error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -74,6 +109,39 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!contactSubject.trim() || !contactMessage.trim()) {
+      Alert.alert('Error', 'Please fill in both subject and message fields.');
+      return;
+    }
+
+    setSendingMessage(true);
+    
+    // Create email link
+    const email = 'support@vespa.academy';
+    const subject = `FLASH App Support: ${contactSubject}`;
+    const body = `From: ${user?.email || 'Unknown'}\nUsername: ${user?.user_metadata?.username || 'Not set'}\n\n${contactMessage}`;
+    
+    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    try {
+      const canOpen = await Linking.canOpenURL(mailtoUrl);
+      if (canOpen) {
+        await Linking.openURL(mailtoUrl);
+        setContactSubject('');
+        setContactMessage('');
+        setShowContactForm(false);
+        Alert.alert('Success', 'Your email app has been opened with your support message.');
+      } else {
+        Alert.alert('Error', 'Unable to open email app. Please email us directly at support@vespa.academy');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Unable to send message. Please email us directly at support@vespa.academy');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const profileItems = [
     {
       icon: 'person-outline' as keyof typeof Ionicons.glyphMap,
@@ -91,6 +159,71 @@ export default function ProfileScreen() {
       value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown',
     },
   ];
+
+  if (showContactForm) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.contactHeader}>
+            <TouchableOpacity onPress={() => setShowContactForm(false)}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.contactTitle}>Help & Support</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <ScrollView style={styles.contactForm} keyboardShouldPersistTaps="handled">
+            <Text style={styles.contactDescription}>
+              Need help? Have a question or suggestion? We'd love to hear from you!
+            </Text>
+            
+            <Text style={styles.inputLabel}>Subject</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="What's this about?"
+              value={contactSubject}
+              onChangeText={setContactSubject}
+              editable={!sendingMessage}
+            />
+            
+            <Text style={styles.inputLabel}>Message</Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              placeholder="Tell us more..."
+              value={contactMessage}
+              onChangeText={setContactMessage}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              editable={!sendingMessage}
+            />
+            
+            <TouchableOpacity
+              style={[styles.sendButton, sendingMessage && styles.buttonDisabled]}
+              onPress={handleSendMessage}
+              disabled={sendingMessage}
+            >
+              {sendingMessage ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={20} color="#fff" />
+                  <Text style={styles.sendButtonText}>Send Message</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            
+            <Text style={styles.contactInfo}>
+              Or email us directly at: support@vespa.academy
+            </Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -117,22 +250,33 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
+          
+          <View style={styles.settingRow}>
+            <Ionicons name="notifications-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Notifications</Text>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleNotificationToggle}
+              trackColor={{ false: '#E5E7EB', true: '#00D4FF' }}
+              thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={() => setShowContactForm(true)}
+          >
+            <Ionicons name="help-circle-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Help & Support</Text>
+            <Ionicons name="chevron-forward" size={24} color="#ccc" />
+          </TouchableOpacity>
+          
           <TouchableOpacity 
             style={styles.settingRow}
             onPress={() => navigation.navigate('APISettings' as never)}
           >
             <Ionicons name="key-outline" size={24} color="#666" />
             <Text style={styles.settingText}>API Settings</Text>
-            <Ionicons name="chevron-forward" size={24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingRow}>
-            <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Notifications</Text>
-            <Ionicons name="chevron-forward" size={24} color="#ccc" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingRow}>
-            <Ionicons name="help-circle-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
         </View>
@@ -182,7 +326,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#00D4FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
@@ -266,5 +410,72 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 5,
     paddingHorizontal: 40,
+  },
+  // Contact Form Styles
+  contactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  contactTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  contactForm: {
+    flex: 1,
+    padding: 20,
+  },
+  contactDescription: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
+    lineHeight: 22,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 20,
+  },
+  textArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  sendButton: {
+    backgroundColor: '#00D4FF',
+    borderRadius: 8,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  sendButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  contactInfo: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 30,
   },
 }); 

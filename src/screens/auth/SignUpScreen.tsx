@@ -9,8 +9,14 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
+  Linking,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 export default function SignUpScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -41,114 +47,173 @@ export default function SignUpScreen({ navigation }: any) {
     }
   };
 
+  const openVespaWebsite = () => {
+    Linking.openURL('https://www.vespa.academy');
+  };
+
   return (
-    <KeyboardAvoidingView
+    <LinearGradient
+      colors={['#0F172A', '#1E293B', '#334155']}
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>FLASH</Text>
-        <Text style={styles.subtitle}>Create your account</Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.content}>
+          {/* Logo Section */}
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../../assets/transparent1.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.tagline}>Create Your Account</Text>
+          </View>
 
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-            editable={!loading}
-          />
+          {/* Form Section */}
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Username"
+                placeholderTextColor="#94A3B8"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+            </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            editable={!loading}
-          />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Email"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!loading}
+              />
+            </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min 6 characters)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            editable={!loading}
-          />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Password (min 6 characters)"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!loading}
+              />
+            </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSignUp}
-            disabled={loading}
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={['#00D4FF', '#00B4E6']}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Sign Up</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('Login')}
+              disabled={loading}
+            >
+              <Text style={styles.linkText}>
+                Already have an account? <Text style={styles.linkTextBold}>Login</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* VESPA Academy Footer */}
+          <TouchableOpacity 
+            style={styles.vespaContainer}
+            onPress={openVespaWebsite}
+            activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign Up</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
-            disabled={loading}
-          >
-            <Text style={styles.linkText}>
-              Already have an account? Login
-            </Text>
+            <Text style={styles.vespaText}>brought to you by</Text>
+            <Image
+              source={require('../../../assets/vespalogo.png')}
+              style={styles.vespaLogo}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+  },
+  keyboardView: {
+    flex: 1,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
-  title: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 10,
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 40,
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
+  logo: {
+    width: width * 0.6,
+    height: 120,
+    marginBottom: 20,
+  },
+  tagline: {
+    fontSize: 16,
+    color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 40,
+    fontWeight: '500',
   },
   form: {
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
+    color: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  buttonGradient: {
+    padding: 16,
     alignItems: 'center',
-    marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -156,14 +221,30 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   linkButton: {
-    marginTop: 20,
     alignItems: 'center',
   },
   linkText: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: '#94A3B8',
+    fontSize: 15,
+  },
+  linkTextBold: {
+    color: '#00D4FF',
+    fontWeight: '600',
+  },
+  vespaContainer: {
+    alignItems: 'center',
+    opacity: 0.7,
+  },
+  vespaText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  vespaLogo: {
+    width: 120,
+    height: 40,
   },
 }); 
