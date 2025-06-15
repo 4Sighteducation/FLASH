@@ -29,6 +29,7 @@ export default function VoiceRecorder({
   const [audioLevel, setAudioLevel] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isCleanedUp, setIsCleanedUp] = useState(false);
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const levelAnim = useRef(new Animated.Value(0)).current;
@@ -38,17 +39,31 @@ export default function VoiceRecorder({
   useEffect(() => {
     startRecording();
     return () => {
-      if (audioRecorder.isRecording) {
-        audioRecorder.stop();
-      }
-      if (durationInterval.current) {
-        clearInterval(durationInterval.current);
-      }
-      if (meteringInterval.current) {
-        clearInterval(meteringInterval.current);
-      }
+      setIsCleanedUp(true);
+      cleanup();
     };
   }, []);
+
+  const cleanup = async () => {
+    // Clear intervals
+    if (durationInterval.current) {
+      clearInterval(durationInterval.current);
+      durationInterval.current = null;
+    }
+    if (meteringInterval.current) {
+      clearInterval(meteringInterval.current);
+      meteringInterval.current = null;
+    }
+    
+    // Stop recording if still active
+    try {
+      if (audioRecorder.isRecording) {
+        await audioRecorder.stop();
+      }
+    } catch (error) {
+      console.error('Error stopping recorder during cleanup:', error);
+    }
+  };
 
   useEffect(() => {
     // Pulse animation for recording indicator
@@ -99,6 +114,10 @@ export default function VoiceRecorder({
 
       // Prepare and start recording
       await audioRecorder.prepareToRecordAsync();
+      
+      // Check if component was cleaned up during async operations
+      if (isCleanedUp) return;
+      
       audioRecorder.record();
       setIsRecording(true);
       setIsLoading(false);
@@ -116,11 +135,18 @@ export default function VoiceRecorder({
 
       // Start metering update
       meteringInterval.current = setInterval(() => {
-        const status = audioRecorder.getStatus();
-        if (status.isRecording && status.metering !== undefined) {
-          // Normalize audio level from -160 to 0 dB to 0-1 range
-          const normalizedLevel = Math.max(0, (status.metering + 160) / 160);
-          setAudioLevel(normalizedLevel);
+        if (!isCleanedUp && audioRecorder.isRecording) {
+          try {
+            const status = audioRecorder.getStatus();
+            if (status.isRecording && status.metering !== undefined) {
+              // Normalize audio level from -160 to 0 dB to 0-1 range
+              const normalizedLevel = Math.max(0, (status.metering + 160) / 160);
+              setAudioLevel(normalizedLevel);
+            }
+          } catch (error) {
+            // Ignore metering errors if recorder is released
+            console.log('Metering update skipped:', error);
+          }
         }
       }, 100);
     } catch (error) {
@@ -132,30 +158,35 @@ export default function VoiceRecorder({
   };
 
   const stopRecording = async () => {
-    if (!audioRecorder.isRecording) return;
+    if (!audioRecorder.isRecording || isCleanedUp) return;
 
     try {
       setIsLoading(true);
       
+      // Clear intervals first
       if (durationInterval.current) {
         clearInterval(durationInterval.current);
+        durationInterval.current = null;
       }
       if (meteringInterval.current) {
         clearInterval(meteringInterval.current);
+        meteringInterval.current = null;
       }
 
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
       
-      if (uri) {
+      if (uri && !isCleanedUp) {
         onRecordingComplete(uri);
-      } else {
+      } else if (!uri) {
         throw new Error('No recording URI');
       }
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Recording Error', 'Failed to save recording. Please try again.');
-      onCancel();
+      if (!isCleanedUp) {
+        Alert.alert('Recording Error', 'Failed to save recording. Please try again.');
+        onCancel();
+      }
     } finally {
       setIsRecording(false);
       setIsLoading(false);
@@ -163,7 +194,7 @@ export default function VoiceRecorder({
   };
 
   const cancelRecording = async () => {
-    if (audioRecorder.isRecording) {
+    if (audioRecorder.isRecording && !isCleanedUp) {
       try {
         await audioRecorder.stop();
         const uri = audioRecorder.uri;

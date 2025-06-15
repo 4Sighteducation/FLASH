@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -69,6 +69,15 @@ export default function VoiceAnswerModal({
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [showModelAnswer, setShowModelAnswer] = useState(false);
 
+  // Cleanup recording when modal closes
+  useEffect(() => {
+    return () => {
+      if (recordingUri) {
+        audioService.deleteRecording(recordingUri).catch(console.error);
+      }
+    };
+  }, [recordingUri]);
+
   const getGrade = (score: number): string => {
     const examType = card.exam_type?.toLowerCase() || 'alevel';
     const grades = examType === 'gcse' ? GCSE_GRADES : ALEVEL_GRADES;
@@ -123,29 +132,47 @@ export default function VoiceAnswerModal({
       console.error('Error processing voice answer:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       setState('result');
-    } finally {
-      // Clean up recording
-      if (uri) {
-        await audioService.deleteRecording(uri);
-      }
     }
+    // Note: We don't delete the recording here anymore - it will be cleaned up when the modal closes
   };
 
-  const handleAcceptResult = () => {
+  const handleAcceptResult = async () => {
     if (analysis) {
       // Consider it correct if confidence is 60% or higher (Grade 5/C or above)
       const isCorrect = analysis.confidence >= 60;
       onComplete(isCorrect);
     }
+    
+    // Clean up recording before closing
+    if (recordingUri) {
+      await audioService.deleteRecording(recordingUri);
+      setRecordingUri(null);
+    }
+    
     onClose();
   };
 
   const handleRetry = () => {
+    // Clean up previous recording before retry
+    if (recordingUri) {
+      audioService.deleteRecording(recordingUri).catch(console.error);
+      setRecordingUri(null);
+    }
+    
     setState('recording');
     setTranscription('');
     setAnalysis(null);
     setError(null);
     setShowModelAnswer(false);
+  };
+
+  const handleClose = async () => {
+    // Clean up recording before closing
+    if (recordingUri) {
+      await audioService.deleteRecording(recordingUri);
+      setRecordingUri(null);
+    }
+    onClose();
   };
 
   const reset = () => {
@@ -162,11 +189,11 @@ export default function VoiceAnswerModal({
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#666" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Voice Answer</Text>
@@ -177,7 +204,7 @@ export default function VoiceAnswerModal({
           {state === 'recording' && (
             <VoiceRecorder
               onRecordingComplete={handleRecordingComplete}
-              onCancel={onClose}
+              onCancel={handleClose}
               color={color}
             />
           )}
