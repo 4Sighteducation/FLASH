@@ -11,7 +11,7 @@ import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScre
 import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen';
 import TopicCurationScreen from '../screens/onboarding/TopicCurationScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
-import { ActivityIndicator, View } from 'react-native';
+import SplashScreen from '../screens/SplashScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,11 +48,7 @@ export default function AppNavigator() {
   };
 
   if (authLoading || loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   return (

@@ -25,23 +25,31 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
 
   React.useEffect(() => {
-    loadNotificationPreference();
+    loadNotificationPreferences();
   }, []);
 
-  const loadNotificationPreference = async () => {
+  const loadNotificationPreferences = async () => {
     try {
-      const saved = await AsyncStorage.getItem('notificationsEnabled');
-      if (saved !== null) {
-        setNotificationsEnabled(saved === 'true');
+      const [pushNotif, inAppNotif] = await Promise.all([
+        AsyncStorage.getItem('notificationsEnabled'),
+        AsyncStorage.getItem('inAppNotificationsEnabled')
+      ]);
+      
+      if (pushNotif !== null) {
+        setNotificationsEnabled(pushNotif === 'true');
+      }
+      if (inAppNotif !== null) {
+        setInAppNotificationsEnabled(inAppNotif === 'true');
       }
     } catch (error) {
-      console.error('Error loading notification preference:', error);
+      console.error('Error loading notification preferences:', error);
     }
   };
 
@@ -51,6 +59,15 @@ export default function ProfileScreen() {
       await AsyncStorage.setItem('notificationsEnabled', value.toString());
     } catch (error) {
       console.error('Error saving notification preference:', error);
+    }
+  };
+
+  const handleInAppNotificationToggle = async (value: boolean) => {
+    setInAppNotificationsEnabled(value);
+    try {
+      await AsyncStorage.setItem('inAppNotificationsEnabled', value.toString());
+    } catch (error) {
+      console.error('Error saving in-app notification preference:', error);
     }
   };
 
@@ -253,7 +270,7 @@ export default function ProfileScreen() {
           
           <View style={styles.settingRow}>
             <Ionicons name="notifications-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Notifications</Text>
+            <Text style={styles.settingText}>Push Notifications</Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={handleNotificationToggle}
@@ -261,6 +278,20 @@ export default function ProfileScreen() {
               thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
             />
           </View>
+          
+          <View style={styles.settingRow}>
+            <Ionicons name="alert-circle-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Cards Due Reminders</Text>
+            <Switch
+              value={inAppNotificationsEnabled}
+              onValueChange={handleInAppNotificationToggle}
+              trackColor={{ false: '#E5E7EB', true: '#00D4FF' }}
+              thumbColor={inAppNotificationsEnabled ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+          <Text style={styles.settingHint}>
+            Show notification banner when you have cards due for review
+          </Text>
           
           <TouchableOpacity 
             style={styles.settingRow}
@@ -477,5 +508,12 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 30,
+  },
+  settingHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: -10,
+    marginBottom: 10,
+    paddingHorizontal: 40,
   },
 }); 

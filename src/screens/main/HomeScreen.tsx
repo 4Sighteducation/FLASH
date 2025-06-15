@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { notificationService } from '../../services/notificationService';
 import NotificationBadge from '../../components/NotificationBadge';
 import DueCardsNotification from '../../components/DueCardsNotification';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserSubject {
   id: string;
@@ -57,17 +58,23 @@ export default function HomeScreen({ navigation }: any) {
     correct_percentage: 0 
   });
   const [showNotification, setShowNotification] = useState(false);
+  const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
     
     try {
+      // Check if in-app notifications are enabled
+      const inAppNotifPref = await AsyncStorage.getItem('inAppNotificationsEnabled');
+      const isEnabled = inAppNotifPref === null || inAppNotifPref === 'true'; // Default to true
+      setInAppNotificationsEnabled(isEnabled);
+      
       // Fetch cards due count
       const dueCount = await notificationService.getCardsDueCount(user.id);
       setCardsDue(dueCount);
       
-      // Show notification if there are cards due
-      if (dueCount.total > 0) {
+      // Show notification if there are cards due AND in-app notifications are enabled
+      if (dueCount.total > 0 && isEnabled) {
         setTimeout(() => setShowNotification(true), 1000); // Show after a delay
       }
       
@@ -481,7 +488,7 @@ export default function HomeScreen({ navigation }: any) {
       
       <DueCardsNotification
         cardsDue={cardsDue.total}
-        visible={showNotification && cardsDue.total > 0}
+        visible={showNotification && cardsDue.total > 0 && inAppNotificationsEnabled}
         onPress={() => {
           setShowNotification(false);
           navigation.navigate('Study', { openDailyCards: true });
