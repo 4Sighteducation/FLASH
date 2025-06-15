@@ -188,12 +188,23 @@ export default function SubjectSelectionScreen() {
 
       if (subjectsError) throw subjectsError;
 
-      // Navigate to topic curation
-      navigation.navigate('TopicCuration' as never, { 
-        subjects: selectedSubjects,
-        examType,
-        isAddingSubjects: isAddingSubjects || false
-      } as never);
+      // If adding subjects after onboarding, skip topic curation
+      if (isAddingSubjects) {
+        // Go directly to home - users can customize topics in Topic Hub
+        navigation.navigate('HomeMain' as never);
+        Alert.alert(
+          'Subjects Added!', 
+          'Your subjects have been added. You can customize topics anytime from the Topic Hub.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        // If in onboarding flow, go to topic curation
+        navigation.navigate('TopicCuration' as never, { 
+          subjects: selectedSubjects,
+          examType,
+          isAddingSubjects: false
+        } as never);
+      }
     } catch (error) {
       console.error('Error saving subjects:', error);
       Alert.alert('Error', 'Failed to save subjects');
