@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Alert } from 'react-native';
 import { notificationService } from '../../services/notificationService';
 import NotificationBadge from '../../components/NotificationBadge';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface CurriculumTopic {
   id: string;
@@ -62,10 +63,10 @@ const getLighterShade = (color: string, level: number): string => {
 };
 
 export default function TopicListScreen() {
-  const route = useRoute();
+  const route = useRoute<any>();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { subjectId, subjectName, subjectColor } = route.params as any;
+  const { subjectId, subjectName, subjectColor } = route.params;
 
   const [topics, setTopics] = useState<CurriculumTopic[]>([]);
   const [topicTree, setTopicTree] = useState<TopicNode[]>([]);
@@ -77,11 +78,17 @@ export default function TopicListScreen() {
   const [viewMode, setViewMode] = useState<'hierarchy' | 'priority'>('hierarchy');
   const [topicStudyPreferences, setTopicStudyPreferences] = useState<Map<string, boolean>>(new Map());
   const [cardsDue, setCardsDue] = useState<any>({ total: 0, byTopic: {} });
+  const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
     
     try {
+      // Check if in-app notifications are enabled
+      const inAppNotifPref = await AsyncStorage.getItem('inAppNotificationsEnabled');
+      const isEnabled = inAppNotifPref === null || inAppNotifPref === 'true'; // Default to true
+      setInAppNotificationsEnabled(isEnabled);
+      
       const dueCount = await notificationService.getCardsDueCount(user.id);
       setCardsDue(dueCount);
     } catch (error) {
@@ -482,7 +489,7 @@ export default function TopicListScreen() {
           onPress={() => hasChildren ? toggleExpanded(node.id) : handleTopicPress(node)}
         >
           {/* Notification badge in top-right corner */}
-          {totalDueCount > 0 && (
+          {totalDueCount > 0 && inAppNotificationsEnabled && (
             <View style={styles.topicNotificationBadge}>
               <Text style={styles.topicNotificationText}>{totalDueCount}</Text>
             </View>

@@ -391,7 +391,7 @@ export default function HomeScreen({ navigation }: any) {
                         </View>
                       )}
                     </LinearGradient>
-                    {cardsDue.bySubject[subject.subject.subject_name] > 0 && (
+                    {cardsDue.bySubject[subject.subject.subject_name] > 0 && inAppNotificationsEnabled && (
                       <View style={styles.notificationBadgeContainer}>
                         <View style={styles.dueBadge}>
                           <Text style={styles.dueBadgeText}>
