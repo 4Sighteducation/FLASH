@@ -24,6 +24,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    // Add flow type to prevent refresh token issues
+    flowType: 'pkce',
+    // Add storage key to prevent conflicts
+    storageKey: 'flash-app-auth',
   },
 });
 

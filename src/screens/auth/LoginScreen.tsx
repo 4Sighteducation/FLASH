@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,36 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
+
+  // Clear any stale auth tokens on mount
+  useEffect(() => {
+    const clearStaleTokens = async () => {
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const authKeys = keys.filter(key => 
+          key.includes('supabase') || 
+          key.includes('auth') || 
+          key.includes('token')
+        );
+        
+        if (authKeys.length > 0) {
+          console.log('Clearing stale auth tokens...');
+          await AsyncStorage.multiRemove(authKeys);
+        }
+      } catch (error) {
+        console.error('Error clearing tokens:', error);
+      }
+    };
+
+    clearStaleTokens();
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -25,11 +49,39 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Login Error', error.message);
+    
+    try {
+      // Clear any existing tokens before login to prevent refresh token errors
+      const keys = await AsyncStorage.getAllKeys();
+      const authKeys = keys.filter(key => 
+        key.includes('supabase') || 
+        key.includes('auth') || 
+        key.includes('token')
+      );
+      
+      if (authKeys.length > 0) {
+        await AsyncStorage.multiRemove(authKeys);
+      }
+      
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        // Handle specific auth errors
+        if (error.message?.includes('Invalid Refresh Token') || 
+            error.message?.includes('Already Used')) {
+          Alert.alert(
+            'Session Error', 
+            'Your session has expired. Please try logging in again.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Login Error', error.message);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
