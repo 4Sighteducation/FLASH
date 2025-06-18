@@ -16,6 +16,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 
@@ -51,6 +52,7 @@ export default function CreateCardScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { tier, checkLimits } = useSubscription();
   const { topicId, topicName, subjectName } = route.params as {
     topicId: string;
     topicName: string;
@@ -72,6 +74,28 @@ export default function CreateCardScreen() {
     if (!question.trim()) {
       Alert.alert('Error', 'Please enter a question');
       return;
+    }
+
+    // Check card limits for lite users
+    if (tier === 'lite') {
+      const { data: userCards, error } = await supabase
+        .from('flashcards')
+        .select('id')
+        .eq('user_id', user?.id);
+      
+      const currentCardCount = userCards?.length || 0;
+      
+      if (!checkLimits('card', currentCardCount + 1)) {
+        Alert.alert(
+          'Upgrade Required',
+          `You've reached the 10 card limit for the free version. Upgrade to FLASH Full for unlimited cards!`,
+          [
+            { text: 'Not Now', style: 'cancel' },
+            { text: 'Upgrade', onPress: () => navigation.navigate('Profile' as never) }
+          ]
+        );
+        return;
+      }
     }
 
     if (cardType === 'multiple_choice') {

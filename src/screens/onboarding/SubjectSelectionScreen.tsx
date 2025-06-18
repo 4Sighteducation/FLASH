@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 interface ExamBoard {
   id: string;
@@ -46,6 +47,7 @@ export default function SubjectSelectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, checkLimits } = useSubscription();
   const { examType, isAddingSubjects } = route.params as { examType: string; isAddingSubjects?: boolean };
   
   const [examBoards, setExamBoards] = useState<ExamBoard[]>([]);
@@ -155,11 +157,47 @@ export default function SubjectSelectionScreen() {
     if (existingIndex >= 0) {
       setSelectedSubjects(selectedSubjects.filter((_, index) => index !== existingIndex));
     } else {
-      setSelectedSubjects([...selectedSubjects, {
-        subjectId: subject.id,
-        subjectName: subject.subject_name,
-        examBoard: selectedExamBoard!.code,
-      }]);
+      // Check subscription limits for lite users
+      if (tier === 'lite') {
+        // Get current active subjects count from database
+        const checkAndToggle = async () => {
+          const { data: userSubjects, error } = await supabase
+            .from('user_subjects')
+            .select('id')
+            .eq('user_id', user?.id)
+            .eq('is_active', true);
+          
+          const currentSubjectCount = (userSubjects?.length || 0) + selectedSubjects.length;
+          
+          if (!checkLimits('subject', currentSubjectCount + 1)) {
+            Alert.alert(
+              'Upgrade Required',
+              'The free version is limited to 1 subject. Upgrade to FLASH Full to add unlimited subjects!',
+              [
+                { text: 'Not Now', style: 'cancel' },
+                { text: 'Upgrade', onPress: () => navigation.navigate('Profile' as never) }
+              ]
+            );
+            return;
+          }
+          
+          // If within limits, add the subject
+          setSelectedSubjects([...selectedSubjects, {
+            subjectId: subject.id,
+            subjectName: subject.subject_name,
+            examBoard: selectedExamBoard!.code,
+          }]);
+        };
+        
+        checkAndToggle();
+      } else {
+        // Full version - no limits
+        setSelectedSubjects([...selectedSubjects, {
+          subjectId: subject.id,
+          subjectName: subject.subject_name,
+          examBoard: selectedExamBoard!.code,
+        }]);
+      }
     }
   };
 
