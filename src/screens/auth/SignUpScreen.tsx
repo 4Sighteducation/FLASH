@@ -148,8 +148,8 @@ export default function SignUpScreen({ navigation }: any) {
           >
             <Text style={styles.vespaText}>brought to you by</Text>
             <Image
-              source={require('../../../assets/vespalogo.png')}
-              style={styles.vespaLogo}
+              source={require('../../../assets/flashv2.png')}
+              style={styles.vespaLogoSmall}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 8,
   },
-  vespaLogo: {
+  vespaLogoSmall: {
     width: 120,
     height: 40,
   },
