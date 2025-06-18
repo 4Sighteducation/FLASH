@@ -26,9 +26,12 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "2",
+      buildNumber: "3",
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false
+        ITSAppUsesNonExemptEncryption: false,
+        NSMicrophoneUsageDescription: "FLASH needs access to your microphone to record voice answers for flashcards. This helps you practice speaking and improves your learning experience.",
+        NSCameraUsageDescription: "FLASH needs access to your camera to capture images for creating flashcards from photos of your notes or textbooks.",
+        NSPhotoLibraryUsageDescription: "FLASH needs access to your photo library to select images for creating flashcards from your saved photos."
       }
     },
     android: {
