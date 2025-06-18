@@ -21,32 +21,56 @@ export default function AppNavigator() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AppNavigator useEffect - user:', user?.id, 'authLoading:', authLoading);
     if (user) {
       checkOnboardingStatus();
     } else {
+      console.log('No user, setting loading to false');
       setLoading(false);
     }
   }, [user]);
 
   const checkOnboardingStatus = async () => {
     try {
+      console.log('Checking onboarding status for user:', user?.id);
+      
+      if (!user?.id) {
+        console.log('No user ID found, setting onboarded to false');
+        setIsOnboarded(false);
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('is_onboarded')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
-      if (error) throw error;
-      
-      setIsOnboarded(data?.is_onboarded || false);
+      if (error) {
+        console.error('Supabase error checking onboarding:', error);
+        // If user record doesn't exist, assume not onboarded
+        if (error.code === 'PGRST116') {
+          console.log('User record not found, assuming not onboarded');
+          setIsOnboarded(false);
+        } else {
+          throw error;
+        }
+      } else {
+        console.log('Onboarding status:', data?.is_onboarded);
+        setIsOnboarded(data?.is_onboarded || false);
+      }
     } catch (error) {
       console.error('Error checking onboarding status:', error);
+      // Default to not onboarded if there's an error
       setIsOnboarded(false);
     } finally {
       setLoading(false);
     }
   };
 
+  console.log('AppNavigator render - authLoading:', authLoading, 'loading:', loading, 'user:', user?.id, 'isOnboarded:', isOnboarded);
+  
   if (authLoading || loading) {
     return <SplashScreen />;
   }

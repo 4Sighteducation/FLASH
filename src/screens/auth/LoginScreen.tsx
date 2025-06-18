@@ -128,6 +128,20 @@ export default function LoginScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
+          {/* VESPA header */}
+          <TouchableOpacity 
+            style={styles.vespaHeader}
+            onPress={openVespaWebsite}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.vespaHeaderText}>brought to you by</Text>
+            <Image
+              source={require('../../../assets/vespalogo.png')}
+              style={styles.vespaLogoSmall}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
           {/* Logo Section */}
           <View style={styles.logoContainer}>
             <Image
@@ -187,92 +201,74 @@ export default function LoginScreen({ navigation }: any) {
             {/* Social Login Section */}
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
-              <Text style={styles.dividerText}>OR</Text>
+              <Text style={styles.dividerText}>Sign in with</Text>
               <View style={styles.divider} />
             </View>
 
-            <View style={styles.socialButtonsContainer}>
+            <View style={styles.socialIconsContainer}>
               <TouchableOpacity
-                style={[styles.socialButton, socialLoading === 'google' && styles.socialButtonActive]}
+                style={[styles.socialIconButton, socialLoading === 'google' && styles.socialIconActive]}
                 onPress={() => handleSocialLogin('google')}
                 disabled={!!socialLoading || loading}
               >
                 {socialLoading === 'google' ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#EA4335" />
                 ) : (
-                  <>
-                    <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 8 }} />
-                    <Text style={styles.socialButtonText}>Continue with Google</Text>
-                  </>
+                  <Ionicons name="logo-google" size={28} color="#EA4335" />
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialButton, socialLoading === 'microsoft' && styles.socialButtonActive]}
+                style={[styles.socialIconButton, socialLoading === 'microsoft' && styles.socialIconActive]}
                 onPress={() => handleSocialLogin('microsoft')}
                 disabled={!!socialLoading || loading}
               >
                 {socialLoading === 'microsoft' ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#0078D4" />
                 ) : (
-                  <>
-                    <Ionicons name="logo-windows" size={20} color="#0078D4" style={{ marginRight: 8 }} />
-                    <Text style={styles.socialButtonText}>Continue with Microsoft</Text>
-                  </>
+                  <Ionicons name="logo-windows" size={28} color="#0078D4" />
                 )}
               </TouchableOpacity>
 
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
-                  style={[styles.socialButton, styles.socialButtonApple, socialLoading === 'apple' && styles.socialButtonActive]}
+                  style={[styles.socialIconButton, styles.socialIconApple, socialLoading === 'apple' && styles.socialIconActive]}
                   onPress={() => handleSocialLogin('apple')}
                   disabled={!!socialLoading || loading}
                 >
                   {socialLoading === 'apple' ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <>
-                      <Ionicons name="logo-apple" size={20} color="#000" style={{ marginRight: 8 }} />
-                      <Text style={[styles.socialButtonText, styles.socialButtonTextApple]}>Continue with Apple</Text>
-                    </>
+                    <Ionicons name="logo-apple" size={28} color="#fff" />
                   )}
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={[styles.socialButton, styles.socialButtonPhone]}
+                style={[styles.socialIconButton, socialLoading === 'phone' && styles.socialIconActive]}
                 onPress={() => setShowPhoneAuth(true)}
                 disabled={!!socialLoading || loading}
               >
-                <Ionicons name="call" size={20} color="#10B981" style={{ marginRight: 8 }} />
-                <Text style={styles.socialButtonText}>Continue with Phone</Text>
+                {socialLoading === 'phone' ? (
+                  <ActivityIndicator size="small" color="#10B981" />
+                ) : (
+                  <Ionicons name="call" size={28} color="#10B981" />
+                )}
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => navigation.navigate('SignUp')}
-              disabled={loading || !!socialLoading}
-            >
-              <Text style={styles.linkText}>
-                Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>New to FLASH?</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('SignUp')}
+                disabled={loading || !!socialLoading}
+              >
+                <Text style={styles.signupLink}>Create account</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* VESPA Academy Footer */}
-          <TouchableOpacity 
-            style={styles.vespaContainer}
-            onPress={openVespaWebsite}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.vespaText}>brought to you by</Text>
-            <Image
-              source={require('../../../assets/vespalogo.png')}
-              style={styles.vespaLogo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+
         </View>
       </KeyboardAvoidingView>
 
@@ -295,23 +291,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 40,
+  },
+  vespaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  vespaHeaderText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginRight: 6,
+  },
+  vespaLogoSmall: {
+    width: 60,
+    height: 20,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 30,
   },
   logo: {
-    width: width * 0.7,
-    height: 160,
-    marginBottom: 20,
+    width: width * 0.85,
+    height: 200,
+    marginBottom: 16,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#94A3B8',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   form: {
     width: '100%',
@@ -348,30 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  linkButton: {
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#94A3B8',
-    fontSize: 15,
-  },
-  linkTextBold: {
-    color: '#00D4FF',
-    fontWeight: '600',
-  },
-  vespaContainer: {
-    alignItems: 'center',
-    opacity: 0.7,
-  },
-  vespaText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  vespaLogo: {
-    width: 120,
-    height: 40,
-  },
+
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,50 +375,51 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 10,
     color: '#94A3B8',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   socialButtonsContainer: {
     marginBottom: 20,
   },
-  socialButton: {
+  socialIconsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    padding: 16,
-    backgroundColor: '#fff',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 30,
+    gap: 20,
+  },
+  socialIconButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  socialButtonActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  socialIconActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  socialIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
-  },
-  socialButtonText: {
-    color: '#1E293B',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  socialButtonSecondary: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  socialButtonTextSecondary: {
-    color: '#00D4FF',
-  },
-  socialButtonApple: {
+  socialIconApple: {
     backgroundColor: '#000',
     borderColor: '#000',
   },
-  socialButtonTextApple: {
-    color: '#fff',
+
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 8,
   },
-  socialButtonPhone: {
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+  signupText: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+  signupLink: {
+    color: '#00D4FF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 
