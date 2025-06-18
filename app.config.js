@@ -13,10 +13,10 @@ export default {
     slug: "flash",
     version: "1.0.1",
     orientation: "portrait",
-    icon: "./assets/flashv2.png",
+    icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/flashv2.png",
+      image: "./assets/splash.png",
       resizeMode: "contain",
       backgroundColor: "#0F172A"
     },
