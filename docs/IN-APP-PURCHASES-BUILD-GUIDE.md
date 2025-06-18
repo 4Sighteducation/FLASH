@@ -105,9 +105,28 @@ We've created a mock version of the SubscriptionContext that:
 
 ```bash
 # Development with mock IAP
-npm run start:dev
+npm run iap:mock      # Switch to mock IAP
+npm run start         # Start Expo Go
 
-# Build for production with real IAP
-npm run build:ios
-npm run build:android
-``` 
+# Production with real IAP
+npm run iap:real      # Switch to real IAP
+npm run build:android # Build for Android (automatically switches to real IAP)
+npm run build:ios     # Build for iOS (automatically switches to real IAP)
+
+# Manual switching
+node scripts/toggle-iap.js mock  # For development
+node scripts/toggle-iap.js real  # For production
+```
+
+## Workflow Summary
+
+1. **For Development**: 
+   ```bash
+   npm run iap:mock
+   npx expo start
+   ```
+
+2. **For Production Build**:
+   ```bash
+   npm run build:android  # Automatically switches to real IAP
+   ``` 

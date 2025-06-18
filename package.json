@@ -11,8 +11,12 @@
     "eject": "expo eject",
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx",
-    "build:android": "eas build --platform android",
-    "build:ios": "eas build --platform ios"
+    "iap:mock": "node scripts/toggle-iap.js mock",
+    "iap:real": "node scripts/toggle-iap.js real",
+    "build:android": "npm run iap:real && eas build --platform android",
+    "build:ios": "npm run iap:real && eas build --platform ios",
+    "build:android:dev": "npm run iap:real && eas build --platform android --profile development",
+    "build:ios:dev": "npm run iap:real && eas build --platform ios --profile development"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
