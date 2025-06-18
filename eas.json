@@ -34,7 +34,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "tony@vespa.academy"
+        "appleId": "tony@vespa.academy",
+        "ascAppId": "6747457678"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
