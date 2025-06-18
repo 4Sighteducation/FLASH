@@ -199,10 +199,7 @@ export default function LoginScreen({ navigation }: any) {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Image 
-                      source={require('../../../assets/googleicon.png')} 
-                      style={styles.socialIcon}
-                    />
+                    <Ionicons name="logo-google" size={20} color="#EA4335" style={{ marginRight: 8 }} />
                     <Text style={styles.socialButtonText}>Continue with Google</Text>
                   </>
                 )}
