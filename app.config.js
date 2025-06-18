@@ -11,7 +11,7 @@ export default {
   expo: {
     name: "FLASH",
     slug: "flash",
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -34,7 +34,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 1
+      versionCode: 2
     },
     web: {
       favicon: "./assets/favicon/favicon.ico"
