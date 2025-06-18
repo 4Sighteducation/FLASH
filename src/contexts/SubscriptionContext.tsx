@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Alert } from 'react-native';
-import * as InAppPurchases from 'expo-in-app-purchases';
+// import * as InAppPurchases from 'expo-in-app-purchases';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
 
@@ -66,18 +66,18 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const initializeIAP = async () => {
     try {
-      await InAppPurchases.connectAsync();
+      // await InAppPurchases.connectAsync();
       
       // Set up purchase listener
-      InAppPurchases.setPurchaseListener((result) => {
-        if (result.responseCode === InAppPurchases.IAPResponseCode.OK) {
-          result.results?.forEach((purchase) => {
-            if (!purchase.acknowledged) {
-              handleSuccessfulPurchase(purchase);
-            }
-          });
-        }
-      });
+      // InAppPurchases.setPurchaseListener((result) => {
+      //   if (result.responseCode === InAppPurchases.IAPResponseCode.OK) {
+      //     result.results?.forEach((purchase) => {
+      //       if (!purchase.acknowledged) {
+      //         handleSuccessfulPurchase(purchase);
+      //       }
+      //     });
+      //   }
+      // });
     } catch (error) {
       console.error('Failed to initialize IAP:', error);
     }
@@ -109,7 +109,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const handleSuccessfulPurchase = async (purchase: InAppPurchases.InAppPurchase) => {
+  const handleSuccessfulPurchase = async (purchase: any) => {
     try {
       // Verify purchase with your backend
       const { error } = await supabase
@@ -129,7 +129,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       // Acknowledge the purchase
-      await InAppPurchases.finishTransactionAsync(purchase, true);
+      // await InAppPurchases.finishTransactionAsync(purchase, true);
     } catch (error) {
       console.error('Error processing purchase:', error);
       Alert.alert('Error', 'Failed to process purchase. Please contact support.');
@@ -138,6 +138,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const purchaseFullVersion = async () => {
     try {
+      // Comment out all IAP functionality since we're using mock
+      Alert.alert('Info', 'In-app purchases are not available in this build.');
+      /*
       const productId = Platform.OS === 'ios' ? PRODUCT_IDS.ios : PRODUCT_IDS.android;
       
       // Get available products
@@ -149,6 +152,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       } else {
         Alert.alert('Error', 'Product not available. Please try again later.');
       }
+      */
     } catch (error) {
       console.error('Purchase error:', error);
       Alert.alert('Error', 'Failed to initiate purchase.');
@@ -157,6 +161,9 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const restorePurchases = async () => {
     try {
+      // Comment out all IAP functionality since we're using mock
+      Alert.alert('Info', 'Purchase restoration is not available in this build.');
+      /*
       const { responseCode, results } = await InAppPurchases.getPurchaseHistoryAsync();
       
       if (responseCode === InAppPurchases.IAPResponseCode.OK) {
@@ -173,6 +180,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           Alert.alert('No Purchases', 'No previous purchases found.');
         }
       }
+      */
     } catch (error) {
       console.error('Restore error:', error);
       Alert.alert('Error', 'Failed to restore purchases.');

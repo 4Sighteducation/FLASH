@@ -13,10 +13,10 @@ export default {
     slug: "flash",
     version: "1.0.1",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/flashv2.png",
     userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/flashtransparent.png",
+      image: "./assets/flashv2.png",
       resizeMode: "contain",
       backgroundColor: "#0F172A"
     },
@@ -30,13 +30,14 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/icon.png",
+        foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#0F172A"
       },
-      package: "com.foursighteducation.flash"
+      package: "com.foursighteducation.flash",
+      versionCode: 1
     },
     web: {
-      favicon: "./assets/favicon.png"
+      // favicon: "./assets/favicon.png"
     },
     scheme: "flash",
     extra: {
