@@ -21,6 +21,7 @@ import { UserSubjectWithName } from '../../types/database';
 import { debugCards } from '../../utils/debugCards';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -52,6 +53,7 @@ interface StudyCard {
 
 export default function StudyScreen({ route, navigation }: any) {
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [boxStats, setBoxStats] = useState<BoxStats>({
     box1: 0,
@@ -326,16 +328,16 @@ export default function StudyScreen({ route, navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, theme === 'cyber' && { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#1a1f3a', '#2d3561']}
+        colors={theme === 'cyber' ? colors.gradient : ['#1a1f3a', '#2d3561']}
         style={styles.gradientBackground}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={styles.headerTitleContainer}>
-                <Ionicons name="school" size={32} color="#00D4FF" />
+                <Ionicons name="school" size={32} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.headerTitle}>Study Hub</Text>
                   <Text style={styles.headerSubtitle}>

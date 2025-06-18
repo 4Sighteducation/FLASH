@@ -19,6 +19,7 @@ import { notificationService } from '../../services/notificationService';
 import NotificationBadge from '../../components/NotificationBadge';
 import DueCardsNotification from '../../components/DueCardsNotification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface UserSubject {
   id: string;
@@ -39,6 +40,8 @@ interface UserData {
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { colors, theme } = useTheme();
+  const styles = createStyles(colors, theme);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,7 +238,7 @@ export default function HomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LinearGradient
-          colors={['#6366F1', '#8B5CF6']}
+          colors={theme === 'cyber' ? colors.gradient : ['#6366F1', '#8B5CF6']}
           style={styles.headerGradient}
         >
           <View style={styles.header}>
@@ -509,10 +512,10 @@ const adjustColor = (color: string, amount: number): string => {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme === 'cyber' ? colors.background : '#f0f0f0',
   },
   loadingContainer: {
     flex: 1,
@@ -527,18 +530,22 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
     marginBottom: 10,
+    ...(theme === 'cyber' && {
+      borderWidth: 1,
+      borderColor: colors.border,
+    }),
   },
   header: {
     marginBottom: 10,
   },
   greeting: {
     fontSize: 24,
-    color: '#E0E7FF',
+    color: theme === 'cyber' ? colors.textSecondary : '#E0E7FF',
   },
   username: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: theme === 'cyber' ? colors.text : '#FFFFFF',
   },
   examTypeBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -586,10 +593,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: theme === 'cyber' ? colors.text : '#333',
     marginBottom: 15,
     paddingHorizontal: 20,
     marginTop: 20,
+    ...(theme === 'cyber' && {
+      textShadowColor: colors.primary,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 4,
+    }),
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -723,21 +735,25 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme === 'cyber' ? colors.primary : '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: theme === 'cyber' ? 0.3 : 0.08,
     shadowRadius: 4,
     elevation: 3,
     minWidth: 90,
+    ...(theme === 'cyber' && {
+      borderWidth: 1,
+      borderColor: colors.border,
+    }),
   },
   actionText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#333',
+    color: theme === 'cyber' ? colors.text : '#333',
     fontWeight: '600',
     textAlign: 'center',
   },
