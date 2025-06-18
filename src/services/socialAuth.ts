@@ -12,12 +12,58 @@ const redirectUri = makeRedirectUri({
   path: 'auth/callback'
 });
 
-export type SocialProvider = 'google' | 'tiktok' | 'snapchat' | 'apple';
+export type SocialProvider = 'google' | 'microsoft' | 'apple' | 'tiktok' | 'snapchat';
+export type AuthProvider = SocialProvider | 'phone';
 
 interface AuthResponse {
   error: any;
   url?: string;
 }
+
+export const phoneAuth = {
+  // Send OTP to phone number
+  sendOTP: async (phone: string): Promise<AuthResponse> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: phone,
+        options: {
+          channel: 'sms',
+        }
+      });
+
+      if (error) {
+        console.error('Phone OTP error:', error);
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Send OTP error:', error);
+      return { error };
+    }
+  },
+
+  // Verify OTP code
+  verifyOTP: async (phone: string, token: string): Promise<AuthResponse> => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phone,
+        token: token,
+        type: 'sms',
+      });
+
+      if (error) {
+        console.error('Verify OTP error:', error);
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('Verify OTP error:', error);
+      return { error };
+    }
+  },
+};
 
 export const socialAuth = {
   // Sign in with Google
@@ -56,6 +102,42 @@ export const socialAuth = {
       return { error: new Error('No authentication URL returned') };
     } catch (error) {
       console.error('Google sign in error:', error);
+      return { error };
+    }
+  },
+
+  // Sign in with Microsoft (Azure AD)
+  signInWithMicrosoft: async (): Promise<AuthResponse> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo: redirectUri,
+          scopes: 'email profile openid',
+        },
+      });
+
+      if (error) {
+        console.error('Microsoft auth error:', error);
+        return { error };
+      }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUri
+        );
+
+        if (result.type === 'cancel') {
+          return { error: new Error('Authentication cancelled') };
+        }
+
+        return { error: null, url: data.url };
+      }
+
+      return { error: new Error('No authentication URL returned') };
+    } catch (error) {
+      console.error('Microsoft sign in error:', error);
       return { error };
     }
   },
@@ -150,12 +232,14 @@ export const socialAuth = {
     switch (provider) {
       case 'google':
         return socialAuth.signInWithGoogle();
+      case 'microsoft':
+        return socialAuth.signInWithMicrosoft();
+      case 'apple':
+        return socialAuth.signInWithApple();
       case 'tiktok':
         return socialAuth.signInWithTikTok();
       case 'snapchat':
         return socialAuth.signInWithSnapchat();
-      case 'apple':
-        return socialAuth.signInWithApple();
       default:
         return { error: new Error(`Provider ${provider} not supported`) };
     }

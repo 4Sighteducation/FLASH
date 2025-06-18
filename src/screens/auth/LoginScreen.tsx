@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { socialAuth } from '../../services/socialAuth';
+import PhoneAuthModal from '../../components/PhoneAuthModal';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ export default function LoginScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
+  const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const { signIn } = useAuth();
 
   // Clear any stale auth tokens on mount
@@ -94,7 +96,7 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'tiktok' | 'snapchat') => {
+  const handleSocialLogin = async (provider: 'google' | 'microsoft' | 'apple') => {
     setSocialLoading(provider);
     
     try {
@@ -206,37 +208,44 @@ export default function LoginScreen({ navigation }: any) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialButton, styles.socialButtonSecondary, socialLoading === 'tiktok' && styles.socialButtonActive]}
-                onPress={() => handleSocialLogin('tiktok')}
+                style={[styles.socialButton, socialLoading === 'microsoft' && styles.socialButtonActive]}
+                onPress={() => handleSocialLogin('microsoft')}
                 disabled={!!socialLoading || loading}
               >
-                {socialLoading === 'tiktok' ? (
+                {socialLoading === 'microsoft' ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <Ionicons name="musical-notes" size={20} color="#00D4FF" />
-                    <Text style={[styles.socialButtonText, styles.socialButtonTextSecondary]}>
-                      Continue with TikTok
-                    </Text>
+                    <Ionicons name="logo-windows" size={20} color="#0078D4" style={{ marginRight: 8 }} />
+                    <Text style={styles.socialButtonText}>Continue with Microsoft</Text>
                   </>
                 )}
               </TouchableOpacity>
 
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.socialButtonApple, socialLoading === 'apple' && styles.socialButtonActive]}
+                  onPress={() => handleSocialLogin('apple')}
+                  disabled={!!socialLoading || loading}
+                >
+                  {socialLoading === 'apple' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-apple" size={20} color="#000" style={{ marginRight: 8 }} />
+                      <Text style={[styles.socialButtonText, styles.socialButtonTextApple]}>Continue with Apple</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
-                style={[styles.socialButton, styles.socialButtonSecondary, socialLoading === 'snapchat' && styles.socialButtonActive]}
-                onPress={() => handleSocialLogin('snapchat')}
+                style={[styles.socialButton, styles.socialButtonPhone]}
+                onPress={() => setShowPhoneAuth(true)}
                 disabled={!!socialLoading || loading}
               >
-                {socialLoading === 'snapchat' ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="logo-snapchat" size={20} color="#00D4FF" />
-                    <Text style={[styles.socialButtonText, styles.socialButtonTextSecondary]}>
-                      Continue with Snapchat
-                    </Text>
-                  </>
-                )}
+                <Ionicons name="call" size={20} color="#10B981" style={{ marginRight: 8 }} />
+                <Text style={styles.socialButtonText}>Continue with Phone</Text>
               </TouchableOpacity>
             </View>
 
@@ -266,6 +275,11 @@ export default function LoginScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      <PhoneAuthModal 
+        visible={showPhoneAuth}
+        onClose={() => setShowPhoneAuth(false)}
+      />
     </LinearGradient>
   );
 }
@@ -406,5 +420,15 @@ const styles = StyleSheet.create({
   },
   socialButtonTextSecondary: {
     color: '#00D4FF',
+  },
+  socialButtonApple: {
+    backgroundColor: '#000',
+    borderColor: '#000',
+  },
+  socialButtonTextApple: {
+    color: '#fff',
+  },
+  socialButtonPhone: {
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
 }); 
