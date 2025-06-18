@@ -16,6 +16,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { socialAuth } from '../../services/socialAuth';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +25,7 @@ export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { signIn } = useAuth();
 
   // Clear any stale auth tokens on mount
@@ -91,6 +94,24 @@ export default function LoginScreen({ navigation }: any) {
     }
   };
 
+  const handleSocialLogin = async (provider: 'google' | 'tiktok' | 'snapchat') => {
+    setSocialLoading(provider);
+    
+    try {
+      const { error } = await socialAuth.signInWithProvider(provider);
+      
+      if (error) {
+        if (error.message !== 'Authentication cancelled') {
+          Alert.alert('Login Error', error.message);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
   const openVespaWebsite = () => {
     Linking.openURL('https://www.vespa.academy');
   };
@@ -126,7 +147,7 @@ export default function LoginScreen({ navigation }: any) {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
-                editable={!loading}
+                editable={!loading && !socialLoading}
               />
             </View>
 
@@ -138,14 +159,14 @@ export default function LoginScreen({ navigation }: any) {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
-                editable={!loading}
+                editable={!loading && !socialLoading}
               />
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, (loading || socialLoading) && styles.buttonDisabled]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || !!socialLoading}
             >
               <LinearGradient
                 colors={['#00D4FF', '#00B4E6']}
@@ -161,10 +182,71 @@ export default function LoginScreen({ navigation }: any) {
               </LinearGradient>
             </TouchableOpacity>
 
+            {/* Social Login Section */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <View style={styles.socialButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.socialButton, socialLoading === 'google' && styles.socialButtonActive]}
+                onPress={() => handleSocialLogin('google')}
+                disabled={!!socialLoading || loading}
+              >
+                {socialLoading === 'google' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Image 
+                      source={require('../../../assets/googleicon.png')} 
+                      style={styles.socialIcon}
+                    />
+                    <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, styles.socialButtonSecondary, socialLoading === 'tiktok' && styles.socialButtonActive]}
+                onPress={() => handleSocialLogin('tiktok')}
+                disabled={!!socialLoading || loading}
+              >
+                {socialLoading === 'tiktok' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="musical-notes" size={20} color="#00D4FF" />
+                    <Text style={[styles.socialButtonText, styles.socialButtonTextSecondary]}>
+                      Continue with TikTok
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialButton, styles.socialButtonSecondary, socialLoading === 'snapchat' && styles.socialButtonActive]}
+                onPress={() => handleSocialLogin('snapchat')}
+                disabled={!!socialLoading || loading}
+              >
+                {socialLoading === 'snapchat' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-snapchat" size={20} color="#00D4FF" />
+                    <Text style={[styles.socialButtonText, styles.socialButtonTextSecondary]}>
+                      Continue with Snapchat
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               style={styles.linkButton}
               onPress={() => navigation.navigate('SignUp')}
-              disabled={loading}
+              disabled={loading || !!socialLoading}
             >
               <Text style={styles.linkText}>
                 Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
@@ -278,5 +360,54 @@ const styles = StyleSheet.create({
   vespaLogo: {
     width: 120,
     height: 40,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: '#94A3B8',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  socialButtonsContainer: {
+    marginBottom: 20,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#fff',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  socialButtonActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  socialIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+  },
+  socialButtonText: {
+    color: '#1E293B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  socialButtonSecondary: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  socialButtonTextSecondary: {
+    color: '#00D4FF',
   },
 }); 
