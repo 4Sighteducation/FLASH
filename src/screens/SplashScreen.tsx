@@ -18,7 +18,7 @@ export default function SplashScreen() {
     >
       <View style={styles.content}>
         <Image
-          source={require('../../assets/transparent1.png')}
+          source={require('../../assets/flashtransparent.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: width * 0.6,
-    height: 120,
+    width: width * 0.7,
+    height: 160,
     marginBottom: 50,
   },
   loader: {

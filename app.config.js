@@ -11,7 +11,7 @@ export default {
   expo: {
     name: "FLASH",
     slug: "flash",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -26,7 +26,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "1"
+      buildNumber: "2"
     },
     android: {
       adaptiveIcon: {

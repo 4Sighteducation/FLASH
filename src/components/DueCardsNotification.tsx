@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const { width, height } = Dimensions.get('window');
 
 interface DueCardsNotificationProps {
   cardsDue: number;
@@ -11,148 +13,204 @@ interface DueCardsNotificationProps {
 }
 
 export default function DueCardsNotification({ cardsDue, onPress, visible, onDismiss }: DueCardsNotificationProps) {
-  const slideAnim = useRef(new Animated.Value(-80)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible && cardsDue > 0) {
-      // Slide in and scale animation
+      // Fade in and scale animation
       Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 40,
-          friction: 8,
-        }),
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
-          tension: 40,
-          friction: 8,
+          tension: 50,
+          friction: 7,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
         }),
       ]).start();
     } else {
-      // Slide out
-      Animated.timing(slideAnim, {
-        toValue: -80,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      // Fade out
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
   }, [visible, cardsDue]);
 
   if (!visible || cardsDue <= 0) return null;
 
   return (
-    <Animated.View 
-      style={[
-        styles.container,
-        {
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim }
-          ],
-        },
-      ]}
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={onDismiss}
     >
-      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-        <LinearGradient
-          colors={['#6366F1', '#8B5CF6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradient}
+      <TouchableOpacity 
+        style={styles.overlay} 
+        activeOpacity={1} 
+        onPress={onDismiss}
+      >
+        <Animated.View 
+          style={[
+            styles.container,
+            {
+              transform: [{ scale: scaleAnim }],
+              opacity: opacityAnim,
+            },
+          ]}
         >
-          <View style={styles.iconContainer}>
-            <Ionicons name="notifications" size={24} color="#FFFFFF" />
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{cardsDue}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>
-              {cardsDue} {cardsDue === 1 ? 'card' : 'cards'} due for review
-            </Text>
-            <Text style={styles.subtitle}>Tap to start studying</Text>
-          </View>
-          
-          <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-        </LinearGradient>
+          <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+            <LinearGradient
+              colors={['#6366F1', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradient}
+            >
+              {onDismiss && (
+                <TouchableOpacity
+                  style={styles.dismissButton}
+                  onPress={onDismiss}
+                >
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              
+              <View style={styles.iconContainer}>
+                <View style={styles.iconBackground}>
+                  <Ionicons name="notifications" size={32} color="#FFFFFF" />
+                </View>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{cardsDue}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.textContainer}>
+                <Text style={styles.title}>
+                  {cardsDue} {cardsDue === 1 ? 'Card' : 'Cards'} Due for Review
+                </Text>
+                <Text style={styles.subtitle}>
+                  Keep your streak going! Tap to start studying now.
+                </Text>
+              </View>
+              
+              <TouchableOpacity style={styles.button} onPress={onPress}>
+                <Text style={styles.buttonText}>Start Studying</Text>
+                <Ionicons name="arrow-forward" size={20} color="#6366F1" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
       </TouchableOpacity>
-      {onDismiss && (
-        <TouchableOpacity
-          style={styles.dismissButton}
-          onPress={onDismiss}
-        >
-          <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
-    </Animated.View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 80, // Above tab bar
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    paddingHorizontal: 16,
-  },
-  gradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  iconContainer: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  badge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#FF3B30',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+  container: {
+    width: width * 0.85,
+    maxWidth: 340,
   },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  subtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-    marginTop: 2,
+  gradient: {
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   dismissButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconBackground: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF3B30',
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 3,
+    borderColor: '#6366F1',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  button: {
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     borderRadius: 12,
-    padding: 2,
+    gap: 8,
+  },
+  buttonText: {
+    color: '#6366F1',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

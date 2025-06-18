@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +47,13 @@ export default function FlashcardsScreen() {
   useEffect(() => {
     fetchFlashcards();
   }, [filter]);
+
+  // Refresh flashcards when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchFlashcards();
+    }, [filter])
+  );
 
   const fetchFlashcards = async () => {
     try {

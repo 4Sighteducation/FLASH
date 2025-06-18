@@ -20,6 +20,7 @@ import StudySubjectAccordion from '../../components/StudySubjectAccordion';
 import { UserSubjectWithName } from '../../types/database';
 import { debugCards } from '../../utils/debugCards';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -326,140 +327,152 @@ export default function StudyScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Study Hub</Text>
-          <Text style={styles.headerSubtitle}>
-            Review your flashcards using spaced repetition
-          </Text>
-          <View style={styles.headerStats}>
-            <View style={styles.headerStatItem}>
-              <Text style={styles.headerStatValue}>{boxStats.totalInStudyBank}</Text>
-              <Text style={styles.headerStatLabel}>Total Cards</Text>
-            </View>
-            <View style={styles.headerStatDivider} />
-            <View style={styles.headerStatItem}>
-              <Text style={[styles.headerStatValue, styles.dueStatValue]}>{boxStats.totalDue}</Text>
-              <Text style={styles.headerStatLabel}>Due Now</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Daily Cards Section */}
-        {dailyCardCount > 0 && (
-          <TouchableOpacity 
-            style={styles.dailyCardsCard}
-            onPress={handleDailyCardsPress}
-          >
-            <View style={styles.dailyCardsContent}>
-              <View style={styles.dailyCardsLeft}>
-                <Ionicons name="today" size={32} color="#FF6B6B" />
-                <View style={styles.dailyCardsText}>
-                  <Text style={styles.dailyCardsTitle}>Daily Review</Text>
-                  <Text style={styles.dailyCardsSubtitle}>
-                    {dailyCardCount} cards due today
+      <LinearGradient
+        colors={['#1a1f3a', '#2d3561']}
+        style={styles.gradientBackground}
+      >
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <View style={styles.headerTitleContainer}>
+                <Ionicons name="school" size={32} color="#00D4FF" />
+                <View style={styles.headerTextContainer}>
+                  <Text style={styles.headerTitle}>Study Hub</Text>
+                  <Text style={styles.headerSubtitle}>
+                    Your personal learning space
                   </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#666" />
+              <View style={styles.headerStats}>
+                <View style={styles.headerStatItem}>
+                  <Text style={styles.headerStatValue}>{boxStats.totalInStudyBank}</Text>
+                  <Text style={styles.headerStatLabel}>Total Cards</Text>
+                </View>
+                <View style={styles.headerStatDivider} />
+                <View style={styles.headerStatItem}>
+                  <Text style={[styles.headerStatValue, styles.dueStatValue]}>{boxStats.totalDue}</Text>
+                  <Text style={styles.headerStatLabel}>Due Now</Text>
+                </View>
+              </View>
             </View>
-          </TouchableOpacity>
-        )}
+          </View>
 
-        {/* Leitner Boxes Visual */}
-        <View style={styles.boxesContainer}>
-          <LeitnerBoxes
-            boxes={{
-              box1: boxStats.box1,
-              box2: boxStats.box2,
-              box3: boxStats.box3,
-              box4: boxStats.box4,
-              box5: boxStats.box5,
-            }}
-            activeBox={selectedBox || undefined}
-          />
-        </View>
-
-        {/* Box Details */}
-        <View style={styles.boxDetailsContainer}>
-          {[1, 2, 3, 4, 5].map((boxNumber) => {
-            const info = getBoxInfo(boxNumber);
-            const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
-            const totalCards = boxStats.totalInStudyBank || 1;
-            const percentage = Math.round((count / totalCards) * 100);
-            
-            const boxIcons = {
-              1: { icon: 'flash', color: '#FF6B6B' },
-              2: { icon: 'trending-up', color: '#4ECDC4' },
-              3: { icon: 'rocket', color: '#45B7D1' },
-              4: { icon: 'shield-checkmark', color: '#96CEB4' },
-              5: { icon: 'trophy', color: '#DDA0DD' },
-            };
-            
-            const boxIcon = boxIcons[boxNumber as keyof typeof boxIcons];
-            
-            return (
-              <TouchableOpacity
-                key={boxNumber}
-                style={styles.boxDetailCard}
-                onPress={() => handleBoxPress(boxNumber)}
-              >
-                <View style={styles.boxDetailContent}>
-                  <View style={[styles.boxIconContainer, { backgroundColor: boxIcon.color + '20' }]}>
-                    <Ionicons name={boxIcon.icon as any} size={24} color={boxIcon.color} />
-                  </View>
-                  <View style={styles.boxDetailInfo}>
-                    <Text style={styles.boxDetailTitle}>{info.title}</Text>
-                    <Text style={styles.boxDetailInterval}>{info.reviewInterval}</Text>
-                  </View>
-                  <View style={styles.boxDetailStats}>
-                    <View style={styles.boxCountContainer}>
-                      <Text style={styles.boxDetailCount}>{count}</Text>
-                      <Text style={styles.boxDetailCountLabel}>cards</Text>
-                    </View>
-                    <View style={styles.boxProgressBar}>
-                      <View 
-                        style={[
-                          styles.boxProgressFill,
-                          { 
-                            width: `${percentage}%`,
-                            backgroundColor: boxIcon.color 
-                          }
-                        ]} 
-                      />
-                    </View>
+          {/* Daily Cards Section */}
+          {dailyCardCount > 0 && (
+            <TouchableOpacity 
+              style={styles.dailyCardsCard}
+              onPress={handleDailyCardsPress}
+            >
+              <View style={styles.dailyCardsContent}>
+                <View style={styles.dailyCardsLeft}>
+                  <Ionicons name="today" size={32} color="#FF6B6B" />
+                  <View style={styles.dailyCardsText}>
+                    <Text style={styles.dailyCardsTitle}>Daily Review</Text>
+                    <Text style={styles.dailyCardsSubtitle}>
+                      {dailyCardCount} cards due today
+                    </Text>
                   </View>
                 </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
+                <Ionicons name="chevron-forward" size={24} color="#666" />
+              </View>
+            </TouchableOpacity>
+          )}
 
-      {/* Study Box Modal - Shows accordion when first opened */}
-      {showAccordion && selectedBox !== null && (
-        <Modal
-          visible={true}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={handleCloseBoxModal}
-        >
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Box {selectedBox} - Select Subject</Text>
-              <View style={{ width: 28 }} />
-            </View>
-            <StudySubjectAccordion
-              boxNumber={selectedBox}
-              onSubjectStudy={handleSubjectStudy}
-              onTopicStudy={handleTopicStudy}
+          {/* Leitner Boxes Visual */}
+          <View style={styles.boxesContainer}>
+            <LeitnerBoxes
+              boxes={{
+                box1: boxStats.box1,
+                box2: boxStats.box2,
+                box3: boxStats.box3,
+                box4: boxStats.box4,
+                box5: boxStats.box5,
+              }}
+              activeBox={selectedBox || undefined}
             />
-          </SafeAreaView>
-        </Modal>
-      )}
+          </View>
+
+          {/* Box Details */}
+          <View style={styles.boxDetailsContainer}>
+            {[1, 2, 3, 4, 5].map((boxNumber) => {
+              const info = getBoxInfo(boxNumber);
+              const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
+              const totalCards = boxStats.totalInStudyBank || 1;
+              const percentage = Math.round((count / totalCards) * 100);
+              
+              const boxIcons = {
+                1: { icon: 'flash', color: '#FF6B6B' },
+                2: { icon: 'trending-up', color: '#4ECDC4' },
+                3: { icon: 'rocket', color: '#45B7D1' },
+                4: { icon: 'shield-checkmark', color: '#96CEB4' },
+                5: { icon: 'trophy', color: '#DDA0DD' },
+              };
+              
+              const boxIcon = boxIcons[boxNumber as keyof typeof boxIcons];
+              
+              return (
+                <TouchableOpacity
+                  key={boxNumber}
+                  style={styles.boxDetailCard}
+                  onPress={() => handleBoxPress(boxNumber)}
+                >
+                  <View style={styles.boxDetailContent}>
+                    <View style={[styles.boxIconContainer, { backgroundColor: boxIcon.color + '20' }]}>
+                      <Ionicons name={boxIcon.icon as any} size={24} color={boxIcon.color} />
+                    </View>
+                    <View style={styles.boxDetailInfo}>
+                      <Text style={styles.boxDetailTitle}>{info.title}</Text>
+                      <Text style={styles.boxDetailInterval}>{info.reviewInterval}</Text>
+                    </View>
+                    <View style={styles.boxDetailStats}>
+                      <View style={styles.boxCountContainer}>
+                        <Text style={styles.boxDetailCount}>{count}</Text>
+                        <Text style={styles.boxDetailCountLabel}>cards</Text>
+                      </View>
+                      <View style={styles.boxProgressBar}>
+                        <View 
+                          style={[
+                            styles.boxProgressFill,
+                            { 
+                              width: `${percentage}%`,
+                              backgroundColor: boxIcon.color 
+                            }
+                          ]} 
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        {/* Study Box Modal - Shows accordion when first opened */}
+        {showAccordion && selectedBox !== null && (
+          <Modal
+            visible={true}
+            animationType="slide"
+            presentationStyle="fullScreen"
+            onRequestClose={handleCloseBoxModal}
+          >
+            <SafeAreaView style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
+                  <Ionicons name="close" size={28} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Box {selectedBox} - Select Subject</Text>
+                <View style={{ width: 28 }} />
+              </View>
+              <StudySubjectAccordion
+                boxNumber={selectedBox}
+                onSubjectStudy={handleSubjectStudy}
+                onTopicStudy={handleTopicStudy}
+              />
+            </SafeAreaView>
+          </Modal>
+        )}
+      </LinearGradient>
     </SafeAreaView>
   );
 }
@@ -467,7 +480,7 @@ export default function StudyScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1a1f3a',
   },
   loadingContainer: {
     flex: 1,
@@ -476,24 +489,37 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerTextContainer: {
+    marginLeft: 12,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   headerStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
   },
   headerStatItem: {
     flex: 1,
@@ -502,16 +528,17 @@ const styles = StyleSheet.create({
   headerStatValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: '#00D4FF',
   },
   headerStatLabel: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 4,
   },
   headerStatDivider: {
     width: 1,
-    height: '100%',
-    backgroundColor: '#e0e0e0',
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   boxesContainer: {
     padding: 16,
@@ -520,15 +547,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   boxDetailCard: {
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   boxDetailContent: {
     flexDirection: 'row',
@@ -548,11 +572,11 @@ const styles = StyleSheet.create({
   boxDetailTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#FFFFFF',
   },
   boxDetailInterval: {
     fontSize: 12,
-    color: '#6366F1',
+    color: '#00D4FF',
     marginTop: 2,
   },
   boxDetailStats: {
@@ -566,17 +590,17 @@ const styles = StyleSheet.create({
   boxDetailCount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#FFFFFF',
   },
   boxDetailCountLabel: {
     fontSize: 11,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 2,
   },
   boxProgressBar: {
     width: 60,
     height: 4,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -610,10 +634,10 @@ const styles = StyleSheet.create({
   dailyCardsCard: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FFE0E0',
+    borderColor: 'rgba(255, 107, 107, 0.3)',
   },
   dailyCardsContent: {
     flexDirection: 'row',
@@ -631,14 +655,17 @@ const styles = StyleSheet.create({
   dailyCardsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: '#FFFFFF',
   },
   dailyCardsSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 2,
   },
   dueStatValue: {
     color: '#FF6B6B',
+  },
+  gradientBackground: {
+    flex: 1,
   },
 }); 

@@ -64,7 +64,7 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
     },
     { 
       number: 2, 
-      label: 'Learning', 
+      label: 'Learn', 
       count: boxes.box2, 
       colors: ['#4ECDC4', '#44A08D'],
       icon: 'trending-up',
@@ -73,7 +73,7 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
     },
     { 
       number: 3, 
-      label: 'Growing', 
+      label: 'Grow', 
       count: boxes.box3, 
       colors: ['#45B7D1', '#2196F3'],
       icon: 'rocket',
@@ -91,7 +91,7 @@ export default function LeitnerBoxes({ boxes, activeBox }: LeitnerBoxesProps) {
     },
     { 
       number: 5, 
-      label: 'Mastered', 
+      label: 'Master', 
       count: boxes.box5, 
       colors: ['#DDA0DD', '#9C27B0'],
       icon: 'trophy',

@@ -646,33 +646,35 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           />
         </View>
 
-        <View style={styles.mainContent} {...panResponder.panHandlers}>
-          <Animated.View 
-            style={[
-              styles.cardContainer,
-              {
-                transform: [
-                  { translateX },
-                  { scale: cardScale }
-                ],
-              },
-            ]}
-          >
-            <View ref={cardRef} collapsable={false}>
-              {currentCard.isFrozen ? (
-                <FrozenCard
-                  card={currentCard}
-                  color={subjectColor}
-                />
-              ) : (
-                <FlashcardCard
-                  card={currentCard}
-                  color={subjectColor}
-                  onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
-                />
-              )}
-            </View>
-          </Animated.View>
+        <View style={styles.mainContent}>
+          <View style={styles.swipeableArea} {...panResponder.panHandlers}>
+            <Animated.View 
+              style={[
+                styles.cardContainer,
+                {
+                  transform: [
+                    { translateX },
+                    { scale: cardScale }
+                  ],
+                },
+              ]}
+            >
+              <View ref={cardRef} collapsable={false}>
+                {currentCard.isFrozen ? (
+                  <FrozenCard
+                    card={currentCard}
+                    color={subjectColor}
+                  />
+                ) : (
+                  <FlashcardCard
+                    card={currentCard}
+                    color={subjectColor}
+                    onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+                  />
+                )}
+              </View>
+            </Animated.View>
+          </View>
         </View>
 
         <View style={styles.bottomSection}>
@@ -891,21 +893,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               <TouchableOpacity 
                 style={[styles.caughtUpButton, { backgroundColor: subjectColor }]}
                 onPress={() => {
-                  // Close the modal and clear the navigation stack
                   setShowAllCaughtUp(false);
-                  
-                  // Use setTimeout to ensure modal is closed before navigating
-                  setTimeout(() => {
-                    // Pop to the root of the stack first
-                    navigation.popToTop();
-                    
-                    // Then navigate to Flashcards
-                    navigation.navigate('Flashcards', { 
-                      subjectName, 
-                      subjectColor,
-                      topicFilter: topicName !== subjectName ? topicName : undefined 
-                    });
-                  }, 100);
+                  navigation.goBack();
                 }}
               >
                 <Text style={styles.caughtUpButtonText}>Back to Card Bank</Text>
@@ -995,6 +984,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingBottom: 100, // Space for bottom navigation
+  },
+  swipeableArea: {
+    flex: 1,
+    justifyContent: 'center',
   },
   cardContainer: {
     justifyContent: 'center',
