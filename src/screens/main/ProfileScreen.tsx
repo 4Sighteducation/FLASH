@@ -20,7 +20,7 @@ import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databas
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useSubscription } from '../../contexts/SubscriptionContext.mock';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();

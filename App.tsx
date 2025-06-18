@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
-import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext.mock';
 import AppNavigator from './src/navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';

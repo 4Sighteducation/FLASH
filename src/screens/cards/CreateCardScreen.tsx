@@ -16,7 +16,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useSubscription } from '../../contexts/SubscriptionContext.mock';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 

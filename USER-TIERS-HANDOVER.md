@@ -29,9 +29,8 @@ This document outlines the implementation of a Lite (Free) vs Full (Paid) tier s
 - ✅ 1 Subject maximum
 - ✅ 1 Topic per subject
 - ✅ 10 Cards total
-- ❌ No AI card generation
 - ❌ No voice answers
-- ❌ No card export
+
 
 ### Full (Paid) Tier
 - ✅ Unlimited subjects
@@ -39,7 +38,7 @@ This document outlines the implementation of a Lite (Free) vs Full (Paid) tier s
 - ✅ Unlimited cards
 - ✅ AI card generation
 - ✅ Voice answers
-- ✅ Card export
+
 
 ## Key Files
 
