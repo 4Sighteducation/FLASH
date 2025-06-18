@@ -61,10 +61,24 @@ export default function SignUpScreen({ navigation }: any) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
+          {/* VESPA header */}
+          <TouchableOpacity 
+            style={styles.vespaHeader}
+            onPress={openVespaWebsite}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.vespaHeaderText}>brought to you by</Text>
+            <Image
+              source={require('../../../assets/vespalogo.png')}
+              style={styles.vespaLogoSmall}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
           {/* Logo Section */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../../../assets/transparent1.png')}
+              source={require('../../../assets/flashv2.png')}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -139,20 +153,6 @@ export default function SignUpScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* VESPA Academy Footer */}
-          <TouchableOpacity 
-            style={styles.vespaContainer}
-            onPress={openVespaWebsite}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.vespaText}>brought to you by</Text>
-            <Image
-              source={require('../../../assets/flashv2.png')}
-              style={styles.vespaLogoSmall}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -170,8 +170,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 40,
+  },
+  vespaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  vespaHeaderText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginRight: 6,
   },
   logoContainer: {
     alignItems: 'center',

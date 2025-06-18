@@ -24,7 +24,12 @@
       "ios": {},
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "env": {
+        "EXPO_DEBUG": "true",
+        "CI": "false"
+      },
+      "prebuildCommand": "bash scripts/eas-build-pre-install.sh"
     }
   },
   "submit": {

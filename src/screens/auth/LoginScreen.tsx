@@ -138,7 +138,7 @@ export default function LoginScreen({ navigation }: any) {
           >
             <Text style={styles.vespaHeaderText}>brought to you by</Text>
             <Image
-              source={require('../../../assets/flashv2.png')}
+              source={require('../../../assets/vespalogo.png')}
               style={styles.vespaLogoSmall}
               resizeMode="contain"
             />
