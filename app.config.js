@@ -16,7 +16,7 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
     splash: {
-      image: "./assets/splash.png",
+      image: "./assets/flashtransparent.png",
       resizeMode: "contain",
       backgroundColor: "#0F172A"
     },

@@ -19,10 +19,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databaseMaintenance';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
+  const { theme, toggleTheme } = useTheme();
+  const { tier, limits, purchaseFullVersion, restorePurchases } = useSubscription();
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
@@ -265,8 +269,55 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* Subscription Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+          <View style={styles.subscriptionStatus}>
+            <View style={styles.subscriptionInfo}>
+              <Text style={styles.subscriptionTier}>
+                {tier === 'lite' ? 'Free (Lite)' : 'Full Version'}
+              </Text>
+              {tier === 'lite' && (
+                <Text style={styles.subscriptionLimits}>
+                  • {limits.maxSubjects} Subject{'\n'}
+                  • {limits.maxTopicsPerSubject} Topic{'\n'}
+                  • {limits.maxCards} Cards Maximum
+                </Text>
+              )}
+            </View>
+            {tier === 'lite' && (
+              <>
+                <TouchableOpacity 
+                  style={styles.upgradeButton}
+                  onPress={purchaseFullVersion}
+                >
+                  <Ionicons name="star" size={20} color="#fff" />
+                  <Text style={styles.upgradeButtonText}>Upgrade to Full</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.restoreButton}
+                  onPress={restorePurchases}
+                >
+                  <Text style={styles.restoreButtonText}>Restore Purchase</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
+          
+          <View style={styles.settingRow}>
+            <Ionicons name="color-palette-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Cyber Mode</Text>
+            <Switch
+              value={theme === 'cyber'}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#E5E7EB', true: '#00FF88' }}
+              thumbColor={theme === 'cyber' ? '#fff' : '#f4f3f4'}
+            />
+          </View>
           
           <View style={styles.settingRow}>
             <Ionicons name="notifications-outline" size={24} color="#666" />
@@ -515,5 +566,50 @@ const styles = StyleSheet.create({
     marginTop: -10,
     marginBottom: 10,
     paddingHorizontal: 40,
+  },
+  // Subscription styles
+  subscriptionStatus: {
+    alignItems: 'center',
+  },
+  subscriptionInfo: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  subscriptionTier: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 10,
+  },
+  subscriptionLimits: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  upgradeButton: {
+    backgroundColor: '#00D4FF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 8,
+    width: '100%',
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  restoreButton: {
+    paddingVertical: 8,
+  },
+  restoreButtonText: {
+    color: '#00D4FF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 

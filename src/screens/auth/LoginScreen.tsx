@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { socialAuth } from '../../services/socialAuth';
 import PhoneAuthModal from '../../components/PhoneAuthModal';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +30,7 @@ export default function LoginScreen({ navigation }: any) {
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const { signIn } = useAuth();
+  const { colors } = useTheme();
 
   // Clear any stale auth tokens on mount
   useEffect(() => {
@@ -120,7 +122,7 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <LinearGradient
-      colors={['#0F172A', '#1E293B', '#334155']}
+      colors={colors.gradient}
       style={styles.container}
     >
       <KeyboardAvoidingView

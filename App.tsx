@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
@@ -73,7 +75,11 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ThemeProvider>
+        <SubscriptionProvider>
+          <AppContent />
+        </SubscriptionProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 } 
