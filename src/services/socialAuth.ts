@@ -73,6 +73,8 @@ export const socialAuth = {
   // Sign in with Google
   signInWithGoogle: async (): Promise<AuthResponse> => {
     try {
+      console.log('Starting Google OAuth with redirect URI:', redirectUri);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -90,17 +92,31 @@ export const socialAuth = {
       }
 
       if (data?.url) {
+        console.log('Opening Google OAuth URL...');
+        
         // Open the auth URL in a web browser
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          redirectUri
+          redirectUri,
+          {
+            dismissButtonStyle: 'close',
+          }
         );
+
+        console.log('WebBrowser result:', result);
 
         if (result.type === 'cancel') {
           return { error: new Error('Authentication cancelled') };
         }
 
-        return { error: null, url: data.url };
+        if (result.type === 'success') {
+          // The deep link handler in App.tsx will process the tokens
+          // Just return success here
+          console.log('OAuth flow completed, waiting for deep link handler...');
+          return { error: null };
+        }
+
+        return { error: null };
       }
 
       return { error: new Error('No authentication URL returned') };
@@ -113,6 +129,8 @@ export const socialAuth = {
   // Sign in with Microsoft (Azure AD)
   signInWithMicrosoft: async (): Promise<AuthResponse> => {
     try {
+      console.log('Starting Microsoft OAuth with redirect URI:', redirectUri);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',
         options: {
@@ -127,16 +145,28 @@ export const socialAuth = {
       }
 
       if (data?.url) {
+        console.log('Opening Microsoft OAuth URL...');
+        
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          redirectUri
+          redirectUri,
+          {
+            dismissButtonStyle: 'close',
+          }
         );
+
+        console.log('WebBrowser result:', result);
 
         if (result.type === 'cancel') {
           return { error: new Error('Authentication cancelled') };
         }
 
-        return { error: null, url: data.url };
+        if (result.type === 'success') {
+          console.log('OAuth flow completed, waiting for deep link handler...');
+          return { error: null };
+        }
+
+        return { error: null };
       }
 
       return { error: new Error('No authentication URL returned') };
@@ -199,6 +229,8 @@ export const socialAuth = {
     }
 
     try {
+      console.log('Starting Apple OAuth with redirect URI:', redirectUri);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
@@ -212,16 +244,28 @@ export const socialAuth = {
       }
 
       if (data?.url) {
+        console.log('Opening Apple OAuth URL...');
+        
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
-          redirectUri
+          redirectUri,
+          {
+            dismissButtonStyle: 'close',
+          }
         );
+
+        console.log('WebBrowser result:', result);
 
         if (result.type === 'cancel') {
           return { error: new Error('Authentication cancelled') };
         }
 
-        return { error: null, url: data.url };
+        if (result.type === 'success') {
+          console.log('OAuth flow completed, waiting for deep link handler...');
+          return { error: null };
+        }
+
+        return { error: null };
       }
 
       return { error: new Error('No authentication URL returned') };
