@@ -27,9 +27,6 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
       buildNumber: "6",
-      associatedDomains: [
-        "applinks:qkapwhyxcpgzahuemucg.supabase.co"
-      ],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription: "FLASH needs access to your microphone to record voice answers for flashcards. This helps you practice speaking and improves your learning experience.",
