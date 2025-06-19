@@ -51,7 +51,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 2
+      versionCode: 3
     },
     web: {
       favicon: "./assets/favicon/favicon.ico"
