@@ -13,25 +13,12 @@ import { handleOAuthCallback } from './src/utils/oauthHandler';
 function AppContent() {
   useEffect(() => {
     // Handle deep links for OAuth
-    const handleDeepLink = async (url: string) => {
+    const handleDeepLink = (url: string) => {
       if (url && url.includes('auth/callback')) {
-        console.log('OAuth callback received:', url);
-        
-        const result = await handleOAuthCallback(url);
-        
-        if (!result.success) {
-          console.error('OAuth callback failed:', result.error);
-          // You might want to show an alert here
-        } else {
-          console.log('OAuth authentication successful');
-          // Force a session check to update AuthContext
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            console.log('Session confirmed, user should navigate now');
-            // Trigger auth state change
-            await supabase.auth.refreshSession();
-          }
-        }
+        console.log('OAuth callback received, processing...');
+        // Let the oauthHandler process the URL.
+        // It will call setSession, which triggers onAuthStateChange in AuthContext.
+        handleOAuthCallback(url);
       }
     };
 

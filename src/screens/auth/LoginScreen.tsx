@@ -109,33 +109,16 @@ export default function LoginScreen({ navigation }: any) {
         if (error.message !== 'Authentication cancelled') {
           Alert.alert('Login Error', error.message);
         }
-      } else {
-        // Wait a bit for the deep link to be processed
-        console.log('OAuth completed, waiting for session...');
-        
-        // Give the deep link handler time to process
-        setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            console.error('No session after OAuth - check Supabase redirect URLs');
-            Alert.alert(
-              'Authentication Issue', 
-              'OAuth completed but session was not established. Please check your internet connection and try again.'
-            );
-            setSocialLoading(null);
-          } else {
-            console.log('Session confirmed:', session.user.email);
-            // Session exists, auth context should update automatically
-          }
-        }, 2000); // Increased timeout
       }
+      // If there's no error, the deep link handler in App.tsx will take over.
+      // The onAuthStateChange listener will navigate the user away from this screen.
+      // We just need to handle the loading state.
     } catch (error: any) {
       Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
     } finally {
-      // Clear loading state after 2.5 seconds to allow for session check
-      setTimeout(() => {
-        setSocialLoading(null);
-      }, 2500);
+      // The screen will be unmounted on successful login, so this might not even run.
+      // If login fails or is cancelled, we should reset the loading state.
+      setSocialLoading(null);
     }
   };
 
