@@ -26,7 +26,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "5",
+      buildNumber: "6",
       associatedDomains: [
         "applinks:qkapwhyxcpgzahuemucg.supabase.co"
       ],
