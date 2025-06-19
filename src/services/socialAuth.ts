@@ -6,11 +6,15 @@ import { Alert, Platform } from 'react-native';
 // Ensure web browser sessions complete properly
 WebBrowser.maybeCompleteAuthSession();
 
-// Get the redirect URI for OAuth
+// Get the redirect URI for OAuth - using bundle identifier for iOS
 const redirectUri = makeRedirectUri({
-  scheme: 'flash',
-  path: 'auth/callback'
+  scheme: Platform.OS === 'ios' ? 'com.foursighteducation.flash' : 'flash',
+  path: 'auth/callback',
+  preferLocalhost: false,
+  isTripleSlashed: true,
 });
+
+console.log('OAuth Redirect URI:', redirectUri);
 
 export type SocialProvider = 'google' | 'microsoft' | 'apple' | 'tiktok' | 'snapchat';
 export type AuthProvider = SocialProvider | 'phone';

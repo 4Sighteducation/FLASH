@@ -120,4 +120,36 @@ The current implementation opens the browser but doesn't properly wait for the r
 ## Support Resources:
 - Supabase Project: `qkapwhyxcpgzahuemucg`
 - EAS Project ID: `9bc8cac1-4205-4936-8f04-1834449f28a5`
-- GitHub Repo: `https://github.com/4Sighteducation/FLASH` 
+- GitHub Repo: `https://github.com/4Sighteducation/FLASH`
+
+## OAuth Fix Implementation (January 19, 2025)
+
+### Changes Made:
+1. **Updated socialAuth.ts**:
+   - Changed redirect URI to use bundle identifier on iOS
+   - Added `preferLocalhost: false` and `isTripleSlashed: true`
+   - Uses `com.foursighteducation.flash://auth/callback` on iOS
+
+2. **Updated app.config.js**:
+   - Added CFBundleURLTypes with both URL schemes
+   - Added associatedDomains for universal links
+   - Incremented build number to 5
+
+3. **Created OAuth Handler Utility** (`src/utils/oauthHandler.ts`):
+   - Robust URL parsing for different formats
+   - Proper token extraction and validation
+   - Enhanced error handling
+
+4. **Updated App.tsx**:
+   - Integrated new OAuth handler
+   - Better logging and error handling
+
+### Required Supabase Dashboard Updates:
+- **Site URL**: `com.foursighteducation.flash://`
+- **Redirect URLs**: 
+  - `com.foursighteducation.flash://auth/callback`
+  - `com.foursighteducation.flash:///auth/callback`
+  - `flash://auth/callback`
+
+### Next Build: iOS Build #5
+Ready for build with all OAuth fixes implemented. 

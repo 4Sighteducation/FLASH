@@ -8,14 +8,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
 import * as Linking from 'expo-linking';
 import 'react-native-url-polyfill/auto';
+import { handleOAuthCallback } from './src/utils/oauthHandler';
 
 function AppContent() {
   useEffect(() => {
     // Handle deep links for OAuth
-    const handleDeepLink = (url: string) => {
+    const handleDeepLink = async (url: string) => {
       if (url && url.includes('auth/callback')) {
         console.log('OAuth callback received:', url);
-        // Supabase auth listener will handle the session automatically
+        
+        const result = await handleOAuthCallback(url);
+        
+        if (!result.success) {
+          console.error('OAuth callback failed:', result.error);
+          // You might want to show an alert here
+        } else {
+          console.log('OAuth authentication successful');
+        }
       }
     };
 
