@@ -6,10 +6,31 @@ import { SubscriptionProvider } from './src/contexts/SubscriptionContext.mock';
 import AppNavigator from './src/navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
+import * as Linking from 'expo-linking';
 import 'react-native-url-polyfill/auto';
 
 function AppContent() {
   useEffect(() => {
+    // Handle deep links for OAuth
+    const handleDeepLink = (url: string) => {
+      if (url && url.includes('auth/callback')) {
+        console.log('OAuth callback received:', url);
+        // Supabase auth listener will handle the session automatically
+      }
+    };
+
+    // Listen for deep links
+    const urlSubscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // Check if app was opened with a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
     // Handle auth errors globally
     const handleAuthError = async () => {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -33,7 +54,10 @@ function AppContent() {
         }
       );
 
-      return () => subscription.unsubscribe();
+      return () => {
+        subscription.unsubscribe();
+        urlSubscription.remove();
+      };
     };
 
     handleAuthError();
