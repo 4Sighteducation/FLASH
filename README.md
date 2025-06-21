@@ -1,4 +1,4 @@
-# FLASH - AI-Powered Flashcard Learning App
+and trhe# FLASH - AI-Powered Flashcard Learning App
 
 A modern, gamified flashcard learning application built with React Native and Supabase, featuring AI-generated content and spaced repetition learning.
 
