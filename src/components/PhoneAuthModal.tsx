@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { phoneAuth } from '../services/socialAuth';
 
 interface PhoneAuthModalProps {
@@ -110,12 +111,12 @@ export default function PhoneAuthModal({ visible, onClose }: PhoneAuthModalProps
                 onClose();
               }}
             >
-              <Ionicons name="close" size={24} color="#94A3B8" />
+              <Icon name="close" size={24} color="#94A3B8" />
             </TouchableOpacity>
 
             {step === 'phone' ? (
               <>
-                <Ionicons name="call" size={48} color="#00D4FF" style={styles.icon} />
+                <Icon name="call" size={48} color="#00D4FF" style={styles.icon} />
                 <Text style={styles.title}>Enter Your Phone Number</Text>
                 <Text style={styles.subtitle}>We'll send you a verification code</Text>
 
@@ -155,10 +156,10 @@ export default function PhoneAuthModal({ visible, onClose }: PhoneAuthModalProps
             ) : (
               <>
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                  <Ionicons name="arrow-back" size={24} color="#94A3B8" />
+                  <Icon name="arrow-back" size={24} color="#94A3B8" />
                 </TouchableOpacity>
 
-                <Ionicons name="shield-checkmark" size={48} color="#00D4FF" style={styles.icon} />
+                <Icon name="shield-checkmark" size={48} color="#00D4FF" style={styles.icon} />
                 <Text style={styles.title}>Enter Verification Code</Text>
                 <Text style={styles.subtitle}>Sent to {countryCode}{phone}</Text>
 

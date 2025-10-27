@@ -6,6 +6,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -48,7 +49,7 @@ export default function FrozenCard({ card, color }: FrozenCardProps) {
     <View style={[styles.container, { borderColor: color }]}>
       {/* Frozen Overlay */}
       <View style={styles.frozenOverlay}>
-        <Ionicons name="lock-closed" size={40} color="#999" />
+        <Icon name="lock-closed" size={40} color="#999" />
       </View>
 
       {/* Card Content */}
@@ -63,7 +64,7 @@ export default function FrozenCard({ card, color }: FrozenCardProps) {
 
         {/* Frozen Status */}
         <View style={styles.frozenStatus}>
-          <Ionicons name="time-outline" size={20} color="#666" />
+          <Icon name="time-outline" size={20} color="#666" />
           <Text style={styles.frozenText}>
             This card is not ready for review
           </Text>

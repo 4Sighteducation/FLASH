@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -84,13 +85,13 @@ export default function DueCardsNotification({ cardsDue, onPress, visible, onDis
                   style={styles.dismissButton}
                   onPress={onDismiss}
                 >
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                  <Icon name="close" size={20} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
               
               <View style={styles.iconContainer}>
                 <View style={styles.iconBackground}>
-                  <Ionicons name="notifications" size={32} color="#FFFFFF" />
+                  <Icon name="notifications" size={32} color="#FFFFFF" />
                 </View>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{cardsDue}</Text>
@@ -108,7 +109,7 @@ export default function DueCardsNotification({ cardsDue, onPress, visible, onDis
               
               <TouchableOpacity style={styles.button} onPress={onPress}>
                 <Text style={styles.buttonText}>Start Studying</Text>
-                <Ionicons name="arrow-forward" size={20} color="#6366F1" />
+                <Icon name="arrow-forward" size={20} color="#6366F1" />
               </TouchableOpacity>
             </LinearGradient>
           </TouchableOpacity>

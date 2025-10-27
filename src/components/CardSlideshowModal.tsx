@@ -11,6 +11,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 // We'll create our own simple card component instead of importing
 
 interface Card {
@@ -181,7 +182,7 @@ export default function CardSlideshowModal({
       <SafeAreaView style={[styles.container, { backgroundColor: subjectColor }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+            <Icon name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.subjectName}>{subjectName}</Text>
@@ -226,7 +227,7 @@ export default function CardSlideshowModal({
               style={styles.flipHintButton}
               onPress={handleCardFlip}
             >
-              <Ionicons name="sync" size={20} color="#FFFFFF" />
+              <Icon name="sync" size={20} color="#FFFFFF" />
               <Text style={styles.flipHintText}>Tap card to flip</Text>
             </TouchableOpacity>
 

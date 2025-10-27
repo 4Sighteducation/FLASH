@@ -9,6 +9,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 
 interface DetailedAnswerModalProps {
   visible: boolean;
@@ -39,7 +40,7 @@ export default function DetailedAnswerModal({
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color }]}>Detailed Explanation</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close-circle" size={28} color={color} />
+              <Icon name="close-circle" size={28} color={color} />
             </TouchableOpacity>
           </View>
           

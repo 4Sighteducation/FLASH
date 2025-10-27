@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -97,7 +98,7 @@ export default function ColorPickerModal({
                   onPress={() => setSelectedColor(color)}
                 >
                   {selectedColor.hex === color.hex && (
-                    <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+                    <Icon name="checkmark" size={24} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
               ))}

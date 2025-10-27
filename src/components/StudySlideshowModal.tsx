@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import FlashcardCard from './FlashcardCard';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -179,7 +180,7 @@ export default function StudySlideshowModal({
       <SafeAreaView style={[styles.container, { backgroundColor: subjectColor + '10' }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {isPracticeMode ? 'Practice Mode' : 'Study Mode'}
@@ -225,7 +226,7 @@ export default function StudySlideshowModal({
             onPress={handlePrevious}
             disabled={currentIndex === 0}
           >
-            <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+            <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
             <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
               Previous
             </Text>
@@ -241,7 +242,7 @@ export default function StudySlideshowModal({
             <Text style={[styles.navButtonText, currentIndex === flashcards.length - 1 && styles.disabledText]}>
               Next
             </Text>
-            <Ionicons name="chevron-forward" size={24} color={currentIndex === flashcards.length - 1 ? '#ccc' : '#333'} />
+            <Icon name="chevron-forward" size={24} color={currentIndex === flashcards.length - 1 ? '#ccc' : '#333'} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>

@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import FlashcardCard from './FlashcardCard';
@@ -210,7 +211,7 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Daily Review</Text>
@@ -231,7 +232,7 @@ export default function DailyCardsModal({ visible, onClose }: DailyCardsModalPro
           </View>
         ) : cards.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Icon name="checkmark-circle" size={80} color="#4CAF50" />
             <Text style={styles.emptyTitle}>All done for today!</Text>
             <Text style={styles.emptySubtitle}>
               You've completed all your daily reviews. Great job!

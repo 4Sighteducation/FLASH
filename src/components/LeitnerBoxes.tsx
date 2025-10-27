@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 
 interface LeitnerBoxesProps {
   boxes: {

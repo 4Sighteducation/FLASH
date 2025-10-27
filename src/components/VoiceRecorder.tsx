@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { audioService } from '../services/audioService';
 
 // Lazy load expo-audio to prevent iOS crash on app launch

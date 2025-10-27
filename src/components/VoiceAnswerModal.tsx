@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import VoiceRecorder from './VoiceRecorder';
 import { whisperService } from '../services/whisperService';
 import { aiAnalyzerService, AnalysisResult } from '../services/aiAnalyzerService';
@@ -194,7 +195,7 @@ export default function VoiceAnswerModal({
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#666" />
+            <Icon name="close" size={24} color="#666" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Voice Answer</Text>
           <View style={{ width: 40 }} />
@@ -227,7 +228,7 @@ export default function VoiceAnswerModal({
             <View style={styles.resultContainer}>
               {error ? (
                 <View style={styles.errorContainer}>
-                  <Ionicons name="alert-circle" size={48} color="#EF4444" />
+                  <Icon name="alert-circle" size={48} color="#EF4444" />
                   <Text style={styles.errorTitle}>Error</Text>
                   <Text style={styles.errorText}>{error}</Text>
                   <TouchableOpacity
@@ -267,7 +268,7 @@ export default function VoiceAnswerModal({
                   {analysis.keyPointsCovered && analysis.keyPointsCovered.length > 0 && (
                     <View style={styles.pointsSection}>
                       <Text style={styles.pointsTitle}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" /> Key Points Covered:
+                        <Icon name="checkmark-circle" size={16} color="#10B981" /> Key Points Covered:
                       </Text>
                       {analysis.keyPointsCovered.map((point, index) => (
                         <Text key={index} style={styles.pointItem}>• {point}</Text>
@@ -278,7 +279,7 @@ export default function VoiceAnswerModal({
                   {analysis.keyPointsMissed && analysis.keyPointsMissed.length > 0 && (
                     <View style={styles.pointsSection}>
                       <Text style={styles.pointsTitle}>
-                        <Ionicons name="close-circle" size={16} color="#EF4444" /> Key Points Missed:
+                        <Icon name="close-circle" size={16} color="#EF4444" /> Key Points Missed:
                       </Text>
                       {analysis.keyPointsMissed.map((point, index) => (
                         <Text key={index} style={styles.pointItem}>• {point}</Text>
@@ -323,7 +324,7 @@ export default function VoiceAnswerModal({
                       style={[styles.button, styles.retryButton]}
                       onPress={handleRetry}
                     >
-                      <Ionicons name="refresh" size={20} color="#666" />
+                      <Icon name="refresh" size={20} color="#666" />
                       <Text style={styles.retryButtonText}>Try Again</Text>
                     </TouchableOpacity>
 

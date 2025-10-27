@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 
 interface PointsAnimationProps {
   points: number;
@@ -72,7 +73,7 @@ export default function PointsAnimation({ points, visible, onComplete }: PointsA
       ]}
     >
       <View style={styles.badge}>
-        <Ionicons name="star" size={16} color="#F59E0B" />
+        <Icon name="star" size={16} color="#F59E0B" />
         <Text style={styles.pointsText}>+{points} XP</Text>
       </View>
     </Animated.View>

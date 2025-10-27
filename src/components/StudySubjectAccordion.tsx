@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -180,7 +181,7 @@ export default function StudySubjectAccordion({
   if (subjects.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="school-outline" size={48} color="#ccc" />
+        <Icon name="school-outline" size={48} color="#ccc" />
         <Text style={styles.emptyText}>
           {boxNumber 
             ? `No cards in Box ${boxNumber}` 
@@ -221,7 +222,7 @@ export default function StudySubjectAccordion({
                   )}
                   {allFrozen && (
                     <View style={styles.frozenBadge}>
-                      <Ionicons name="lock-closed" size={12} color="#999" />
+                      <Icon name="lock-closed" size={12} color="#999" />
                       <Text style={styles.frozenBadgeText}>All reviewed</Text>
                     </View>
                   )}
@@ -237,7 +238,7 @@ export default function StudySubjectAccordion({
                       onSubjectStudy(subject.subjectName, subject.subjectColor, boxNumber);
                     }}
                   >
-                    <Ionicons name="play" size={16} color="white" />
+                    <Icon name="play" size={16} color="white" />
                   </TouchableOpacity>
                 )}
                 <Ionicons 

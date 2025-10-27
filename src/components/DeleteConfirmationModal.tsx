@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 
 interface DeleteConfirmationModalProps {
   visible: boolean;
@@ -38,7 +39,7 @@ export default function DeleteConfirmationModal({
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.iconContainer}>
-            <Ionicons name="warning" size={48} color="#EF4444" />
+            <Icon name="warning" size={48} color="#EF4444" />
           </View>
           
           <Text style={styles.title}>Delete {itemType}?</Text>
@@ -49,7 +50,7 @@ export default function DeleteConfirmationModal({
           
           {warningMessage && (
             <View style={styles.warningBox}>
-              <Ionicons name="information-circle" size={20} color="#F59E0B" />
+              <Icon name="information-circle" size={20} color="#F59E0B" />
               <Text style={styles.warningText}>{warningMessage}</Text>
             </View>
           )}

@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SelectedSubject, Topic } from '../types';
@@ -206,10 +207,10 @@ export default function TopicEditModal({
                 autoFocus
               />
               <TouchableOpacity onPress={handleSaveEdit}>
-                <Ionicons name="checkmark" size={20} color="#10B981" />
+                <Icon name="checkmark" size={20} color="#10B981" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setEditingTopic(null)}>
-                <Ionicons name="close" size={20} color="#EF4444" />
+                <Icon name="close" size={20} color="#EF4444" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -220,19 +221,19 @@ export default function TopicEditModal({
                   onPress={() => handleEditTopic(topic.id, topic.title)}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="pencil" size={16} color="#6B7280" />
+                  <Icon name="pencil" size={16} color="#6B7280" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleAddTopic(topic.id)}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="add" size={16} color="#6B7280" />
+                  <Icon name="add" size={16} color="#6B7280" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDeleteTopic(topic.id)}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="trash" size={16} color="#EF4444" />
+                  <Icon name="trash" size={16} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             </>
@@ -255,7 +256,7 @@ export default function TopicEditModal({
           <View style={styles.header}>
             <Text style={styles.title}>{subject.subjectName}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#1F2937" />
+              <Icon name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
           </View>
 
@@ -276,10 +277,10 @@ export default function TopicEditModal({
                       autoFocus
                     />
                     <TouchableOpacity onPress={handleSaveNewTopic}>
-                      <Ionicons name="checkmark" size={20} color="#10B981" />
+                      <Icon name="checkmark" size={20} color="#10B981" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setAddingTopic(false)}>
-                      <Ionicons name="close" size={20} color="#EF4444" />
+                      <Icon name="close" size={20} color="#EF4444" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -290,7 +291,7 @@ export default function TopicEditModal({
                   style={styles.addButton}
                   onPress={() => handleAddTopic(null)}
                 >
-                  <Ionicons name="add-circle" size={20} color="#6366F1" />
+                  <Icon name="add-circle" size={20} color="#6366F1" />
                   <Text style={styles.addButtonText}>Add Topic</Text>
                 </TouchableOpacity>
 

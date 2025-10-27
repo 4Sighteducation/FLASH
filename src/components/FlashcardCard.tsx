@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from './Icon';
 import DetailedAnswerModal from './DetailedAnswerModal';
 import VoiceAnswerModal from './VoiceAnswerModal';
 
@@ -296,7 +297,7 @@ export default function FlashcardCard({
                   style={[styles.voiceButton, { backgroundColor: color }]}
                   onPress={() => setShowVoiceModal(true)}
                 >
-                  <Ionicons name="mic" size={24} color="white" />
+                  <Icon name="mic" size={24} color="white" />
                   <Text style={styles.voiceButtonText}>Voice Answer</Text>
                 </TouchableOpacity>
               </View>
@@ -305,7 +306,7 @@ export default function FlashcardCard({
             {!isMultipleChoice && (
               <View style={styles.flipHint}>
                 <Text style={styles.flipHintText}>Tap anywhere to reveal answer</Text>
-                <Ionicons name="refresh-outline" size={20} color="#666" />
+                <Icon name="refresh-outline" size={20} color="#666" />
               </View>
             )}
           </ScrollView>
@@ -409,14 +410,14 @@ export default function FlashcardCard({
                     style={[styles.confirmButton, styles.yesButton, { backgroundColor: '#10B981' }]}
                     onPress={() => handleUserAnswer(true)}
                   >
-                    <Ionicons name="checkmark-circle" size={24} color="white" />
+                    <Icon name="checkmark-circle" size={24} color="white" />
                     <Text style={styles.confirmButtonText}>Yes!</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.confirmButton, styles.noButton, { backgroundColor: '#EF4444' }]}
                     onPress={() => handleUserAnswer(false)}
                   >
-                    <Ionicons name="close-circle" size={24} color="white" />
+                    <Icon name="close-circle" size={24} color="white" />
                     <Text style={styles.confirmButtonText}>Not quite</Text>
                   </TouchableOpacity>
                 </View>
@@ -463,7 +464,7 @@ export default function FlashcardCard({
           {renderFront()}
           {showDeleteButton && (
             <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              <Icon name="trash-outline" size={20} color="#EF4444" />
             </TouchableOpacity>
           )}
         </Animated.View>
