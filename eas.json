@@ -21,7 +21,9 @@
       }
     },
     "production": {
-      "ios": {},
+      "ios": {
+        "image": "latest"
+      },
       "android": {
         "buildType": "app-bundle"
       },
