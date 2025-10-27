@@ -30,6 +30,7 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [showPhoneAuth, setShowPhoneAuth] = useState(false);
+  const [error, setError] = useState('');
   const { signIn } = useAuth();
   const { colors } = useTheme();
 
@@ -58,10 +59,11 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setError('Please fill in all fields');
       return;
     }
 
+    setError('');
     setLoading(true);
     
     try {
@@ -77,25 +79,51 @@ export default function LoginScreen({ navigation }: any) {
         await AsyncStorage.multiRemove(authKeys);
       }
       
-      const { error } = await signIn(email, password);
+      const { error: signInError } = await signIn(email, password);
       
-      if (error) {
-        // Handle specific auth errors
-        if (error.message?.includes('Invalid Refresh Token') || 
-            error.message?.includes('Already Used')) {
-          Alert.alert(
-            'Session Error', 
-            'Your session has expired. Please try logging in again.',
-            [{ text: 'OK' }]
-          );
+      if (signInError) {
+        // Handle specific auth errors with user-friendly messages
+        if (signInError.message?.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please try again.');
+        } else if (signInError.message?.includes('Email not confirmed')) {
+          setError('Please check your email and verify your account first.');
+        } else if (signInError.message?.includes('Invalid Refresh Token') || 
+            signInError.message?.includes('Already Used')) {
+          setError('Your session has expired. Please try logging in again.');
         } else {
-          Alert.alert('Login Error', error.message);
+          setError(signInError.message || 'Login failed. Please try again.');
         }
       }
     } catch (error: any) {
-      Alert.alert('Login Error', 'An unexpected error occurred. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Email Required', 'Please enter your email address to reset your password');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: Platform.OS === 'web' 
+          ? window.location.origin + '/reset-password'
+          : 'flash://reset-password',
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert(
+          'Check Your Email',
+          'We\'ve sent you a password reset link. Please check your email.'
+        );
+      }
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to send reset email. Please try again.');
     }
   };
 
@@ -162,13 +190,24 @@ export default function LoginScreen({ navigation }: any) {
 
           {/* Form Section */}
           <View style={styles.form}>
+            {/* Error Message */}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color="#FF006E" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
                 placeholder="Email"
                 placeholderTextColor="#94A3B8"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setError('');
+                }}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!loading && !socialLoading}
@@ -181,11 +220,23 @@ export default function LoginScreen({ navigation }: any) {
                 placeholder="Password"
                 placeholderTextColor="#94A3B8"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setError('');
+                }}
                 secureTextEntry
                 editable={!loading && !socialLoading}
               />
             </View>
+
+            {/* Forgot Password Link */}
+            <TouchableOpacity
+              style={styles.forgotPasswordContainer}
+              onPress={handleForgotPassword}
+              disabled={loading}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.button, (loading || socialLoading) && styles.buttonDisabled]}
@@ -272,6 +323,17 @@ export default function LoginScreen({ navigation }: any) {
                 disabled={loading || !!socialLoading}
               >
                 <Text style={styles.signupLink}>Create account</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Terms & Privacy Links */}
+            <View style={styles.legalLinksContainer}>
+              <TouchableOpacity onPress={() => Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy')}>
+                <Text style={styles.legalLink}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalDivider}>•</Text>
+              <TouchableOpacity onPress={() => Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy')}>
+                <Text style={styles.legalLink}>Terms & Conditions</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -429,5 +491,46 @@ const styles = StyleSheet.create({
     color: '#00D4FF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 0, 110, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 0, 110, 0.3)',
+  },
+  errorText: {
+    color: '#FF006E',
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  forgotPasswordText: {
+    color: '#00D4FF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  legalLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  legalLink: {
+    color: '#64748B',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+  },
+  legalDivider: {
+    color: '#64748B',
+    fontSize: 12,
   },
 }); 

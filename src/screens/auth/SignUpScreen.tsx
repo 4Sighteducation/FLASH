@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +24,7 @@ export default function SignUpScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { signUp } = useAuth();
 
   const handleSignUp = async () => {
@@ -33,6 +35,11 @@ export default function SignUpScreen({ navigation }: any) {
 
     if (password.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    if (!agreedToTerms) {
+      Alert.alert('Terms Required', 'Please agree to the Terms & Conditions and Privacy Policy to continue');
       return;
     }
 
@@ -124,10 +131,43 @@ export default function SignUpScreen({ navigation }: any) {
               />
             </View>
 
+            {/* Terms & Privacy Agreement */}
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSignUp}
+              style={styles.termsContainer}
+              onPress={() => setAgreedToTerms(!agreedToTerms)}
               disabled={loading}
+            >
+              <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                {agreedToTerms && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+              <Text style={styles.termsText}>
+                I agree to the{' '}
+                <Text 
+                  style={styles.termsLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy');
+                  }}
+                >
+                  Terms & Conditions
+                </Text>
+                {' '}and{' '}
+                <Text 
+                  style={styles.termsLink}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy');
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, (loading || !agreedToTerms) && styles.buttonDisabled]}
+              onPress={handleSignUp}
+              disabled={loading || !agreedToTerms}
             >
               <LinearGradient
                 colors={['#00D4FF', '#00B4E6']}
@@ -258,5 +298,35 @@ const styles = StyleSheet.create({
   vespaLogoSmall: {
     width: 120,
     height: 40,
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#00D4FF',
+    marginRight: 12,
+    marginTop: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#00D4FF',
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: '#00D4FF',
+    textDecorationLine: 'underline',
   },
 }); 
