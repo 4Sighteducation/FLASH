@@ -25,30 +25,30 @@ interface ThemeContextType {
 
 const themes: Record<ThemeMode, ThemeColors> = {
   default: {
-    primary: '#00D4FF',
-    secondary: '#00B4E6',
-    background: '#0F172A',
-    surface: 'rgba(255, 255, 255, 0.1)',
+    primary: '#00F5FF',        // Updated to match new branding
+    secondary: '#FF006E',      // Updated to match new branding
+    background: '#0a0f1e',     // Updated to match new darker background
+    surface: 'rgba(0, 245, 255, 0.08)',
     text: '#ffffff',
     textSecondary: '#94A3B8',
-    border: 'rgba(255, 255, 255, 0.2)',
-    accent: '#10B981',
-    gradient: ['#0F172A', '#1E293B', '#334155'],
+    border: 'rgba(0, 245, 255, 0.25)',
+    accent: '#FF006E',         // Pink accent
+    gradient: ['#0a0f1e', '#0F172A', '#1E293B'],
     cardGradient: ['#1E293B', '#334155'],
-    buttonGradient: ['#00D4FF', '#00B4E6'],
+    buttonGradient: ['#00F5FF', '#00D4FF'],  // Cyan gradient
   },
   cyber: {
-    primary: '#00FF88',
-    secondary: '#FF0080',
-    background: '#000000',
-    surface: 'rgba(0, 255, 136, 0.1)',
-    text: '#00FF88',
-    textSecondary: '#FF0080',
-    border: 'rgba(0, 255, 136, 0.3)',
-    accent: '#FFFF00',
-    gradient: ['#000000', '#0A0A0A', '#1A0A1A'],
-    cardGradient: ['#1A0A1A', '#2A0A2A'],
-    buttonGradient: ['#00FF88', '#00CC66'],
+    primary: '#00F5FF',        // Cyan - matches new FL4SH branding
+    secondary: '#FF006E',      // Pink - matches new FL4SH branding  
+    background: '#0a0f1e',     // Dark blue-black
+    surface: 'rgba(0, 245, 255, 0.1)',
+    text: '#ffffff',
+    textSecondary: '#94A3B8',
+    border: 'rgba(0, 245, 255, 0.3)',
+    accent: '#FF006E',         // Pink accent
+    gradient: ['#0a0f1e', '#1a1035', '#2a1550'],  // Dark purple gradient
+    cardGradient: ['#1a1035', '#2a1550'],
+    buttonGradient: ['#00F5FF', '#FF006E'],  // Cyan to pink gradient
   },
 };
 

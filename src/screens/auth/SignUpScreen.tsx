@@ -199,11 +199,16 @@ const styles = StyleSheet.create({
       backgroundSize: '50px 50px',
     }),
   },
+  '@keyframes glow-pulse': {
+    '0%, 100%': {
+      filter: 'drop-shadow(0 0 60px rgba(255, 0, 110, 0.8)) drop-shadow(0 0 30px rgba(255, 0, 110, 0.6))',
+    },
+    '50%': {
+      filter: 'drop-shadow(0 0 100px rgba(255, 0, 110, 1)) drop-shadow(0 0 50px rgba(255, 0, 110, 0.9))',
+    },
+  },
   keyboardView: {
     flex: 1,
-    ...(Platform.OS === 'web' && {
-      minHeight: 'auto',
-    }),
   },
   content: {
     flex: 1,
@@ -213,7 +218,9 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
     ...(Platform.OS === 'web' && {
-      paddingVertical: 40,
+      paddingTop: 20,
+      paddingBottom: 60,
+      minHeight: 'fit-content',
     }),
   },
   logoContainer: {
@@ -227,7 +234,8 @@ const styles = StyleSheet.create({
     shadowRadius: 60,
     elevation: 30,
     ...(Platform.OS === 'web' && {
-      filter: 'drop-shadow(0 0 60px rgba(255, 0, 110, 0.8)) drop-shadow(0 0 30px rgba(0, 245, 255, 0.5))',
+      filter: 'drop-shadow(0 0 80px rgba(255, 0, 110, 1)) drop-shadow(0 0 40px rgba(255, 0, 110, 0.8))',
+      animation: 'glow-pulse 3s ease-in-out infinite',
     }),
   },
   logo: {
