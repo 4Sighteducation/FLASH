@@ -59,36 +59,21 @@ export default function SignUpScreen({ navigation }: any) {
   };
 
   return (
-    <LinearGradient
-      colors={['#0F172A', '#1E293B', '#334155']}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
-          {/* VESPA header */}
-          <TouchableOpacity 
-            style={styles.vespaHeader}
-            onPress={openVespaWebsite}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.vespaHeaderText}>brought to you by</Text>
-            <Image
-              source={require('../../../assets/vespalogo.png')}
-              style={styles.vespaLogoSmall}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
           {/* Logo Section */}
           <View style={styles.logoContainer}>
-            <Image
-              source={require('../../../assets/flashv2.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoGlow}>
+              <Image
+                source={require('../../../assets/flashv2.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.tagline}>Create Your Account</Text>
           </View>
 
@@ -195,109 +180,107 @@ export default function SignUpScreen({ navigation }: any) {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0f1e',
+    ...(Platform.OS === 'web' && {
+      backgroundImage: `
+        linear-gradient(rgba(255, 0, 110, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 110, 0.03) 1px, transparent 1px)
+      `,
+      backgroundSize: '50px 50px',
+    }),
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  vespaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  vespaHeaderText: {
-    fontSize: 10,
-    color: '#64748B',
-    marginRight: 6,
+    padding: 24,
+    maxWidth: 420,
+    width: '100%',
+    alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 40,
+    marginBottom: 32,
+  },
+  logoGlow: {
+    shadowColor: '#FF006E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 60,
+    elevation: 30,
   },
   logo: {
-    width: width * 0.6,
-    height: 120,
-    marginBottom: 20,
+    width: 180,
+    height: 180,
+    marginBottom: 12,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#94A3B8',
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '400',
+    letterSpacing: 0.5,
   },
   form: {
     width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 10,
     padding: 16,
-    fontSize: 16,
+    fontSize: 15,
     color: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
   },
   button: {
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 8,
     marginBottom: 20,
+    shadowColor: '#00F5FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   buttonGradient: {
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   linkButton: {
     alignItems: 'center',
+    marginTop: 12,
   },
   linkText: {
     color: '#94A3B8',
-    fontSize: 15,
+    fontSize: 14,
   },
   linkTextBold: {
     color: '#00D4FF',
     fontWeight: '600',
-  },
-  vespaContainer: {
-    alignItems: 'center',
-    opacity: 0.7,
-  },
-  vespaText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  vespaLogoSmall: {
-    width: 120,
-    height: 40,
   },
   termsContainer: {
     flexDirection: 'row',

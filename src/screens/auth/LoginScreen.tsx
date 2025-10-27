@@ -256,16 +256,11 @@ export default function LoginScreen({ navigation }: any) {
                 onPress={() => handleSocialLogin('google')}
                 disabled={!!socialLoading || loading}
               >
-                <View style={styles.socialButtonContent}>
-                  {socialLoading === 'google' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-google" size={20} color="#fff" style={styles.socialIcon} />
-                      <Text style={styles.socialButtonText}>Google</Text>
-                    </>
-                  )}
-                </View>
+                {socialLoading === 'google' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="logo-google" size={24} color="#00F5FF" />
+                )}
               </TouchableOpacity>
 
               {/* Microsoft - Works on all platforms */}
@@ -274,16 +269,11 @@ export default function LoginScreen({ navigation }: any) {
                 onPress={() => handleSocialLogin('microsoft')}
                 disabled={!!socialLoading || loading}
               >
-                <View style={styles.socialButtonContent}>
-                  {socialLoading === 'microsoft' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-microsoft" size={20} color="#fff" style={styles.socialIcon} />
-                      <Text style={styles.socialButtonText}>Microsoft</Text>
-                    </>
-                  )}
-                </View>
+                {socialLoading === 'microsoft' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="logo-microsoft" size={24} color="#00F5FF" />
+                )}
               </TouchableOpacity>
 
               {/* Apple - iOS/Android only */}
@@ -293,16 +283,11 @@ export default function LoginScreen({ navigation }: any) {
                   onPress={() => handleSocialLogin('apple')}
                   disabled={!!socialLoading || loading}
                 >
-                  <View style={styles.socialButtonContent}>
-                    {socialLoading === 'apple' ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="logo-apple" size={20} color="#fff" style={styles.socialIcon} />
-                        <Text style={styles.socialButtonText}>Apple</Text>
-                      </>
-                    )}
-                  </View>
+                  {socialLoading === 'apple' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="logo-apple" size={24} color="#fff" />
+                  )}
                 </TouchableOpacity>
               )}
 
@@ -313,16 +298,11 @@ export default function LoginScreen({ navigation }: any) {
                   onPress={() => setShowPhoneAuth(true)}
                   disabled={!!socialLoading || loading}
                 >
-                  <View style={styles.socialButtonContent}>
-                    {socialLoading === 'phone' ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="call" size={20} color="#fff" style={styles.socialIcon} />
-                        <Text style={styles.socialButtonText}>Phone</Text>
-                      </>
-                    )}
-                  </View>
+                  {socialLoading === 'phone' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="call" size={24} color="#00F5FF" />
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -366,7 +346,14 @@ export default function LoginScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', // Pure black like marketing site
+    backgroundColor: '#0a0f1e', // Dark navy-black with subtle blue tint
+    ...(Platform.OS === 'web' && {
+      backgroundImage: `
+        linear-gradient(rgba(255, 0, 110, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 0, 110, 0.03) 1px, transparent 1px)
+      `,
+      backgroundSize: '50px 50px',
+    }),
   },
   keyboardView: {
     flex: 1,
@@ -375,28 +362,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
-    maxWidth: 480,
+    maxWidth: 420,
     width: '100%',
     alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 32,
   },
   logoGlow: {
-    shadowColor: '#00F5FF',
+    shadowColor: '#FF006E',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 30,
-    elevation: 20,
+    shadowOpacity: 1,
+    shadowRadius: 60,
+    elevation: 30,
   },
   logo: {
-    width: width * 0.5,
-    height: 140,
-    marginBottom: 20,
+    width: 180,
+    height: 180,
+    marginBottom: 12,
   },
   tagline: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#94A3B8',
     textAlign: 'center',
     fontWeight: '400',
@@ -406,20 +393,16 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   input: {
-    backgroundColor: 'rgba(0, 245, 255, 0.05)', // Subtle cyan tint
-    borderRadius: 12,
-    padding: 18,
-    fontSize: 16,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 10,
+    padding: 16,
+    fontSize: 15,
     color: '#fff',
     borderWidth: 2,
-    borderColor: 'rgba(0, 245, 255, 0.3)', // Neon cyan border
-    shadowColor: '#00F5FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
   },
   button: {
     borderRadius: 12,
@@ -450,83 +433,88 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(0, 245, 255, 0.2)',
+    backgroundColor: 'rgba(0, 245, 255, 0.15)',
   },
   dividerText: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     color: '#64748B',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   socialButtonsContainer: {
-    gap: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
     marginBottom: 32,
   },
   socialButton: {
-    backgroundColor: 'rgba(0, 245, 255, 0.1)',
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
     borderWidth: 2,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   socialButtonContent: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   socialIcon: {
-    marginRight: 10,
+    // Icon only, no text
   },
   socialButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    display: 'none', // Hide text on compact icons
   },
   socialButtonActive: {
     backgroundColor: 'rgba(0, 245, 255, 0.2)',
     borderColor: '#00F5FF',
+    shadowColor: '#00F5FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
   },
   socialButtonApple: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
 
   signupContainer: {
     alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 20,
   },
   signupText: {
     color: '#94A3B8',
-    fontSize: 15,
-    marginBottom: 12,
+    fontSize: 14,
+    marginBottom: 10,
   },
   createAccountButton: {
     backgroundColor: 'transparent',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#FF006E', // Pink like marketing site
-    paddingVertical: 14,
-    paddingHorizontal: 40,
+    borderColor: '#FF006E',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
     shadowColor: '#FF006E',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
   },
   createAccountText: {
     color: '#FF006E',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   errorContainer: {
     flexDirection: 'row',
