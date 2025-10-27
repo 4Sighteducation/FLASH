@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
@@ -258,7 +259,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerStats}>
               <View style={styles.headerStatItem}>
                 <View style={styles.statIconContainer}>
-                  <Ionicons name="albums" size={16} color="#FFD700" />
+                  <Icon name="albums" size={16} color="#FFD700" />
                 </View>
                 <Text style={styles.headerStatNumber}>{userStats.total_cards_reviewed}</Text>
                 <Text style={styles.headerStatLabel}>Cards</Text>
@@ -266,7 +267,7 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
                 <View style={styles.statIconContainer}>
-                  <Ionicons name="flame" size={16} color="#FF6B6B" />
+                  <Icon name="flame" size={16} color="#FF6B6B" />
                 </View>
                 <Text style={styles.headerStatNumber}>{userStats.current_streak}</Text>
                 <Text style={styles.headerStatLabel}>Streak</Text>
@@ -274,7 +275,7 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
                 <View style={styles.statIconContainer}>
-                  <Ionicons name="star" size={16} color="#4ECDC4" />
+                  <Icon name="star" size={16} color="#4ECDC4" />
                 </View>
                 <Text style={styles.headerStatNumber}>{userStats.total_points}</Text>
                 <Text style={styles.headerStatLabel}>XP</Text>
@@ -454,7 +455,7 @@ export default function HomeScreen({ navigation }: any) {
             onPress={() => navigation.navigate('CardSubjectSelector')}
           >
             <View style={styles.actionIconContainer}>
-              <Ionicons name="add-circle" size={24} color="#34C759" />
+              <Icon name="add-circle" size={24} color="#34C759" />
             </View>
             <Text style={styles.actionText}>Create Card</Text>
           </TouchableOpacity>
@@ -465,7 +466,7 @@ export default function HomeScreen({ navigation }: any) {
             })}
           >
             <View style={styles.actionIconContainer}>
-              <Ionicons name="camera" size={24} color="#007AFF" />
+              <Icon name="camera" size={24} color="#007AFF" />
             </View>
             <Text style={styles.actionText}>Scan Image</Text>
           </TouchableOpacity>
@@ -474,7 +475,7 @@ export default function HomeScreen({ navigation }: any) {
             onPress={() => navigation.navigate('TopicHub')}
           >
             <View style={styles.actionIconContainer}>
-              <Ionicons name="flag" size={24} color="#FF9500" />
+              <Icon name="flag" size={24} color="#FF9500" />
             </View>
             <Text style={styles.actionText}>Priorities</Text>
           </TouchableOpacity>
