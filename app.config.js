@@ -51,7 +51,7 @@ export default {
       versionCode: 4
     },
     web: {
-      favicon: "./assets/favicon/favicon.ico"
+      favicon: "./assets/icon.png"
     },
     scheme: "flash",
     extra: {
