@@ -86,15 +86,12 @@ interface IconProps {
 }
 
 export default function Icon({ name, size, color, style }: IconProps) {
-  if (Platform.OS === 'web') {
-    const emoji = emojiMap[name] || '•';
-    return (
-      <Text style={[{ fontSize: size, lineHeight: size + 2 }, style]}>
-        {emoji}
-      </Text>
-    );
-  }
-  
-  return <Ionicons name={name as any} size={size} color={color} style={style} />;
+  // Use emojis on ALL platforms for consistent look
+  const emoji = emojiMap[name] || '•';
+  return (
+    <Text style={[{ fontSize: size, lineHeight: size + 2 }, style]}>
+      {emoji}
+    </Text>
+  );
 }
 
