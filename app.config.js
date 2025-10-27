@@ -48,7 +48,9 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 4
+      versionCode: 6,
+      targetSdkVersion: 35,
+      compileSdkVersion: 35
     },
     web: {
       favicon: "./assets/icon.png"
