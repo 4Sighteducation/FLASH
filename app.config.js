@@ -48,7 +48,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 6
+      versionCode: 7
     },
     web: {
       favicon: "./assets/icon.png"
@@ -59,9 +59,9 @@ export default {
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 35,
+            "compileSdkVersion": 34,
             "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0"
+            "buildToolsVersion": "34.0.0"
           }
         }
       ],
