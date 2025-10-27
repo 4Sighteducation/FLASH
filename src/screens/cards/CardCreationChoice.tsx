@@ -7,6 +7,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 
 interface CardCreationChoiceProps {
   navigation: any;
@@ -48,7 +49,7 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={28} color="#333" />
+          <Icon name="close" size={28} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Flashcards</Text>
         <View style={{ width: 28 }} />
@@ -61,7 +62,7 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
 
         <TouchableOpacity style={styles.optionCard} onPress={handleAICreate}>
           <View style={[styles.iconContainer, { backgroundColor: '#FFF3CD' }]}>
-            <Ionicons name="flash" size={32} color="#FFD700" />
+            <Icon name="flash" size={32} color="#FFD700" />
           </View>
           <View style={styles.optionContent}>
             <Text style={styles.optionTitle}>AI Generated</Text>
@@ -69,12 +70,12 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
               Let AI create exam-specific flashcards based on your curriculum
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Icon name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.optionCard} onPress={handleManualCreate}>
           <View style={[styles.iconContainer, { backgroundColor: '#E3F2FD' }]}>
-            <Ionicons name="create-outline" size={32} color="#2196F3" />
+            <Icon name="create-outline" size={32} color="#2196F3" />
           </View>
           <View style={styles.optionContent}>
             <Text style={styles.optionTitle}>Create Manually</Text>
@@ -82,12 +83,12 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
               Write your own custom flashcards for this topic
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Icon name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.optionCard} onPress={handleImageCreate}>
           <View style={[styles.iconContainer, { backgroundColor: '#E8F5E9' }]}>
-            <Ionicons name="camera" size={32} color="#4CAF50" />
+            <Icon name="camera" size={32} color="#4CAF50" />
           </View>
           <View style={styles.optionContent}>
             <Text style={styles.optionTitle}>From Image</Text>
@@ -95,7 +96,7 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
               Take a photo of notes or textbook and generate cards with AI
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Icon name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>

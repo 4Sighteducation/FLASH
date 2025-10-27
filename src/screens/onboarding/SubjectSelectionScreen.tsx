@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext.mock';
@@ -267,7 +268,7 @@ export default function SubjectSelectionScreen() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -284,7 +285,7 @@ export default function SubjectSelectionScreen() {
           {!selectedExamBoard ? (
             <View style={styles.examBoardsContainer}>
               <View style={styles.infoBox}>
-                <Ionicons name="information-circle" size={24} color="#6366F1" />
+                <Icon name="information-circle" size={24} color="#6366F1" />
                 <Text style={styles.infoText}>
                   Each exam board has different subjects and topic structures. Selecting your exam board ensures you get the exact curriculum for your studies.
                 </Text>
@@ -301,7 +302,7 @@ export default function SubjectSelectionScreen() {
                     <Text style={styles.examBoardCode}>{board.code}</Text>
                     <Text style={styles.examBoardName}>{board.full_name}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={24} color="#6366F1" />
+                  <Icon name="chevron-forward" size={24} color="#6366F1" />
                 </TouchableOpacity>
               ))}
             </View>
@@ -315,7 +316,7 @@ export default function SubjectSelectionScreen() {
                   setSearchQuery('');
                 }}
               >
-                <Ionicons name="swap-horizontal" size={20} color="#6366F1" />
+                <Icon name="swap-horizontal" size={20} color="#6366F1" />
                 <Text style={styles.changeExamBoardText}>
                   Change exam board (Currently: {selectedExamBoard.code})
                 </Text>
@@ -328,7 +329,7 @@ export default function SubjectSelectionScreen() {
               ) : (
                 <>
                   <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                    <Icon name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
                     <TextInput
                       style={styles.searchInput}
                       placeholder="Search subjects..."
@@ -341,7 +342,7 @@ export default function SubjectSelectionScreen() {
                         style={styles.clearButton}
                         onPress={() => setSearchQuery('')}
                       >
-                        <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                        <Icon name="close-circle" size={20} color="#9CA3AF" />
                       </TouchableOpacity>
                     )}
                   </View>

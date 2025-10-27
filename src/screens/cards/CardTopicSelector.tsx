@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -241,7 +242,7 @@ export default function CardTopicSelector() {
             </Text>
           </View>
           {!hasChildren && (
-            <Ionicons name="add-circle-outline" size={24} color={subjectColor || '#6366F1'} />
+            <Icon name="add-circle-outline" size={24} color={subjectColor || '#6366F1'} />
           )}
         </TouchableOpacity>
         {isExpanded && node.children.map(child => renderTopicNode(child, depth + 1))}
@@ -267,7 +268,7 @@ export default function CardTopicSelector() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Select Topic</Text>
@@ -283,7 +284,7 @@ export default function CardTopicSelector() {
           topicTree.map(node => renderTopicNode(node))
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="list-outline" size={48} color="#ccc" />
+            <Icon name="list-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No topics available</Text>
           </View>
         )}

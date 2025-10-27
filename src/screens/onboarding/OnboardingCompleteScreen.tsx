@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -46,7 +47,7 @@ export default function OnboardingCompleteScreen() {
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={100} color="#10B981" />
+              <Icon name="checkmark-circle" size={100} color="#10B981" />
             </View>
           </View>
 
@@ -63,15 +64,15 @@ export default function OnboardingCompleteScreen() {
 
           <View style={styles.featuresContainer}>
             <View style={styles.feature}>
-              <Ionicons name="flash" size={24} color="#F59E0B" />
+              <Icon name="flash" size={24} color="#F59E0B" />
               <Text style={styles.featureText}>Create flashcards from your topics</Text>
             </View>
             <View style={styles.feature}>
-              <Ionicons name="trending-up" size={24} color="#10B981" />
+              <Icon name="trending-up" size={24} color="#10B981" />
               <Text style={styles.featureText}>Track your progress with analytics</Text>
             </View>
             <View style={styles.feature}>
-              <Ionicons name="trophy" size={24} color="#8B5CF6" />
+              <Icon name="trophy" size={24} color="#8B5CF6" />
               <Text style={styles.featureText}>Earn achievements as you learn</Text>
             </View>
           </View>
@@ -81,7 +82,7 @@ export default function OnboardingCompleteScreen() {
             onPress={handleGetStarted}
           >
             <Text style={styles.buttonText}>Start Learning</Text>
-            <Ionicons name="arrow-forward" size={20} color="#6366F1" />
+            <Icon name="arrow-forward" size={20} color="#6366F1" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>

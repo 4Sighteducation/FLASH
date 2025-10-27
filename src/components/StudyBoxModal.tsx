@@ -13,6 +13,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import FlashcardCard from './FlashcardCard';
@@ -344,7 +345,7 @@ export default function StudyBoxModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
@@ -368,7 +369,7 @@ export default function StudyBoxModal({
           </View>
         ) : cards.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="checkmark-circle" size={80} color={getBoxColor()} />
+            <Icon name="checkmark-circle" size={80} color={getBoxColor()} />
             <Text style={styles.emptyTitle}>All caught up!</Text>
             <Text style={styles.emptySubtitle}>
               No cards due for review in {getBoxTitle().toLowerCase()}
@@ -409,7 +410,7 @@ export default function StudyBoxModal({
               onPress={() => currentIndex > 0 && setCurrentIndex(currentIndex - 1)}
               disabled={currentIndex === 0}
             >
-              <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
               <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledNavText]}>Previous</Text>
             </TouchableOpacity>
             
@@ -423,7 +424,7 @@ export default function StudyBoxModal({
               disabled={currentIndex === cards.length - 1}
             >
               <Text style={[styles.navButtonText, currentIndex === cards.length - 1 && styles.disabledNavText]}>Next</Text>
-              <Ionicons name="chevron-forward" size={24} color={currentIndex === cards.length - 1 ? '#ccc' : '#333'} />
+              <Icon name="chevron-forward" size={24} color={currentIndex === cards.length - 1 ? '#ccc' : '#333'} />
             </TouchableOpacity>
           </View>
         )}
@@ -474,7 +475,7 @@ export default function StudyBoxModal({
             onPress={() => setShowAllCaughtUp(false)}
           >
             <View style={styles.allCaughtUpModal}>
-              <Ionicons name="checkmark-circle" size={60} color={getBoxColor()} />
+              <Icon name="checkmark-circle" size={60} color={getBoxColor()} />
               <Text style={styles.allCaughtUpTitle}>All caught up!</Text>
               <Text style={styles.allCaughtUpSubtitle}>
                 No cards due for review in {getBoxTitle().toLowerCase()}

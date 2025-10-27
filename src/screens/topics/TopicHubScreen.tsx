@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -395,13 +396,13 @@ export default function TopicHubScreen() {
                   })}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="pencil" size={18} color="#6B7280" />
+                  <Icon name="pencil" size={18} color="#6B7280" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setDeleteModal({ visible: true, topic })}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="trash" size={18} color="#EF4444" />
+                  <Icon name="trash" size={18} color="#EF4444" />
                 </TouchableOpacity>
               </View>
             )}
@@ -495,7 +496,7 @@ export default function TopicHubScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Topic Priority Hub</Text>
@@ -534,7 +535,7 @@ export default function TopicHubScreen() {
           style={[styles.toggleButton, viewMode === 'hierarchy' && styles.activeToggle]}
           onPress={() => setViewMode('hierarchy')}
         >
-          <Ionicons name="git-branch" size={20} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#9333EA'} />
+          <Icon name="git-branch" size={20} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#9333EA'} />
           <Text style={[styles.toggleText, viewMode === 'hierarchy' && styles.activeToggleText]}>
             Topic Tree
           </Text>
@@ -543,7 +544,7 @@ export default function TopicHubScreen() {
           style={[styles.toggleButton, viewMode === 'priority' && styles.activeToggle]}
           onPress={() => setViewMode('priority')}
         >
-          <Ionicons name="flag" size={20} color={viewMode === 'priority' ? '#FFFFFF' : '#9333EA'} />
+          <Icon name="flag" size={20} color={viewMode === 'priority' ? '#FFFFFF' : '#9333EA'} />
           <Text style={[styles.toggleText, viewMode === 'priority' && styles.activeToggleText]}>
             Priority View
           </Text>

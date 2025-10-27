@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -529,13 +530,13 @@ export default function TopicListScreen() {
                 )}
                 {hasFlashcards && (
                   <View style={[styles.flashcardBadge, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-                    <Ionicons name="albums-outline" size={12} color="#FFFFFF" />
+                    <Icon name="albums-outline" size={12} color="#FFFFFF" />
                     <Text style={styles.flashcardCount}>{node.flashcardCount}</Text>
                   </View>
                 )}
                 {hasFlashcards && isInStudyBank && (
                   <View style={[styles.studyBankIndicator]}>
-                    <Ionicons name="book" size={12} color="#10B981" />
+                    <Icon name="book" size={12} color="#10B981" />
                     <Text style={styles.studyBankText}>Study</Text>
                   </View>
                 )}
@@ -577,7 +578,7 @@ export default function TopicListScreen() {
                   handleAIGenerate(node);
                 }}
               >
-                <Ionicons name="flash" size={20} color="#FFD700" />
+                <Icon name="flash" size={20} color="#FFD700" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.imageButton]}
@@ -586,7 +587,7 @@ export default function TopicListScreen() {
                   handleImageCreate(node);
                 }}
               >
-                <Ionicons name="camera" size={20} color="#4CAF50" />
+                <Icon name="camera" size={20} color="#4CAF50" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
@@ -595,7 +596,7 @@ export default function TopicListScreen() {
                   handleCreateManual(node);
                 }}
               >
-                <Ionicons name="create-outline" size={22} color={subjectColor || '#6366F1'} />
+                <Icon name="create-outline" size={22} color={subjectColor || '#6366F1'} />
               </TouchableOpacity>
             </View>
           )}
@@ -686,7 +687,7 @@ export default function TopicListScreen() {
             </View>
             {hasFlashcards && (
               <View style={styles.priorityItemStats}>
-                <Ionicons name="albums-outline" size={16} color="#6B7280" />
+                <Icon name="albums-outline" size={16} color="#6B7280" />
                 <Text style={styles.priorityItemStat}>{node.flashcardCount} cards</Text>
               </View>
             )}
@@ -699,7 +700,7 @@ export default function TopicListScreen() {
                 handleAIGenerate(node);
               }}
             >
-              <Ionicons name="flash" size={20} color="#FFD700" />
+              <Icon name="flash" size={20} color="#FFD700" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.imageButton]}
@@ -708,7 +709,7 @@ export default function TopicListScreen() {
                 handleImageCreate(node);
               }}
             >
-              <Ionicons name="camera" size={20} color="#4CAF50" />
+              <Icon name="camera" size={20} color="#4CAF50" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionButton}
@@ -717,7 +718,7 @@ export default function TopicListScreen() {
                 handleCreateManual(node);
               }}
             >
-              <Ionicons name="create-outline" size={22} color={subjectColor || '#6366F1'} />
+              <Icon name="create-outline" size={22} color={subjectColor || '#6366F1'} />
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -746,7 +747,7 @@ export default function TopicListScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.subjectName}>{subjectName}</Text>
@@ -780,7 +781,7 @@ export default function TopicListScreen() {
               }}
               style={styles.headerButton}
             >
-              <Ionicons name="color-palette-outline" size={24} color="#FFFFFF" />
+              <Icon name="color-palette-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('TopicHub' as never, {
@@ -790,7 +791,7 @@ export default function TopicListScreen() {
               } as never)}
               style={styles.headerButton}
             >
-              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+              <Icon name="settings-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -802,7 +803,7 @@ export default function TopicListScreen() {
             style={[styles.toggleButton, viewMode === 'hierarchy' && styles.activeToggle]}
             onPress={() => setViewMode('hierarchy')}
           >
-            <Ionicons name="git-branch" size={18} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#6B7280'} />
+            <Icon name="git-branch" size={18} color={viewMode === 'hierarchy' ? '#FFFFFF' : '#6B7280'} />
             <Text style={[styles.toggleText, viewMode === 'hierarchy' && styles.activeToggleText]}>
               All Topics
             </Text>
@@ -811,7 +812,7 @@ export default function TopicListScreen() {
             style={[styles.toggleButton, viewMode === 'priority' && styles.activeToggle]}
             onPress={() => setViewMode('priority')}
           >
-            <Ionicons name="flag" size={18} color={viewMode === 'priority' ? '#FFFFFF' : '#6B7280'} />
+            <Icon name="flag" size={18} color={viewMode === 'priority' ? '#FFFFFF' : '#6B7280'} />
             <Text style={[styles.toggleText, viewMode === 'priority' && styles.activeToggleText]}>
               Priority Only
             </Text>
@@ -823,7 +824,7 @@ export default function TopicListScreen() {
             topicTree.map(node => renderTopicNode(node))
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="list-outline" size={48} color="#ccc" />
+              <Icon name="list-outline" size={48} color="#ccc" />
               <Text style={styles.emptyText}>No topics available</Text>
             </View>
           )
@@ -832,7 +833,7 @@ export default function TopicListScreen() {
             renderPriorityView()
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="flag-outline" size={48} color="#ccc" />
+              <Icon name="flag-outline" size={48} color="#ccc" />
               <Text style={styles.emptyText}>No priority topics set</Text>
               <Text style={styles.emptySubtext}>Use the Topic Hub to set priorities</Text>
             </View>
@@ -850,7 +851,7 @@ export default function TopicListScreen() {
             examType: route.params?.examType,
           } as never)}
         >
-          <Ionicons name="albums" size={24} color="#FFFFFF" />
+          <Icon name="albums" size={24} color="#FFFFFF" />
           <View style={styles.fabBadge}>
             <Text style={styles.fabBadgeText}>{totalFlashcards}</Text>
           </View>

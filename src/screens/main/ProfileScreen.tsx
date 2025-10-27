@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
 import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databaseMaintenance';
 import { useNavigation } from '@react-navigation/native';
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
         >
           <View style={styles.contactHeader}>
             <TouchableOpacity onPress={() => setShowContactForm(false)}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Icon name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.contactTitle}>Help & Support</Text>
             <View style={{ width: 24 }} />
@@ -231,7 +232,7 @@ export default function ProfileScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="send" size={20} color="#fff" />
+                  <Icon name="send" size={20} color="#fff" />
                   <Text style={styles.sendButtonText}>Send Message</Text>
                 </>
               )}
@@ -251,7 +252,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={60} color="#fff" />
+            <Icon name="person" size={60} color="#fff" />
           </View>
           <Text style={styles.name}>{user?.user_metadata?.username || 'Student'}</Text>
         </View>
@@ -260,7 +261,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Profile Information</Text>
           {profileItems.map((item, index) => (
             <View key={index} style={styles.infoRow}>
-              <Ionicons name={item.icon} size={24} color="#666" />
+              <Icon name={item.icon} size={24} color="#666" />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>{item.label}</Text>
                 <Text style={styles.infoValue}>{item.value}</Text>
@@ -291,7 +292,7 @@ export default function ProfileScreen() {
                   style={styles.upgradeButton}
                   onPress={purchaseFullVersion}
                 >
-                  <Ionicons name="star" size={20} color="#fff" />
+                  <Icon name="star" size={20} color="#fff" />
                   <Text style={styles.upgradeButtonText}>Upgrade to Full</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
@@ -309,7 +310,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Settings</Text>
           
           <View style={styles.settingRow}>
-            <Ionicons name="color-palette-outline" size={24} color="#666" />
+            <Icon name="color-palette-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Cyber Mode</Text>
             <Switch
               value={theme === 'cyber'}
@@ -320,7 +321,7 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.settingRow}>
-            <Ionicons name="notifications-outline" size={24} color="#666" />
+            <Icon name="notifications-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Push Notifications</Text>
             <Switch
               value={notificationsEnabled}
@@ -331,7 +332,7 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.settingRow}>
-            <Ionicons name="alert-circle-outline" size={24} color="#666" />
+            <Icon name="alert-circle-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Cards Due Reminders</Text>
             <Switch
               value={inAppNotificationsEnabled}
@@ -348,18 +349,18 @@ export default function ProfileScreen() {
             style={styles.settingRow}
             onPress={() => setShowContactForm(true)}
           >
-            <Ionicons name="help-circle-outline" size={24} color="#666" />
+            <Icon name="help-circle-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={24} color="#ccc" />
+            <Icon name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.settingRow}
             onPress={() => navigation.navigate('APISettings' as never)}
           >
-            <Ionicons name="key-outline" size={24} color="#666" />
+            <Icon name="key-outline" size={24} color="#666" />
             <Text style={styles.settingText}>API Settings</Text>
-            <Ionicons name="chevron-forward" size={24} color="#ccc" />
+            <Icon name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
         </View>
 
@@ -370,12 +371,12 @@ export default function ProfileScreen() {
             onPress={handleCleanupOrphanedCards}
             disabled={isCleaningUp}
           >
-            <Ionicons name="trash-outline" size={24} color="#666" />
+            <Icon name="trash-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Clean Up Orphaned Cards</Text>
             {isCleaningUp ? (
               <ActivityIndicator size="small" color="#666" />
             ) : (
-              <Ionicons name="chevron-forward" size={24} color="#ccc" />
+              <Icon name="chevron-forward" size={24} color="#ccc" />
             )}
           </TouchableOpacity>
           <Text style={styles.maintenanceHint}>
@@ -384,7 +385,7 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          <Icon name="log-out-outline" size={24} color="#FF3B30" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>

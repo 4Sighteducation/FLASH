@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -102,7 +103,7 @@ export default function CardSubjectSelector() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={24} color="#FFFFFF" />
+            <Icon name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Select Subject</Text>
           <View style={{ width: 24 }} />
@@ -127,13 +128,13 @@ export default function CardSubjectSelector() {
                   <Text style={styles.subjectName}>{subject.subject.subject_name}</Text>
                   <Text style={styles.examBoard}>{subject.exam_board}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+                <Icon name="chevron-forward" size={20} color="#6B7280" />
               </TouchableOpacity>
             ))}
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="school-outline" size={48} color="#ccc" />
+            <Icon name="school-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No subjects added yet</Text>
             <TouchableOpacity
               style={styles.addSubjectButton}

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext.mock';
@@ -280,7 +281,7 @@ export default function CreateCardScreen() {
                 </Text>
               </View>
               {cardType === type.id && (
-                <Ionicons name="checkmark-circle" size={24} color="#6366F1" />
+                <Icon name="checkmark-circle" size={24} color="#6366F1" />
               )}
             </TouchableOpacity>
           ))}
@@ -360,7 +361,7 @@ export default function CreateCardScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="close" size={24} color="#333" />
+            <Icon name="close" size={24} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create Flashcard</Text>
           <TouchableOpacity onPress={handleSave} disabled={loading}>
@@ -391,7 +392,7 @@ export default function CreateCardScreen() {
                 <Text style={styles.typeSelectorValue}>{currentCardType?.name}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            <Icon name="chevron-down" size={20} color="#6B7280" />
           </TouchableOpacity>
 
           <View style={styles.formSection}>
@@ -441,7 +442,7 @@ export default function CreateCardScreen() {
 
           <View style={styles.tips}>
             <Text style={styles.tipsTitle}>
-              <Ionicons name="bulb-outline" size={16} color="#6366F1" /> Tips for {currentCardType?.name}
+              <Icon name="bulb-outline" size={16} color="#6366F1" /> Tips for {currentCardType?.name}
             </Text>
             {cardType === 'multiple_choice' && (
               <>

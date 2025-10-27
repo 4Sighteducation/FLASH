@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { useNavigation } from '@react-navigation/native';
@@ -337,7 +338,7 @@ export default function StudyScreen({ route, navigation }: any) {
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={styles.headerTitleContainer}>
-                <Ionicons name="school" size={32} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+                <Icon name="school" size={32} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.headerTitle}>Study Hub</Text>
                   <Text style={styles.headerSubtitle}>
@@ -367,7 +368,7 @@ export default function StudyScreen({ route, navigation }: any) {
             >
               <View style={styles.dailyCardsContent}>
                 <View style={styles.dailyCardsLeft}>
-                  <Ionicons name="today" size={32} color="#FF6B6B" />
+                  <Icon name="today" size={32} color="#FF6B6B" />
                   <View style={styles.dailyCardsText}>
                     <Text style={styles.dailyCardsTitle}>Daily Review</Text>
                     <Text style={styles.dailyCardsSubtitle}>
@@ -375,7 +376,7 @@ export default function StudyScreen({ route, navigation }: any) {
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={24} color="#666" />
+                <Icon name="chevron-forward" size={24} color="#666" />
               </View>
             </TouchableOpacity>
           )}
@@ -420,7 +421,7 @@ export default function StudyScreen({ route, navigation }: any) {
                 >
                   <View style={styles.boxDetailContent}>
                     <View style={[styles.boxIconContainer, { backgroundColor: boxIcon.color + '20' }]}>
-                      <Ionicons name={boxIcon.icon as any} size={24} color={boxIcon.color} />
+                      <Icon name={boxIcon.icon as any} size={24} color={boxIcon.color} />
                     </View>
                     <View style={styles.boxDetailInfo}>
                       <Text style={styles.boxDetailTitle}>{info.title}</Text>
@@ -461,7 +462,7 @@ export default function StudyScreen({ route, navigation }: any) {
             <SafeAreaView style={styles.modalContainer}>
               <View style={styles.modalHeader}>
                 <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
-                  <Ionicons name="close" size={28} color="#333" />
+                  <Icon name="close" size={28} color="#333" />
                 </TouchableOpacity>
                 <Text style={styles.modalTitle}>Box {selectedBox} - Select Subject</Text>
                 <View style={{ width: 28 }} />

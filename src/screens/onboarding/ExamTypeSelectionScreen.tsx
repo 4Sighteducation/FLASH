@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 
 const examTypes = [
   { id: 'gcse', name: 'GCSE', description: 'General Certificate of Secondary Education' },
@@ -34,7 +35,7 @@ export default function ExamTypeSelectionScreen() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Icon name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -67,7 +68,7 @@ export default function ExamTypeSelectionScreen() {
                   </Text>
                 </View>
                 {selectedExamType === exam.id && (
-                  <Ionicons name="checkmark-circle" size={24} color="#6366F1" />
+                  <Icon name="checkmark-circle" size={24} color="#6366F1" />
                 )}
               </TouchableOpacity>
             ))}

@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
@@ -185,13 +186,13 @@ export default function FlashcardsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {subjectName} {topicFilter ? `- ${topicFilter}` : ''} Flashcards
         </Text>
         <TouchableOpacity onPress={handlePlayPress}>
-          <Ionicons name="play-circle" size={28} color={subjectColor} />
+          <Icon name="play-circle" size={28} color={subjectColor} />
         </TouchableOpacity>
       </View>
 
@@ -253,7 +254,7 @@ export default function FlashcardsScreen() {
                 })}
               >
                 <View style={styles.studyPromptContent}>
-                  <Ionicons name="rocket-outline" size={32} color={subjectColor} />
+                  <Icon name="rocket-outline" size={32} color={subjectColor} />
                   <View style={styles.studyPromptTextContainer}>
                     <Text style={[styles.studyPromptTitle, { color: subjectColor }]}>
                       Ready to level up? 🚀
@@ -262,7 +263,7 @@ export default function FlashcardsScreen() {
                       You have {dueCards.length} card{dueCards.length > 1 ? 's' : ''} due for review. Jump into Study Mode and show what you've learned!
                     </Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={24} color={subjectColor} />
+                  <Icon name="chevron-forward" size={24} color={subjectColor} />
                 </View>
               </TouchableOpacity>
             );
@@ -271,7 +272,7 @@ export default function FlashcardsScreen() {
             return (
               <View style={[styles.caughtUpPrompt, { backgroundColor: '#4CAF5015', borderColor: '#4CAF50' }]}>
                 <View style={styles.studyPromptContent}>
-                  <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+                  <Icon name="checkmark-circle" size={32} color="#4CAF50" />
                   <View style={styles.studyPromptTextContainer}>
                     <Text style={[styles.studyPromptTitle, { color: '#4CAF50' }]}>
                       Sweet, you're all caught up! 🎉
@@ -288,7 +289,7 @@ export default function FlashcardsScreen() {
 
         {flashcards.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="albums-outline" size={48} color="#ccc" />
+            <Icon name="albums-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>
               {filter === 'studying' ? 'No cards in study mode!' : 'No flashcards yet'}
             </Text>
@@ -316,7 +317,7 @@ export default function FlashcardsScreen() {
               />
               {card.in_study_bank && (
                 <View style={[styles.boxIndicator, { backgroundColor: subjectColor }]}>
-                  <Ionicons name="layers-outline" size={16} color="white" style={{ marginRight: 6 }} />
+                  <Icon name="layers-outline" size={16} color="white" style={{ marginRight: 6 }} />
                   <Text style={styles.boxIndicatorText}>Box {card.box_number}</Text>
                 </View>
               )}

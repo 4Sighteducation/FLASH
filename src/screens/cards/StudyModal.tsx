@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
@@ -612,7 +613,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#333" />
+              <Icon name="close" size={28} color="#333" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
             <View style={{ minWidth: 50 }} />
@@ -632,7 +633,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+            <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
           <Text style={styles.counter}>{currentIndex + 1}/{flashcards.length}</Text>
@@ -684,7 +685,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               onPress={handlePrevious}
               disabled={currentIndex === 0}
             >
-              <Ionicons name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
               <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
                 Previous
               </Text>
@@ -711,7 +712,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                 onPress={handleClose}
               >
                 <Text style={styles.finishButtonText}>Finish</Text>
-                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <Icon name="checkmark-circle" size={24} color="#4CAF50" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -719,7 +720,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                 onPress={handleNext}
               >
                 <Text style={styles.navButtonText}>Next</Text>
-                <Ionicons name="chevron-forward" size={24} color="#333" />
+                <Icon name="chevron-forward" size={24} color="#333" />
               </TouchableOpacity>
             )}
           </View>
@@ -796,7 +797,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   navigation.goBack();
                 }}
               >
-                <Ionicons name="close" size={24} color="#666" />
+                <Icon name="close" size={24} color="#666" />
               </TouchableOpacity>
 
               {/* Leitner Boxes at the top */}
@@ -855,7 +856,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
                 return (
                   <>
-                    <Ionicons name={icon} size={80} color={iconColor} />
+                    <Icon name={icon} size={80} color={iconColor} />
                     <Text style={styles.caughtUpTitle}>{title}</Text>
                     <Text style={styles.caughtUpSubtitle}>{subtitle}</Text>
                     
@@ -883,7 +884,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
                     {/* Points Earned */}
                     <View style={styles.pointsContainer}>
-                      <Ionicons name="star" size={24} color="#FFD700" />
+                      <Icon name="star" size={24} color="#FFD700" />
                       <Text style={styles.pointsText}>+{pointsEarned} points</Text>
                     </View>
                   </>
