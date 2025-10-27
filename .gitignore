@@ -67,4 +67,4 @@ eas.json.local
 # Temporary files
 *.log
 tmp/
-temp/ 
+temp/ android/
