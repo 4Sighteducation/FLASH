@@ -1,7 +1,6 @@
 import React from 'react';
 import { Platform, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Icon from './Icon';
 
 // Emoji mapping for web platform
 const emojiMap: Record<string, string> = {
