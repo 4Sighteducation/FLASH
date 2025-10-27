@@ -346,7 +346,7 @@ export default function HomeScreen({ navigation }: any) {
                                 });
                               }}
                             >
-                              <Ionicons name="color-palette-outline" size={20} color="#FFFFFF" />
+                              <Icon name="color-palette-outline" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.deleteButton}
@@ -355,9 +355,9 @@ export default function HomeScreen({ navigation }: any) {
                                 handleSubjectLongPress(subject);
                               }}
                             >
-                              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+                              <Icon name="trash-outline" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
-                            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                            <Icon name="chevron-forward" size={20} color="#FFFFFF" />
                           </View>
                         )}
                       </View>
@@ -373,7 +373,7 @@ export default function HomeScreen({ navigation }: any) {
                       )}
                       <View style={isGridView ? styles.subjectStatsGrid : styles.subjectStats}>
                         <View style={styles.statItem}>
-                          <Ionicons name="albums-outline" size={isGridView ? 14 : 16} color="#FFFFFF" />
+                          <Icon name="albums-outline" size={isGridView ? 14 : 16} color="#FFFFFF" />
                           <Text style={isGridView ? styles.statTextGrid : styles.statText}>{subject.flashcard_count || 0}</Text>
                         </View>
                       </View>
@@ -390,7 +390,7 @@ export default function HomeScreen({ navigation }: any) {
                               });
                             }}
                           >
-                            <Ionicons name="color-palette-outline" size={16} color="#FFFFFF" />
+                            <Icon name="color-palette-outline" size={16} color="#FFFFFF" />
                           </TouchableOpacity>
                         </View>
                       )}
@@ -421,13 +421,13 @@ export default function HomeScreen({ navigation }: any) {
                 }
               }}
             >
-              <Ionicons name="add-circle-outline" size={20} color="#6366F1" />
+              <Icon name="add-circle-outline" size={20} color="#6366F1" />
               <Text style={styles.addMoreText}>Add More Subjects</Text>
             </TouchableOpacity>
           </>
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="school-outline" size={48} color="#ccc" />
+            <Icon name="school-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No subjects added yet</Text>
             <TouchableOpacity
               style={styles.addSubjectButton}
