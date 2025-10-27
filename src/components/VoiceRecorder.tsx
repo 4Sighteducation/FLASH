@@ -7,9 +7,23 @@ import {
   Animated,
   Alert,
 } from 'react-native';
-import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio';
 import { Ionicons } from '@expo/vector-icons';
 import { audioService } from '../services/audioService';
+
+// Lazy load expo-audio to prevent iOS crash on app launch
+let useAudioRecorder: any = null;
+let AudioModule: any = null;
+let RecordingPresets: any = null;
+
+async function getAudioModules() {
+  if (!useAudioRecorder) {
+    const audio = await import('expo-audio');
+    useAudioRecorder = audio.useAudioRecorder;
+    AudioModule = audio.AudioModule;
+    RecordingPresets = audio.RecordingPresets;
+  }
+  return { useAudioRecorder, AudioModule, RecordingPresets };
+}
 
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string) => void;
@@ -24,10 +38,10 @@ export default function VoiceRecorder({
   maxDuration = 60,
   color,
 }: VoiceRecorderProps) {
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [audioRecorder, setAudioRecorder] = useState<any>(null);
   const [duration, setDuration] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [isCleanedUp, setIsCleanedUp] = useState(false);
   
@@ -37,12 +51,33 @@ export default function VoiceRecorder({
   const meteringInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    startRecording();
+    // Initialize audio modules lazily
+    const initializeAudio = async () => {
+      try {
+        const { useAudioRecorder, RecordingPresets } = await getAudioModules();
+        const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+        setAudioRecorder(recorder);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize audio:', error);
+        Alert.alert('Audio Error', 'Failed to initialize audio recording.');
+        onCancel();
+      }
+    };
+    
+    initializeAudio();
+    
     return () => {
       setIsCleanedUp(true);
       cleanup();
     };
   }, []);
+
+  useEffect(() => {
+    if (audioRecorder && !isLoading) {
+      startRecording();
+    }
+  }, [audioRecorder, isLoading]);
 
   const cleanup = async () => {
     // Clear intervals
@@ -95,10 +130,13 @@ export default function VoiceRecorder({
   }, [audioLevel]);
 
   const startRecording = async () => {
+    if (!audioRecorder) return;
+    
     try {
       setIsLoading(true);
       
       // Check permissions
+      const { AudioModule } = await getAudioModules();
       const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(

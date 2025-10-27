@@ -1,9 +1,21 @@
-import { AudioModule, RecordingPresets, IOSOutputFormat, AudioQuality } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 
 export interface AudioPermissionStatus {
   granted: boolean;
   canAskAgain: boolean;
+}
+
+// Lazy load expo-audio to prevent iOS crash on app launch
+let AudioModule: any = null;
+let RecordingPresets: any = null;
+
+async function getAudioModule() {
+  if (!AudioModule) {
+    const audio = await import('expo-audio');
+    AudioModule = audio.AudioModule;
+    RecordingPresets = audio.RecordingPresets;
+  }
+  return AudioModule;
 }
 
 export class AudioService {
@@ -23,7 +35,8 @@ export class AudioService {
 
   async requestPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const { status, canAskAgain } = await AudioModule.requestRecordingPermissionsAsync();
+      const module = await getAudioModule();
+      const { status, canAskAgain } = await module.requestRecordingPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -36,7 +49,8 @@ export class AudioService {
 
   async checkPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const { status, canAskAgain } = await AudioModule.getRecordingPermissionsAsync();
+      const module = await getAudioModule();
+      const { status, canAskAgain } = await module.getRecordingPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -49,7 +63,8 @@ export class AudioService {
 
   async prepareAudioMode() {
     try {
-      await AudioModule.setAudioModeAsync({
+      const module = await getAudioModule();
+      await module.setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
         shouldPlayInBackground: false,

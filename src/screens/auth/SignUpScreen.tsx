@@ -69,7 +69,9 @@ export default function SignUpScreen({ navigation }: any) {
           <View style={styles.logoContainer}>
             <View style={styles.logoGlow}>
               <Image
-                source={require('../../../assets/flashv2.png')}
+                source={Platform.OS === 'web' 
+                  ? require('../../../assets/flash-logo-transparent.png')
+                  : require('../../../assets/flashv2.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -189,6 +191,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0f1e',
     ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
       backgroundImage: `
         linear-gradient(rgba(255, 0, 110, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 0, 110, 0.03) 1px, transparent 1px)
@@ -198,6 +201,9 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+    ...(Platform.OS === 'web' && {
+      minHeight: 'auto',
+    }),
   },
   content: {
     flex: 1,
@@ -206,6 +212,9 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     width: '100%',
     alignSelf: 'center',
+    ...(Platform.OS === 'web' && {
+      paddingVertical: 40,
+    }),
   },
   logoContainer: {
     alignItems: 'center',
@@ -217,11 +226,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 60,
     elevation: 30,
+    ...(Platform.OS === 'web' && {
+      filter: 'drop-shadow(0 0 60px rgba(255, 0, 110, 0.8)) drop-shadow(0 0 30px rgba(0, 245, 255, 0.5))',
+    }),
   },
   logo: {
     width: 180,
     height: 180,
     marginBottom: 12,
+    ...(Platform.OS === 'web' && {
+      backgroundColor: 'transparent',
+    }),
   },
   tagline: {
     fontSize: 15,
