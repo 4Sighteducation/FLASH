@@ -54,6 +54,9 @@ export default {
       favicon: "./assets/icon.png"
     },
     scheme: "flash",
+    plugins: [
+      "expo-audio"
+    ],
     extra: {
       eas: {
         projectId: "9bc8cac1-4205-4936-8f04-1834449f28a5"
