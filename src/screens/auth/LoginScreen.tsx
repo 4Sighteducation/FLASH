@@ -155,36 +155,21 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <LinearGradient
-      colors={colors.gradient}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
-          {/* VESPA header */}
-          <TouchableOpacity 
-            style={styles.vespaHeader}
-            onPress={openVespaWebsite}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.vespaHeaderText}>brought to you by</Text>
-            <Image
-              source={require('../../../assets/vespalogo.png')}
-              style={styles.vespaLogoSmall}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
           {/* Logo Section */}
           <View style={styles.logoContainer}>
-            <Image
-              source={require('../../../assets/flashv2.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <View style={styles.logoGlow}>
+              <Image
+                source={require('../../../assets/flashv2.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.tagline}>AI-Powered Study Flashcards</Text>
           </View>
 
@@ -260,69 +245,97 @@ export default function LoginScreen({ navigation }: any) {
             {/* Social Login Section */}
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
-              <Text style={styles.dividerText}>Sign in with</Text>
+              <Text style={styles.dividerText}>Or continue with</Text>
               <View style={styles.divider} />
             </View>
 
-            <View style={styles.socialIconsContainer}>
+            <View style={styles.socialButtonsContainer}>
+              {/* Google - Works on all platforms */}
               <TouchableOpacity
-                style={[styles.socialIconButton, socialLoading === 'google' && styles.socialIconActive]}
+                style={[styles.socialButton, socialLoading === 'google' && styles.socialButtonActive]}
                 onPress={() => handleSocialLogin('google')}
                 disabled={!!socialLoading || loading}
               >
-                {socialLoading === 'google' ? (
-                  <ActivityIndicator size="small" color="#EA4335" />
-                ) : (
-                  <Ionicons name="logo-google" size={28} color="#EA4335" />
-                )}
+                <View style={styles.socialButtonContent}>
+                  {socialLoading === 'google' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-google" size={20} color="#fff" style={styles.socialIcon} />
+                      <Text style={styles.socialButtonText}>Google</Text>
+                    </>
+                  )}
+                </View>
               </TouchableOpacity>
 
+              {/* Microsoft - Works on all platforms */}
               <TouchableOpacity
-                style={[styles.socialIconButton, socialLoading === 'microsoft' && styles.socialIconActive]}
+                style={[styles.socialButton, socialLoading === 'microsoft' && styles.socialButtonActive]}
                 onPress={() => handleSocialLogin('microsoft')}
                 disabled={!!socialLoading || loading}
               >
-                {socialLoading === 'microsoft' ? (
-                  <ActivityIndicator size="small" color="#0078D4" />
-                ) : (
-                  <Ionicons name="logo-windows" size={28} color="#0078D4" />
-                )}
+                <View style={styles.socialButtonContent}>
+                  {socialLoading === 'microsoft' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="logo-microsoft" size={20} color="#fff" style={styles.socialIcon} />
+                      <Text style={styles.socialButtonText}>Microsoft</Text>
+                    </>
+                  )}
+                </View>
               </TouchableOpacity>
 
-              {Platform.OS === 'ios' && (
+              {/* Apple - iOS/Android only */}
+              {Platform.OS !== 'web' && (
                 <TouchableOpacity
-                  style={[styles.socialIconButton, styles.socialIconApple, socialLoading === 'apple' && styles.socialIconActive]}
+                  style={[styles.socialButton, styles.socialButtonApple, socialLoading === 'apple' && styles.socialButtonActive]}
                   onPress={() => handleSocialLogin('apple')}
                   disabled={!!socialLoading || loading}
                 >
-                  {socialLoading === 'apple' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Ionicons name="logo-apple" size={28} color="#fff" />
-                  )}
+                  <View style={styles.socialButtonContent}>
+                    {socialLoading === 'apple' ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color="#fff" style={styles.socialIcon} />
+                        <Text style={styles.socialButtonText}>Apple</Text>
+                      </>
+                    )}
+                  </View>
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                style={[styles.socialIconButton, socialLoading === 'phone' && styles.socialIconActive]}
-                onPress={() => setShowPhoneAuth(true)}
-                disabled={!!socialLoading || loading}
-              >
-                {socialLoading === 'phone' ? (
-                  <ActivityIndicator size="small" color="#10B981" />
-                ) : (
-                  <Ionicons name="call" size={28} color="#10B981" />
-                )}
-              </TouchableOpacity>
+              {/* Phone - Mobile only */}
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity
+                  style={[styles.socialButton, socialLoading === 'phone' && styles.socialButtonActive]}
+                  onPress={() => setShowPhoneAuth(true)}
+                  disabled={!!socialLoading || loading}
+                >
+                  <View style={styles.socialButtonContent}>
+                    {socialLoading === 'phone' ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="call" size={20} color="#fff" style={styles.socialIcon} />
+                        <Text style={styles.socialButtonText}>Phone</Text>
+                      </>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
 
+            {/* Create Account - PROMINENT */}
             <View style={styles.signupContainer}>
               <Text style={styles.signupText}>New to FLASH?</Text>
               <TouchableOpacity
+                style={styles.createAccountButton}
                 onPress={() => navigation.navigate('SignUp')}
                 disabled={loading || !!socialLoading}
               >
-                <Text style={styles.signupLink}>Create account</Text>
+                <Text style={styles.createAccountText}>Create Account</Text>
               </TouchableOpacity>
             </View>
 
@@ -346,151 +359,174 @@ export default function LoginScreen({ navigation }: any) {
         visible={showPhoneAuth}
         onClose={() => setShowPhoneAuth(false)}
       />
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000', // Pure black like marketing site
   },
   keyboardView: {
     flex: 1,
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  vespaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  vespaHeaderText: {
-    fontSize: 10,
-    color: '#64748B',
-    marginRight: 6,
-  },
-  vespaLogoSmall: {
-    width: 60,
-    height: 20,
+    padding: 24,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 48,
+  },
+  logoGlow: {
+    shadowColor: '#00F5FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
   },
   logo: {
-    width: width * 0.85,
-    height: 200,
-    marginBottom: 16,
+    width: width * 0.5,
+    height: 140,
+    marginBottom: 20,
   },
   tagline: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#94A3B8',
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '400',
+    letterSpacing: 0.5,
   },
   form: {
     width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
   },
   inputContainer: {
     marginBottom: 16,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 245, 255, 0.05)', // Subtle cyan tint
     borderRadius: 12,
-    padding: 16,
+    padding: 18,
     fontSize: 16,
     color: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)', // Neon cyan border
+    shadowColor: '#00F5FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
   },
   button: {
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 24,
+    shadowColor: '#00F5FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   buttonGradient: {
-    padding: 16,
+    padding: 18,
     alignItems: 'center',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginVertical: 24,
   },
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 245, 255, 0.2)',
   },
   dividerText: {
-    marginHorizontal: 10,
-    color: '#94A3B8',
-    fontSize: 14,
+    marginHorizontal: 16,
+    color: '#64748B',
+    fontSize: 13,
     fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   socialButtonsContainer: {
-    marginBottom: 20,
+    gap: 12,
+    marginBottom: 32,
   },
-  socialIconsContainer: {
+  socialButton: {
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  socialButtonContent: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
-    gap: 20,
+    justifyContent: 'center',
   },
-  socialIconButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  socialIcon: {
+    marginRight: 10,
+  },
+  socialButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  socialButtonActive: {
+    backgroundColor: 'rgba(0, 245, 255, 0.2)',
+    borderColor: '#00F5FF',
+  },
+  socialButtonApple: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  socialIconActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  socialIconApple: {
-    backgroundColor: '#000',
-    borderColor: '#000',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 
   signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
-    gap: 8,
+    marginTop: 24,
+    marginBottom: 24,
   },
   signupText: {
-    color: '#64748B',
-    fontSize: 14,
+    color: '#94A3B8',
+    fontSize: 15,
+    marginBottom: 12,
   },
-  signupLink: {
-    color: '#00D4FF',
-    fontSize: 14,
-    fontWeight: '600',
+  createAccountButton: {
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FF006E', // Pink like marketing site
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    shadowColor: '#FF006E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 15,
+  },
+  createAccountText: {
+    color: '#FF006E',
+    fontSize: 16,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -521,16 +557,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
     gap: 8,
+    opacity: 0.6,
   },
   legalLink: {
     color: '#64748B',
-    fontSize: 12,
-    textDecorationLine: 'underline',
+    fontSize: 11,
   },
   legalDivider: {
     color: '#64748B',
-    fontSize: 12,
+    fontSize: 11,
   },
 }); 
