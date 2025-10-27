@@ -55,7 +55,6 @@ export default {
     },
     scheme: "flash",
     plugins: [
-      "expo-audio",
       "expo-font"
     ],
     extra: {

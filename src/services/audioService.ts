@@ -1,21 +1,9 @@
 import * as FileSystem from 'expo-file-system';
+import { Audio } from 'expo-av';
 
 export interface AudioPermissionStatus {
   granted: boolean;
   canAskAgain: boolean;
-}
-
-// Lazy load expo-audio to prevent iOS crash on app launch
-let AudioModule: any = null;
-let RecordingPresets: any = null;
-
-async function getAudioModule() {
-  if (!AudioModule) {
-    const audio = await import('expo-audio');
-    AudioModule = audio.AudioModule;
-    RecordingPresets = audio.RecordingPresets;
-  }
-  return AudioModule;
 }
 
 export class AudioService {
@@ -35,8 +23,7 @@ export class AudioService {
 
   async requestPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const module = await getAudioModule();
-      const { status, canAskAgain } = await module.requestRecordingPermissionsAsync();
+      const { status, canAskAgain } = await Audio.requestPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -49,8 +36,7 @@ export class AudioService {
 
   async checkPermissions(): Promise<AudioPermissionStatus> {
     try {
-      const module = await getAudioModule();
-      const { status, canAskAgain } = await module.getRecordingPermissionsAsync();
+      const { status, canAskAgain } = await Audio.getPermissionsAsync();
       return {
         granted: status === 'granted',
         canAskAgain: canAskAgain || false,
@@ -63,14 +49,12 @@ export class AudioService {
 
   async prepareAudioMode() {
     try {
-      const module = await getAudioModule();
-      await module.setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-        shouldPlayInBackground: false,
-        shouldRouteThroughEarpiece: false,
-        interruptionMode: 'duckOthers',
-        interruptionModeAndroid: 'duckOthers',
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
       });
     } catch (error) {
       console.error('Error setting audio mode:', error);

@@ -8,23 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import Icon from './Icon';
 import { audioService } from '../services/audioService';
-
-// Lazy load expo-audio to prevent iOS crash on app launch
-let useAudioRecorder: any = null;
-let AudioModule: any = null;
-let RecordingPresets: any = null;
-
-async function getAudioModules() {
-  if (!useAudioRecorder) {
-    const audio = await import('expo-audio');
-    useAudioRecorder = audio.useAudioRecorder;
-    AudioModule = audio.AudioModule;
-    RecordingPresets = audio.RecordingPresets;
-  }
-  return { useAudioRecorder, AudioModule, RecordingPresets };
-}
 
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string) => void;
@@ -39,7 +25,7 @@ export default function VoiceRecorder({
   maxDuration = 60,
   color,
 }: VoiceRecorderProps) {
-  const [audioRecorder, setAudioRecorder] = useState<any>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [duration, setDuration] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,33 +38,14 @@ export default function VoiceRecorder({
   const meteringInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Initialize audio modules lazily
-    const initializeAudio = async () => {
-      try {
-        const { useAudioRecorder, RecordingPresets } = await getAudioModules();
-        const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-        setAudioRecorder(recorder);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Failed to initialize audio:', error);
-        Alert.alert('Audio Error', 'Failed to initialize audio recording.');
-        onCancel();
-      }
-    };
-    
-    initializeAudio();
+    // Start recording immediately
+    startRecording();
     
     return () => {
       setIsCleanedUp(true);
       cleanup();
     };
   }, []);
-
-  useEffect(() => {
-    if (audioRecorder && !isLoading) {
-      startRecording();
-    }
-  }, [audioRecorder, isLoading]);
 
   const cleanup = async () => {
     // Clear intervals
@@ -93,8 +60,11 @@ export default function VoiceRecorder({
     
     // Stop recording if still active
     try {
-      if (audioRecorder.isRecording) {
-        await audioRecorder.stop();
+      if (recording) {
+        const status = await recording.getStatusAsync();
+        if (status.isRecording) {
+          await recording.stopAndUnloadAsync();
+        }
       }
     } catch (error) {
       console.error('Error stopping recorder during cleanup:', error);
@@ -131,14 +101,11 @@ export default function VoiceRecorder({
   }, [audioLevel]);
 
   const startRecording = async () => {
-    if (!audioRecorder) return;
-    
     try {
       setIsLoading(true);
       
       // Check permissions
-      const { AudioModule } = await getAudioModules();
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
+      const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           'Permission Required',
@@ -151,13 +118,18 @@ export default function VoiceRecorder({
       // Prepare audio mode
       await audioService.prepareAudioMode();
 
-      // Prepare and start recording
-      await audioRecorder.prepareToRecordAsync();
+      // Create and start recording
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
       
       // Check if component was cleaned up during async operations
-      if (isCleanedUp) return;
+      if (isCleanedUp) {
+        await newRecording.stopAndUnloadAsync();
+        return;
+      }
       
-      audioRecorder.record();
+      setRecording(newRecording);
       setIsRecording(true);
       setIsLoading(false);
 
@@ -173,10 +145,10 @@ export default function VoiceRecorder({
       }, 1000);
 
       // Start metering update
-      meteringInterval.current = setInterval(() => {
-        if (!isCleanedUp && audioRecorder.isRecording) {
+      meteringInterval.current = setInterval(async () => {
+        if (!isCleanedUp && newRecording) {
           try {
-            const status = audioRecorder.getStatus();
+            const status = await newRecording.getStatusAsync();
             if (status.isRecording && status.metering !== undefined) {
               // Normalize audio level from -160 to 0 dB to 0-1 range
               const normalizedLevel = Math.max(0, (status.metering + 160) / 160);
@@ -197,9 +169,12 @@ export default function VoiceRecorder({
   };
 
   const stopRecording = async () => {
-    if (!audioRecorder.isRecording || isCleanedUp) return;
+    if (!recording || isCleanedUp) return;
 
     try {
+      const status = await recording.getStatusAsync();
+      if (!status.isRecording) return;
+
       setIsLoading(true);
       
       // Clear intervals first
@@ -212,8 +187,8 @@ export default function VoiceRecorder({
         meteringInterval.current = null;
       }
 
-      await audioRecorder.stop();
-      const uri = audioRecorder.uri;
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
       
       if (uri && !isCleanedUp) {
         onRecordingComplete(uri);
@@ -233,10 +208,13 @@ export default function VoiceRecorder({
   };
 
   const cancelRecording = async () => {
-    if (audioRecorder.isRecording && !isCleanedUp) {
+    if (recording && !isCleanedUp) {
       try {
-        await audioRecorder.stop();
-        const uri = audioRecorder.uri;
+        const status = await recording.getStatusAsync();
+        if (status.isRecording) {
+          await recording.stopAndUnloadAsync();
+        }
+        const uri = recording.getURI();
         if (uri) {
           await audioService.deleteRecording(uri);
         }

@@ -23,11 +23,13 @@
     "production": {
       "developmentClient": false,
       "distribution": "store",
+      "node": "20.18.0",
       "ios": {
         "image": "latest"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest"
       },
       "env": {
         "EXPO_DEBUG": "true",
