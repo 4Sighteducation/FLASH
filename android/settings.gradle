@@ -1,75 +1,67 @@
 pluginManagement {
   repositories {
-    mavenCentral()
     google()
+    mavenCentral()
     gradlePluginPortal()
   }
-
-  def version = providers.exec {
-    commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
-  }.standardOutput.asText.get().trim()
-  def (_, reactNativeMinor, reactNativePatch) = version.split("-")[0].tokenize('.').collect { it.toInteger() }
-
-  // CRITICAL: Include expo-modules-core for expo-module-gradle-plugin with unique name
-  includeBuild(new File(["node", "--print", "require.resolve('expo-modules-core/package.json')"].execute(null, rootDir).text.trim()).getParentFile()) {
-    name = "expo-modules-core-plugin"  // Avoids collision with project :expo-modules-core
-  }
-  includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json')"].execute(null, rootDir).text.trim()).getParentFile().toString())
-  if(reactNativeMinor == 74 && reactNativePatch <= 3){
-    includeBuild("react-settings-plugin")
+  // Include the RN gradle plugin as a build (required for RN 0.75+)
+  includeBuild(new File(
+    ["node","--print","require.resolve('@react-native/gradle-plugin/package.json')"]
+      .execute(null, rootDir).text.trim()
+  ).getParentFile())
+  // Include expo-modules-core as a build ONLY for the plugin, under a unique name
+  includeBuild(new File(
+    ["node","--print","require.resolve('expo-modules-core/package.json')"]
+      .execute(null, rootDir).text.trim()
+  ).getParentFile()) {
+    name = "expo-modules-core-plugin" // avoid name collision with :expo-modules-core project
   }
 }
 
-plugins { id("com.facebook.react.settings") }
-
-def getRNMinorVersion() {
-  def version = providers.exec {
-    commandLine("node", "-e", "console.log(require('react-native/package.json').version);")
-  }.standardOutput.asText.get().trim()
-
-  def coreVersion = version.split("-")[0]
-  def (major, minor, patch) = coreVersion.tokenize('.').collect { it.toInteger() }
-
-  return minor
+plugins {
+  // Load the RN settings plugin (lets RN configure catalogs, etc.)
+  id("com.facebook.react.settings")
 }
-
-if (getRNMinorVersion() >= 75) {
-  extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-    if (System.getenv('EXPO_UNSTABLE_CORE_AUTOLINKING') == '1') {
-      println('\u001B[32mUsing expo-modules-autolinking as core autolinking source\u001B[0m')
-      def command = [
-        'node',
-        '--no-warnings',
-        '--eval',
-        'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
-        'react-native-config',
-        '--json',
-        '--platform',
-        'android'
-      ].toList()
-      ex.autolinkLibrariesFromCommand(command)
-    } else {
-      ex.autolinkLibrariesFromCommand()
-    }
-  }
-}
-
-rootProject.name = 'FLASH'
 
 dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+  repositories {
+    google()
+    mavenCentral()
+  }
+  // Load RN's version catalog so plugin/deps get proper versions
   versionCatalogs {
-    reactAndroidLibs {
-      from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
+    create("libs") {
+      def rnPluginDir = new File(
+        ["node","--print","require.resolve('@react-native/gradle-plugin/package.json')"]
+          .execute(null, rootDir).text.trim()
+      ).getParentFile()
+      from(files(new File(rnPluginDir, "../gradle/libs.versions.toml")))
     }
   }
 }
 
-apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
+rootProject.name = "FLASH"
+
+apply from: new File(
+  ["node","--print","require.resolve('expo/package.json')"]
+    .execute(null, rootDir).text.trim(),
+  "../scripts/autolinking.gradle"
+)
+
+// Autolink Expo/React Native modules as normal
 useExpoModules()
 
-if (getRNMinorVersion() < 75) {
-  apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), "../native_modules.gradle");
+// RN < 0.75 compatibility (kept guarded; harmless if 0.75+)
+if (providers.exec {
+      commandLine("node","-e","console.log(require('react-native/package.json').version)")
+    }.standardOutput.asText.get().trim().split('\\.')[1].toInteger() < 75) {
+  apply from: new File(
+    ["node","--print","require.resolve('@react-native-community/cli-platform-android/package.json')"]
+      .execute(null, rootDir).text.trim(),
+    "../native_modules.gradle"
+  )
   applyNativeModulesSettingsGradle(settings)
 }
 
-include ':app'
+include(":app")
