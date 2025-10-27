@@ -1,0 +1,217 @@
+.btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem !important;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1.125rem !important;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  width: auto;
+}
+
+.btnPrimary {
+  background: linear-gradient(90deg, #00F5FF 0%, #FF006E 100%);
+  color: white;
+  box-shadow: 0 0 10px #00F5FF, 0 0 20px #00F5FF, 0 0 30px #00F5FF;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px #00F5FF, 0 0 40px #00F5FF, 0 0 60px #00F5FF;
+}
+
+.btnSecondary {
+  background: rgba(0, 245, 255, 0.1);
+  border: 2px solid #00F5FF;
+  color: #00F5FF;
+  box-shadow: 0 0 10px #00F5FF, 0 0 20px #00F5FF, 0 0 30px #00F5FF;
+}
+
+.btnSecondary:hover {
+  background: rgba(0, 245, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(10px);
+  z-index: 9999999 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease;
+  overflow-y: auto;
+  isolation: isolate;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modalContent {
+  background: linear-gradient(135deg, #0A0A1F 0%, #1a1a35 100%);
+  border: 2px solid #00F5FF;
+  border-radius: 1.25rem;
+  padding: 2rem 1.5rem;
+  max-width: 450px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 0 60px rgba(0, 245, 255, 0.4);
+  animation: slideUp 0.3s ease;
+  margin: auto;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.closeBtn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  z-index: 10;
+}
+
+.closeBtn:hover {
+  color: #00F5FF;
+  transform: rotate(90deg);
+}
+
+.emoji {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 0 20px #00F5FF);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(90deg, #00F5FF 0%, #FF006E 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  color: #94A3B8;
+  margin-bottom: 1.25rem;
+  font-size: 1rem;
+}
+
+.highlight {
+  color: #FF006E;
+  text-shadow: 0 0 10px #FF006E;
+  font-weight: 700;
+}
+
+.countdownContainer {
+  background: rgba(0, 245, 255, 0.05);
+  border: 2px solid rgba(0, 245, 255, 0.3);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.launchText {
+  color: #94A3B8;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.launchDate {
+  color: #00F5FF;
+  font-size: 1.125rem;
+  margin: 1rem 0;
+}
+
+.offer {
+  color: #E2E8F0;
+  margin-bottom: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-direction: column;
+}
+
+.joinBtn {
+  padding: 0.875rem 1.75rem;
+  background: linear-gradient(90deg, #00F5FF 0%, #FF006E 100%);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.joinBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
+}
+
+.okBtn {
+  padding: 0.75rem 1.75rem;
+  background: rgba(0, 245, 255, 0.1);
+  color: #00F5FF;
+  border: 2px solid #00F5FF;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.okBtn:hover {
+  background: rgba(0, 245, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .modalContent {
+    padding: 1.5rem 1rem;
+  }
+  
+  .title {
+    font-size: 1.35rem;
+  }
+  
+  .emoji {
+    font-size: 2.5rem;
+  }
+}
+
