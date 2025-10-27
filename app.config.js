@@ -48,15 +48,23 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 6,
-      targetSdkVersion: 35,
-      compileSdkVersion: 35
+      versionCode: 6
     },
     web: {
       favicon: "./assets/icon.png"
     },
     scheme: "flash",
     plugins: [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
       "expo-font"
     ],
     extra: {
