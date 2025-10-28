@@ -22,6 +22,9 @@ import CardTopicSelector from '../screens/cards/CardTopicSelector';
 import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
 import TopicHubScreen from '../screens/topics/TopicHubScreen';
 import ImageCardGeneratorScreen from '../screens/cards/ImageCardGeneratorScreen';
+import AdminDashboard from '../screens/admin/AdminDashboard';
+import UserManagement from '../screens/admin/UserManagement';
+import TestTools from '../screens/admin/TestTools';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -173,6 +176,30 @@ function ProfileStack() {
       <Stack.Screen 
         name="APISettings" 
         component={APISettingsScreen}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="AdminDashboard" 
+        component={AdminDashboard}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="AdminUserManagement" 
+        component={UserManagement}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="AdminTestTools" 
+        component={TestTools}
         options={{ 
           headerShown: false,
           presentation: 'modal'

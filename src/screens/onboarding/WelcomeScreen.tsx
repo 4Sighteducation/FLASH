@@ -32,13 +32,14 @@ export default function WelcomeScreen() {
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [loading, setLoading] = useState(true);
-  const fadeAnim = new Animated.Value(0);
-  const glowAnim = new Animated.Value(0);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const glowAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    console.log('[WelcomeScreen] Mounting, user:', user?.id);
     checkUserStatus();
     startAnimations();
-  }, []);
+  }, [user]);
 
   const startAnimations = () => {
     // Fade in animation
@@ -67,24 +68,32 @@ export default function WelcomeScreen() {
 
   const checkUserStatus = async () => {
     try {
-      if (!user) return;
+      if (!user) {
+        // No user means they're at login - shouldn't see this screen
+        setLoading(false);
+        return;
+      }
 
       // Check if user has completed onboarding
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('is_onboarded, created_at')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle missing profiles
 
-      const isNew = !profile?.is_onboarded;
+      // If no profile exists OR is_onboarded is false, treat as new user
+      const isNew = !profile || !profile.is_onboarded;
+      console.log('[WelcomeScreen] User profile:', profile, 'isNew:', isNew, 'error:', profileError);
       setIsReturningUser(!isNew);
 
-      if (!isNew) {
+      if (!isNew && profile) {
         // Fetch daily stats for returning users
         await fetchDailyStats();
       }
     } catch (error) {
       console.error('Error checking user status:', error);
+      // On error, assume new user and show wizard
+      setIsReturningUser(false);
     } finally {
       setLoading(false);
     }
@@ -140,18 +149,22 @@ export default function WelcomeScreen() {
   };
 
   if (loading) {
+    console.log('[WelcomeScreen] Rendering loading state');
     return (
       <View style={styles.container}>
-        <Animated.View style={{ opacity: fadeAnim }}>
+        <View style={styles.loadingContainer}>
           <Image
             source={require('../../../assets/flash-logo-transparent.png')}
             style={styles.loadingLogo}
             resizeMode="contain"
           />
-        </Animated.View>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
+
+  console.log('[WelcomeScreen] Rendering, isReturningUser:', isReturningUser);
 
   // RETURNING USER VIEW
   if (isReturningUser && dailyStats) {
@@ -267,29 +280,29 @@ export default function WelcomeScreen() {
     {
       icon: '⚡',
       title: "Welcome to FLASH!",
-      subtitle: "Where cramming meets... not cramming",
-      description: "We're about to turn your exam prep from 'oh crap' to 'oh yeah!' using AI, voice tech, and some seriously smart algorithms. No BS, just results.",
-      buttonText: "Let's Do This! →",
+      subtitle: "Where last-minute revision actually works",
+      description: "We're about to turn your exam prep from 'mild panic' to 'quietly confident' using AI, voice tech, and some genuinely clever algorithms. No nonsense, just results.",
+      buttonText: "Right, Let's Go →",
     },
     {
       icon: '🧠',
       title: "How This Works",
-      subtitle: "Science meets sorcery (okay, just science)",
-      description: "FLASH uses the Leitner Box system - a proven spaced repetition technique. Cards you nail? See you later. Cards you struggle with? We'll bug you tomorrow. It's like having a personal tutor who never sleeps.",
+      subtitle: "Surprisingly simple, actually",
+      description: "FLASH uses the Leitner Box system - a proven spaced repetition technique. Cards you know? See you later. Cards that trip you up? Back tomorrow. Think of it as a study buddy who actually remembers what you need to work on.",
       features: [
-        { icon: '🤖', text: 'AI generates cards from any topic' },
+        { icon: '🤖', text: 'AI creates cards from any topic' },
         { icon: '🎤', text: 'Voice answers with instant feedback' },
-        { icon: '📸', text: 'Snap photos, get flashcards' },
-        { icon: '📊', text: 'Track progress like a boss' },
+        { icon: '📸', text: 'Photo to flashcard in seconds' },
+        { icon: '📊', text: 'Track your progress properly' },
       ],
-      buttonText: "Sounds Amazing →",
+      buttonText: "Brilliant →",
     },
     {
       icon: '🎯',
-      title: "Let's Customize Your Setup",
-      subtitle: "Tell us what you're studying",
-      description: "Choose your exam type and subjects. Don't worry, you can change this anytime. We're flexible like that.",
-      buttonText: "Set Up My Subjects →",
+      title: "Let's Get You Set Up",
+      subtitle: "What are you studying?",
+      description: "Choose your exam type and subjects. Don't worry, you can change this anytime. We're quite flexible.",
+      buttonText: "Set My Subjects →",
     },
   ];
 
@@ -411,10 +424,19 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingLogo: {
     width: 200,
     height: 200,
-    alignSelf: 'center',
+  },
+  loadingText: {
+    color: '#94A3B8',
+    fontSize: 16,
+    marginTop: 20,
   },
   logoContainer: {
     alignItems: 'center',

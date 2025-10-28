@@ -22,12 +22,14 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext.mock';
+import { useAdminAccess } from '../../hooks/useAdminAccess';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const { theme, toggleTheme } = useTheme();
   const { tier, limits, purchaseFullVersion, restorePurchases } = useSubscription();
+  const { isAdmin } = useAdminAccess();
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
@@ -362,6 +364,17 @@ export default function ProfileScreen() {
             <Text style={styles.settingText}>API Settings</Text>
             <Icon name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
+
+          {isAdmin && (
+            <TouchableOpacity 
+              style={[styles.settingRow, styles.adminRow]}
+              onPress={() => navigation.navigate('AdminDashboard' as never)}
+            >
+              <Icon name="shield-checkmark" size={24} color="#00F5FF" />
+              <Text style={[styles.settingText, styles.adminText]}>Admin Panel</Text>
+              <Icon name="chevron-forward" size={24} color="#00F5FF" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -468,6 +481,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     marginLeft: 15,
+  },
+  adminRow: {
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.2)',
+  },
+  adminText: {
+    color: '#00F5FF',
+    fontWeight: '600',
   },
   logoutButton: {
     flexDirection: 'row',
