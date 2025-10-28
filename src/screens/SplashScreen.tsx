@@ -24,11 +24,11 @@ export default function SplashScreen({ onReady }: { onReady: () => void }) {
     >
       <View style={styles.content}>
         <View style={styles.logoGlow}>
-          <Image
+        <Image
             source={require('../../assets/flash-logo-transparent.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          style={styles.logo}
+          resizeMode="contain"
+        />
         </View>
         <ActivityIndicator 
           size="large" 
