@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
@@ -252,23 +251,23 @@ export default function SubjectSelectionScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+          <ActivityIndicator size="large" color="#00F5FF" />
         </SafeAreaView>
-      </LinearGradient>
+      </View>
     );
   }
 
   return (
-    <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#94A3B8" />
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -285,7 +284,7 @@ export default function SubjectSelectionScreen() {
           {!selectedExamBoard ? (
             <View style={styles.examBoardsContainer}>
               <View style={styles.infoBox}>
-                <Icon name="information-circle" size={24} color="#6366F1" />
+                <Ionicons name="information-circle" size={24} color="#00F5FF" />
                 <Text style={styles.infoText}>
                   Each exam board has different subjects and topic structures. Selecting your exam board ensures you get the exact curriculum for your studies.
                 </Text>
@@ -302,7 +301,7 @@ export default function SubjectSelectionScreen() {
                     <Text style={styles.examBoardCode}>{board.code}</Text>
                     <Text style={styles.examBoardName}>{board.full_name}</Text>
                   </View>
-                  <Icon name="chevron-forward" size={24} color="#6366F1" />
+                  <Ionicons name="chevron-forward" size={24} color="#00F5FF" />
                 </TouchableOpacity>
               ))}
             </View>
@@ -316,7 +315,7 @@ export default function SubjectSelectionScreen() {
                   setSearchQuery('');
                 }}
               >
-                <Icon name="swap-horizontal" size={20} color="#6366F1" />
+                <Ionicons name="swap-horizontal" size={20} color="#00F5FF" />
                 <Text style={styles.changeExamBoardText}>
                   Change exam board (Currently: {selectedExamBoard.code})
                 </Text>
@@ -324,16 +323,16 @@ export default function SubjectSelectionScreen() {
 
               {loadingSubjects ? (
                 <View style={styles.centerContainer}>
-                  <ActivityIndicator size="large" color="#FFFFFF" />
+                  <ActivityIndicator size="large" color="#00F5FF" />
                 </View>
               ) : (
                 <>
                   <View style={styles.searchContainer}>
-                    <Icon name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                    <Ionicons name="search" size={20} color="#64748B" style={styles.searchIcon} />
                     <TextInput
                       style={styles.searchInput}
                       placeholder="Search subjects..."
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor="#64748B"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
                     />
@@ -342,7 +341,7 @@ export default function SubjectSelectionScreen() {
                         style={styles.clearButton}
                         onPress={() => setSearchQuery('')}
                       >
-                        <Icon name="close-circle" size={20} color="#9CA3AF" />
+                        <Ionicons name="close-circle" size={20} color="#64748B" />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -367,8 +366,8 @@ export default function SubjectSelectionScreen() {
                             </Text>
                             <Ionicons 
                               name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
-                              size={24} 
-                              color={isSelected ? "#6366F1" : "#9CA3AF"} 
+                              size={28} 
+                              color={isSelected ? "#00F5FF" : "#64748B"} 
                             />
                           </TouchableOpacity>
                         );
@@ -390,19 +389,28 @@ export default function SubjectSelectionScreen() {
               disabled={selectedSubjects.length === 0}
             >
               <Text style={styles.continueButtonText}>
-                Continue ({selectedSubjects.length} subjects selected)
+                Continue ({selectedSubjects.length} subject{selectedSubjects.length !== 1 ? 's' : ''} selected) →
               </Text>
             </TouchableOpacity>
           )}
         </ScrollView>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0f1e',
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+      backgroundImage: `
+        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px)
+      `,
+      backgroundSize: '50px 50px',
+    }),
   },
   safeArea: {
     flex: 1,
@@ -416,23 +424,26 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 24,
+    paddingTop: 16,
   },
   backButton: {
-    marginTop: 16,
     marginBottom: 24,
+    padding: 8,
   },
   header: {
     marginBottom: 32,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#E0E7FF',
+    color: '#94A3B8',
+    lineHeight: 22,
   },
   examBoardsContainer: {
     marginBottom: 32,
@@ -444,29 +455,32 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   examBoardCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 16,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   examBoardInfo: {
     flex: 1,
   },
   examBoardCode: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#E2E8F0',
+    marginBottom: 4,
+    letterSpacing: 0.3,
   },
   examBoardName: {
     fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
+    color: '#64748B',
   },
   changeExamBoard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
     borderRadius: 12,
     padding: 16,
     flexDirection: 'row',
@@ -474,21 +488,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(0, 245, 255, 0.2)',
   },
   changeExamBoardText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: '#00F5FF',
     marginLeft: 8,
   },
   searchContainer: {
     marginBottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   searchIcon: {
     marginRight: 12,
@@ -497,7 +513,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#1F2937',
+    color: '#E2E8F0',
   },
   clearButton: {
     padding: 4,
@@ -507,67 +523,88 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   subjectCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 16,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   selectedCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#6366F1',
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderColor: '#00F5FF',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(0, 245, 255, 0.3)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
+      elevation: 5,
+    }),
   },
   subjectName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#E2E8F0',
     flex: 1,
   },
   selectedText: {
-    color: '#6366F1',
+    color: '#00F5FF',
   },
   continueButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    borderRadius: 30,
+    backgroundColor: '#00F5FF',
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(0, 245, 255, 0.6)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
+      elevation: 8,
+    }),
   },
   disabledButton: {
-    opacity: 0.5,
+    opacity: 0.3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: 'none',
+    } : {
+      shadowOpacity: 0,
+      elevation: 0,
+    }),
   },
   continueButtonText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#6366F1',
+    fontWeight: 'bold',
+    color: '#0a0f1e',
+    letterSpacing: 0.5,
   },
   noSubjectsText: {
     fontSize: 16,
-    color: '#E0E7FF',
+    color: '#64748B',
     textAlign: 'center',
     marginTop: 32,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 245, 255, 0.1)',
   },
   infoText: {
     fontSize: 14,
-    color: '#E0E7FF',
+    color: '#94A3B8',
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
   },
-}); 
+});

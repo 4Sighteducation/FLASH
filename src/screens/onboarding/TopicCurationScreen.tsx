@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import TopicEditModal from '../../components/TopicEditModal';
 import ColorPickerModal from '../../components/ColorPickerModal';
@@ -53,14 +52,14 @@ export default function TopicCurationScreen() {
   const allSubjectsCompleted = completedSubjects.length === subjects.length;
 
   return (
-    <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#94A3B8" />
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -90,9 +89,9 @@ export default function TopicCurationScreen() {
                     </Text>
                   </View>
                   {isCompleted ? (
-                    <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
                   ) : (
-                    <Ionicons name="chevron-forward" size={24} color="#6B7280" />
+                    <Ionicons name="chevron-forward" size={24} color="#64748B" />
                   )}
                 </TouchableOpacity>
               );
@@ -123,7 +122,7 @@ export default function TopicCurationScreen() {
           >
             <Text style={styles.continueButtonText}>
               {allSubjectsCompleted 
-                ? (isAddingSubjects ? 'Add Subjects' : 'Complete Setup')
+                ? (isAddingSubjects ? 'Add Subjects' : 'Complete Setup →')
                 : 'Customize all subjects to continue'}
             </Text>
           </TouchableOpacity>
@@ -147,13 +146,22 @@ export default function TopicCurationScreen() {
           />
         </>
       )}
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0f1e',
+    ...(Platform.OS === 'web' && {
+      minHeight: '100vh',
+      backgroundImage: `
+        linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px)
+      `,
+      backgroundSize: '50px 50px',
+    }),
   },
   safeArea: {
     flex: 1,
@@ -162,23 +170,25 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 24,
+    paddingTop: 16,
   },
   backButton: {
-    marginTop: 16,
     marginBottom: 24,
+    padding: 8,
   },
   header: {
     marginBottom: 32,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#E0E7FF',
+    color: '#94A3B8',
     lineHeight: 22,
   },
   subjectsContainer: {
@@ -186,76 +196,106 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   subjectCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   completedCard: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderWidth: 2,
-    borderColor: '#10B981',
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderColor: '#00F5FF',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(0, 245, 255, 0.2)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 3,
+    }),
   },
   subjectContent: {
     flex: 1,
   },
   subjectName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#E2E8F0',
     marginBottom: 4,
+    letterSpacing: 0.3,
   },
   completedText: {
-    color: '#10B981',
+    color: '#00F5FF',
   },
   examBoard: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
   },
   completedExamBoard: {
-    color: '#10B981',
+    color: '#94A3B8',
   },
   progressContainer: {
     marginBottom: 24,
   },
   progressText: {
     fontSize: 14,
-    color: '#E0E7FF',
+    color: '#94A3B8',
     marginBottom: 8,
     textAlign: 'center',
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#10B981',
+    backgroundColor: '#00F5FF',
     borderRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 10px rgba(0, 245, 255, 0.5)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 5,
+    }),
   },
   continueButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    borderRadius: 30,
+    backgroundColor: '#00F5FF',
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(0, 245, 255, 0.6)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
+      elevation: 8,
+    }),
   },
   disabledButton: {
-    opacity: 0.5,
+    opacity: 0.3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: 'none',
+    } : {
+      shadowOpacity: 0,
+      elevation: 0,
+    }),
   },
   continueButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366F1',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0a0f1e',
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
-}); 
+});
