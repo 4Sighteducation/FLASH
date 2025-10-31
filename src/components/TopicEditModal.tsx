@@ -9,6 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from './Icon';
@@ -37,10 +39,13 @@ export default function TopicEditModal({
   const [addingTopic, setAddingTopic] = useState(false);
   const [newTopicText, setNewTopicText] = useState('');
   const [addingToParent, setAddingToParent] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(true);
+  const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (visible) {
       loadTopics();
+      setShowHelp(true);
     }
   }, [visible, subject]);
 
@@ -64,14 +69,18 @@ export default function TopicEditModal({
 
       if (customTopics && customTopics.length > 0) {
         // User already has custom topics
-        setTopics(customTopics.map((t: any) => ({
+        const formattedTopics = customTopics.map((t: any) => ({
           id: t.id,
           title: t.title,
           parentId: t.parent_topic_id,
           isCustom: t.is_custom,
           isDeleted: t.is_deleted,
           sortOrder: t.sort_order,
-        })));
+        }));
+        setTopics(formattedTopics);
+        // Auto-expand all main topics
+        const mainTopicIds = new Set(formattedTopics.filter(t => !t.parentId).map(t => t.id));
+        setExpandedTopics(mainTopicIds);
       } else {
         // Load curriculum topics for this subject
         const { data: curriculumTopics, error: curriculumError } = await supabase
@@ -97,6 +106,9 @@ export default function TopicEditModal({
         })) || [];
 
         setTopics(formattedTopics);
+        // Auto-expand all main topics
+        const mainTopicIds = new Set(formattedTopics.filter(t => !t.parentId).map(t => t.id));
+        setExpandedTopics(mainTopicIds);
       }
     } catch (error) {
       console.error('❌ Error loading topics:', error);
@@ -104,6 +116,21 @@ export default function TopicEditModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleExpanded = (topicId: string) => {
+    const newExpanded = new Set(expandedTopics);
+    if (newExpanded.has(topicId)) {
+      newExpanded.delete(topicId);
+    } else {
+      newExpanded.add(topicId);
+    }
+    setExpandedTopics(newExpanded);
+  };
+
+  const capitalizeFirst = (text: string) => {
+    if (!text) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   };
 
   const handleEditTopic = (topicId: string, currentTitle: string) => {
@@ -123,15 +150,28 @@ export default function TopicEditModal({
 
   const handleDeleteTopic = (topicId: string) => {
     const topic = topics.find(t => t.id === topicId);
-    if (topic?.isCustom) {
-      // Actually remove custom topics
-      setTopics(topics.filter(t => t.id !== topicId && t.parentId !== topicId));
-    } else {
-      // Mark curriculum topics as deleted
-      setTopics(topics.map(t => 
-        t.id === topicId ? { ...t, isDeleted: true } : t
-      ));
-    }
+    Alert.alert(
+      'Delete Topic',
+      `Are you sure you want to remove "${topic?.title}"? This won't affect your flashcards.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (topic?.isCustom) {
+              // Actually remove custom topics
+              setTopics(topics.filter(t => t.id !== topicId && t.parentId !== topicId));
+            } else {
+              // Mark curriculum topics as deleted
+              setTopics(topics.map(t => 
+                t.id === topicId ? { ...t, isDeleted: true } : t
+              ));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAddTopic = (parentId: string | null = null) => {
@@ -194,52 +234,94 @@ export default function TopicEditModal({
     if (topic.isDeleted) return null;
 
     const childTopics = topics.filter(t => t.parentId === topic.id && !t.isDeleted);
+    const isMainTopic = level === 0;
+    const isExpanded = expandedTopics.has(topic.id);
+    const hasChildren = childTopics.length > 0;
 
     return (
       <View key={topic.id}>
-        <View style={[styles.topicItem, { marginLeft: level * 20 }]}>
+        <View style={[
+          styles.topicItem,
+          isMainTopic ? styles.mainTopicItem : styles.subTopicItem,
+          { marginLeft: level * 16 }
+        ]}>
           {editingTopic === topic.id ? (
             <View style={styles.editingContainer}>
               <TextInput
-                style={styles.editInput}
+                style={[styles.editInput, isMainTopic && styles.editInputMain]}
                 value={editingText}
                 onChangeText={setEditingText}
                 autoFocus
+                placeholderTextColor="#64748B"
               />
-              <TouchableOpacity onPress={handleSaveEdit}>
-                <Icon name="checkmark" size={20} color="#10B981" />
+              <TouchableOpacity 
+                onPress={handleSaveEdit}
+                style={styles.iconButton}
+              >
+                <Ionicons name="checkmark-circle" size={24} color="#00F5FF" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setEditingTopic(null)}>
-                <Icon name="close" size={20} color="#EF4444" />
+              <TouchableOpacity 
+                onPress={() => setEditingTopic(null)}
+                style={styles.iconButton}
+              >
+                <Ionicons name="close-circle" size={24} color="#FF006E" />
               </TouchableOpacity>
             </View>
           ) : (
             <>
-              <Text style={styles.topicTitle}>{topic.title}</Text>
+              <View style={styles.topicLeft}>
+                {hasChildren && (
+                  <TouchableOpacity
+                    onPress={() => toggleExpanded(topic.id)}
+                    style={styles.expandButton}
+                  >
+                    <Ionicons
+                      name={isExpanded ? "chevron-down" : "chevron-forward"}
+                      size={20}
+                      color={isMainTopic ? "#00F5FF" : "#64748B"}
+                    />
+                  </TouchableOpacity>
+                )}
+                <View style={styles.topicTextContainer}>
+                  <Text style={[
+                    styles.topicTitle,
+                    isMainTopic ? styles.mainTopicTitle : styles.subTopicTitle
+                  ]}>
+                    {isMainTopic ? topic.title : capitalizeFirst(topic.title)}
+                  </Text>
+                  {topic.isCustom && (
+                    <View style={styles.customBadge}>
+                      <Text style={styles.customBadgeText}>Custom</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
               <View style={styles.topicActions}>
                 <TouchableOpacity
                   onPress={() => handleEditTopic(topic.id, topic.title)}
                   style={styles.actionButton}
                 >
-                  <Icon name="pencil" size={16} color="#6B7280" />
+                  <Ionicons name="create-outline" size={20} color="#94A3B8" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleAddTopic(topic.id)}
-                  style={styles.actionButton}
-                >
-                  <Icon name="add" size={16} color="#6B7280" />
-                </TouchableOpacity>
+                {isMainTopic && (
+                  <TouchableOpacity
+                    onPress={() => handleAddTopic(topic.id)}
+                    style={styles.actionButton}
+                  >
+                    <Ionicons name="add-circle-outline" size={20} color="#00F5FF" />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   onPress={() => handleDeleteTopic(topic.id)}
                   style={styles.actionButton}
                 >
-                  <Icon name="trash" size={16} color="#EF4444" />
+                  <Ionicons name="trash-outline" size={20} color="#FF006E" />
                 </TouchableOpacity>
               </View>
             </>
           )}
         </View>
-        {childTopics.map(child => renderTopic(child, level + 1))}
+        {hasChildren && isExpanded && childTopics.map(child => renderTopic(child, level + 1))}
       </View>
     );
   };
@@ -253,34 +335,95 @@ export default function TopicEditModal({
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
+          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>{subject.subjectName}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Icon name="close" size={24} color="#1F2937" />
+            <View style={styles.headerLeft}>
+              <View style={styles.subjectIconContainer}>
+                <Ionicons name="book" size={24} color="#00F5FF" />
+              </View>
+              <Text style={styles.title}>{subject.subjectName}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color="#94A3B8" />
             </TouchableOpacity>
           </View>
 
+          {/* Help Banner */}
+          {showHelp && (
+            <View style={styles.helpBanner}>
+              <View style={styles.helpContent}>
+                <Ionicons name="information-circle" size={24} color="#00F5FF" />
+                <View style={styles.helpTextContainer}>
+                  <Text style={styles.helpTitle}>Customize Your Topics 📚</Text>
+                  <Text style={styles.helpText}>
+                    ✏️ Rename topics you're studying{'\n'}
+                    🗑️ Remove topics you don't need{'\n'}
+                    ➕ Add custom topics{'\n'}
+                    📋 Topics in <Text style={styles.helpBold}>BOLD</Text> are main topics, others are subtopics
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowHelp(false)}
+                style={styles.helpClose}
+              >
+                <Ionicons name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {!showHelp && (
+            <TouchableOpacity
+              style={styles.showHelpButton}
+              onPress={() => setShowHelp(true)}
+            >
+              <Ionicons name="help-circle-outline" size={20} color="#00F5FF" />
+              <Text style={styles.showHelpText}>Show help</Text>
+            </TouchableOpacity>
+          )}
+
           {loading ? (
-            <ActivityIndicator size="large" color="#6366F1" style={styles.loader} />
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color="#00F5FF" />
+              <Text style={styles.loadingText}>Loading topics...</Text>
+            </View>
           ) : (
             <>
-              <ScrollView style={styles.topicsList}>
-                {topics.filter(t => !t.parentId && !t.isDeleted).map(topic => renderTopic(topic))}
+              <ScrollView style={styles.topicsList} showsVerticalScrollIndicator={false}>
+                {topics.filter(t => !t.parentId && !t.isDeleted).length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="folder-open-outline" size={64} color="#64748B" />
+                    <Text style={styles.emptyStateTitle}>No topics yet</Text>
+                    <Text style={styles.emptyStateText}>
+                      Add your first topic to get started
+                    </Text>
+                  </View>
+                ) : (
+                  topics.filter(t => !t.parentId && !t.isDeleted).map(topic => renderTopic(topic))
+                )}
                 
                 {addingTopic && !addingToParent && (
                   <View style={styles.addTopicContainer}>
+                    <Ionicons name="add-circle" size={24} color="#00F5FF" />
                     <TextInput
                       style={styles.addTopicInput}
-                      placeholder="New topic name"
+                      placeholder="Enter new topic name..."
+                      placeholderTextColor="#64748B"
                       value={newTopicText}
                       onChangeText={setNewTopicText}
                       autoFocus
                     />
-                    <TouchableOpacity onPress={handleSaveNewTopic}>
-                      <Icon name="checkmark" size={20} color="#10B981" />
+                    <TouchableOpacity 
+                      onPress={handleSaveNewTopic}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setAddingTopic(false)}>
-                      <Icon name="close" size={20} color="#EF4444" />
+                    <TouchableOpacity 
+                      onPress={() => setAddingTopic(false)}
+                      style={styles.iconButton}
+                    >
+                      <Ionicons name="close-circle" size={28} color="#FF006E" />
                     </TouchableOpacity>
                   </View>
                 )}
@@ -288,18 +431,18 @@ export default function TopicEditModal({
 
               <View style={styles.footer}>
                 <TouchableOpacity
-                  style={styles.addButton}
+                  style={styles.addMainTopicButton}
                   onPress={() => handleAddTopic(null)}
                 >
-                  <Icon name="add-circle" size={20} color="#6366F1" />
-                  <Text style={styles.addButtonText}>Add Topic</Text>
+                  <Ionicons name="add-circle" size={22} color="#00F5FF" />
+                  <Text style={styles.addMainTopicText}>Add Main Topic</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.saveButton}
                   onPress={handleSaveTopics}
                 >
-                  <Text style={styles.saveButtonText}>Save Topics</Text>
+                  <Text style={styles.saveButtonText}>Save Topics →</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -313,30 +456,114 @@ export default function TopicEditModal({
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0a0f1e',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: '90%',
-    paddingTop: 24,
+    height: '92%',
+    paddingTop: 20,
+    ...(Platform.OS === 'web' && {
+      backgroundImage: `
+        linear-gradient(rgba(0, 245, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 255, 0.02) 1px, transparent 1px)
+      `,
+      backgroundSize: '30px 30px',
+    }),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  subjectIconContainer: {
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
+    borderRadius: 12,
+    padding: 8,
+    marginRight: 12,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
-  loader: {
-    marginTop: 50,
+  closeButton: {
+    padding: 4,
+  },
+  helpBanner: {
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.2)',
+  },
+  helpContent: {
+    flexDirection: 'row',
+  },
+  helpTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  helpTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#00F5FF',
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
+  },
+  helpBold: {
+    fontWeight: 'bold',
+    color: '#E2E8F0',
+  },
+  helpClose: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+  showHelpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+  },
+  showHelpText: {
+    color: '#00F5FF',
+    fontSize: 14,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#94A3B8',
   },
   topicsList: {
     flex: 1,
@@ -346,76 +573,172 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  mainTopicItem: {
+    backgroundColor: 'rgba(0, 245, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.2)',
+  },
+  subTopicItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  topicLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expandButton: {
+    marginRight: 8,
+    padding: 4,
+  },
+  topicTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   topicTitle: {
     flex: 1,
-    fontSize: 16,
-    color: '#1F2937',
+  },
+  mainTopicTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  subTopicTitle: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#94A3B8',
+  },
+  customBadge: {
+    backgroundColor: 'rgba(255, 0, 110, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  customBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#FF006E',
   },
   topicActions: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    marginLeft: 8,
   },
   actionButton: {
+    padding: 8,
+    marginLeft: 4,
+  },
+  iconButton: {
     padding: 4,
   },
   editingContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   editInput: {
     flex: 1,
-    fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#6366F1',
+    fontSize: 15,
+    color: '#E2E8F0',
+    borderBottomWidth: 2,
+    borderBottomColor: '#00F5FF',
     paddingVertical: 4,
+    marginRight: 8,
+  },
+  editInputMain: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   addTopicContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+    borderStyle: 'dashed',
+    marginBottom: 16,
   },
   addTopicInput: {
     flex: 1,
     fontSize: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#6366F1',
+    color: '#E2E8F0',
     paddingVertical: 4,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#94A3B8',
+    marginTop: 16,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 8,
+    textAlign: 'center',
   },
   footer: {
     paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
-  addButton: {
+  addMainTopicButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginBottom: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
   },
-  addButtonText: {
+  addMainTopicText: {
     fontSize: 16,
-    color: '#6366F1',
+    color: '#00F5FF',
     fontWeight: '600',
+    marginLeft: 8,
   },
   saveButton: {
-    backgroundColor: '#6366F1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#00F5FF',
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(0, 245, 255, 0.6)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
+      elevation: 8,
+    }),
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0a0f1e',
+    letterSpacing: 0.5,
   },
-}); 
+});
