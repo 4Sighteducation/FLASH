@@ -235,6 +235,8 @@ export default function TopicEditModal({
 
     const childTopics = topics.filter(t => t.parentId === topic.id && !t.isDeleted);
     const isMainTopic = level === 0;
+    const isModule = level === 1;
+    const isSubtopic = level >= 2;
     const isExpanded = expandedTopics.has(topic.id);
     const hasChildren = childTopics.length > 0;
 
@@ -242,13 +244,19 @@ export default function TopicEditModal({
       <View key={topic.id}>
         <View style={[
           styles.topicItem,
-          isMainTopic ? styles.mainTopicItem : styles.subTopicItem,
+          isMainTopic && styles.mainTopicItem,
+          isModule && styles.moduleItem,
+          isSubtopic && styles.subTopicItem,
           { marginLeft: level * 16 }
         ]}>
           {editingTopic === topic.id ? (
             <View style={styles.editingContainer}>
               <TextInput
-                style={[styles.editInput, isMainTopic && styles.editInputMain]}
+                style={[
+                  styles.editInput,
+                  isMainTopic && styles.editInputMain,
+                  isModule && styles.editInputModule
+                ]}
                 value={editingText}
                 onChangeText={setEditingText}
                 autoFocus
@@ -278,16 +286,18 @@ export default function TopicEditModal({
                     <Ionicons
                       name={isExpanded ? "chevron-down" : "chevron-forward"}
                       size={20}
-                      color={isMainTopic ? "#00F5FF" : "#64748B"}
+                      color={isMainTopic ? "#00F5FF" : isModule ? "#94A3B8" : "#64748B"}
                     />
                   </TouchableOpacity>
                 )}
                 <View style={styles.topicTextContainer}>
                   <Text style={[
                     styles.topicTitle,
-                    isMainTopic ? styles.mainTopicTitle : styles.subTopicTitle
+                    isMainTopic && styles.mainTopicTitle,
+                    isModule && styles.moduleTitle,
+                    isSubtopic && styles.subTopicTitle
                   ]}>
-                    {isMainTopic ? topic.title : capitalizeFirst(topic.title)}
+                    {isMainTopic ? topic.title.toUpperCase() : isModule ? topic.title : capitalizeFirst(topic.title)}
                   </Text>
                   {topic.isCustom && (
                     <View style={styles.customBadge}>
@@ -303,12 +313,12 @@ export default function TopicEditModal({
                 >
                   <Ionicons name="create-outline" size={20} color="#94A3B8" />
                 </TouchableOpacity>
-                {isMainTopic && (
+                {(isMainTopic || isModule) && (
                   <TouchableOpacity
                     onPress={() => handleAddTopic(topic.id)}
                     style={styles.actionButton}
                   >
-                    <Ionicons name="add-circle-outline" size={20} color="#00F5FF" />
+                    <Ionicons name="add-circle-outline" size={20} color={isMainTopic ? "#00F5FF" : "#94A3B8"} />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -359,7 +369,7 @@ export default function TopicEditModal({
                     ✏️ Rename topics you're studying{'\n'}
                     🗑️ Remove topics you don't need{'\n'}
                     ➕ Add custom topics{'\n'}
-                    📋 Topics in <Text style={styles.helpBold}>BOLD</Text> are main topics, others are subtopics
+                    📋 <Text style={styles.helpBold}>BOLD CAPS</Text> = Main Topics, <Text style={styles.helpBold}>Bold</Text> = Modules, Regular = Subtopics
                   </Text>
                 </View>
               </View>
@@ -579,9 +589,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   mainTopicItem: {
-    backgroundColor: 'rgba(0, 245, 255, 0.06)',
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+  },
+  moduleItem: {
+    backgroundColor: 'rgba(255, 0, 110, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
+    borderColor: 'rgba(255, 0, 110, 0.15)',
   },
   subTopicItem: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -609,10 +624,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+  moduleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E2E8F0',
     letterSpacing: 0.3,
   },
   subTopicTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '400',
     color: '#94A3B8',
   },
@@ -657,6 +678,12 @@ const styles = StyleSheet.create({
   editInputMain: {
     fontSize: 18,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  editInputModule: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   addTopicContainer: {
     flexDirection: 'row',

@@ -69,6 +69,21 @@ export default function TopicCurationScreen() {
             </Text>
           </View>
 
+          {/* Importance Banner */}
+          <View style={styles.importanceBanner}>
+            <View style={styles.bannerIconContainer}>
+              <Ionicons name="bulb" size={28} color="#FFD700" />
+            </View>
+            <View style={styles.bannerContent}>
+              <Text style={styles.bannerTitle}>Why This Matters 🎯</Text>
+              <Text style={styles.bannerText}>
+                Simply understanding all the topics in your course is an amazing way to 
+                contextualize what you're studying. Take a moment to review and customize 
+                each topic list - it's a powerful learning technique!
+              </Text>
+            </View>
+          </View>
+
           <View style={styles.subjectsContainer}>
             {subjects.map((subject) => {
               const isCompleted = completedSubjects.includes(subject.subjectName);
@@ -177,7 +192,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   header: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
     fontSize: 32,
@@ -190,6 +205,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#94A3B8',
     lineHeight: 22,
+  },
+  importanceBanner: {
+    backgroundColor: 'rgba(255, 215, 0, 0.08)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.2)',
+  },
+  bannerIconContainer: {
+    marginRight: 16,
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  bannerText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
   },
   subjectsContainer: {
     flex: 1,
