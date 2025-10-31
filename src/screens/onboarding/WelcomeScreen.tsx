@@ -76,9 +76,9 @@ export default function WelcomeScreen() {
 
       // Check if user has completed onboarding
       const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
+        .from('users')
         .select('is_onboarded, created_at')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle(); // Use maybeSingle() instead of single() to handle missing profiles
 
       // If no profile exists OR is_onboarded is false, treat as new user
@@ -112,9 +112,9 @@ export default function WelcomeScreen() {
 
       // Get user's study streak
       const { data: profile } = await supabase
-        .from('user_profiles')
+        .from('users')
         .select('current_streak')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single();
 
       // Get new cards created today
@@ -251,7 +251,7 @@ export default function WelcomeScreen() {
                 {dailyStats.cardsToReview > 0 && (
                   <TouchableOpacity
                     style={[styles.actionButton, styles.actionButtonPrimary]}
-                    onPress={() => navigation.navigate('MainTabs' as never)}
+                    onPress={() => navigation.navigate('Main' as never)}
                   >
                     <Ionicons name="flash" size={24} color="#0a0f1e" />
                     <Text style={styles.actionButtonTextPrimary}>
@@ -262,7 +262,7 @@ export default function WelcomeScreen() {
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.actionButtonSecondary]}
-                  onPress={() => navigation.navigate('MainTabs' as never)}
+                  onPress={() => navigation.navigate('Main' as never)}
                 >
                   <Ionicons name="home-outline" size={24} color="#00F5FF" />
                   <Text style={styles.actionButtonTextSecondary}>Go to Dashboard</Text>
@@ -451,7 +451,6 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
     marginBottom: 32,
   },
   progressDot: {
@@ -461,6 +460,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderWidth: 2,
     borderColor: 'transparent',
+    marginHorizontal: 6,
   },
   progressDotActive: {
     backgroundColor: '#00F5FF',
@@ -533,7 +533,6 @@ const styles = StyleSheet.create({
 
   // Navigation
   navigationContainer: {
-    gap: 12,
     marginTop: 'auto',
   },
   nextButton: {
@@ -561,6 +560,7 @@ const styles = StyleSheet.create({
   skipButton: {
     paddingVertical: 12,
     alignItems: 'center',
+    marginTop: 12,
   },
   skipButtonText: {
     fontSize: 14,
@@ -588,7 +588,6 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 12,
     marginBottom: 12,
   },
   statCard: {
@@ -599,6 +598,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginHorizontal: 6,
   },
   statCardCyan: {
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
@@ -630,7 +630,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   actionButtonsContainer: {
-    gap: 12,
     marginTop: 32,
   },
   actionButton: {
@@ -640,7 +639,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 24,
-    gap: 12,
+    marginBottom: 12,
   },
   actionButtonPrimary: {
     backgroundColor: '#00F5FF',
