@@ -26,7 +26,8 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "9",
+      buildNumber: "10",
+      usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
         NSMicrophoneUsageDescription: "FLASH needs access to your microphone to record voice answers for flashcards. This helps you practice speaking and improves your learning experience.",
@@ -48,7 +49,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 7
+      versionCode: 8
     },
     web: {
       favicon: "./assets/icon.png"
