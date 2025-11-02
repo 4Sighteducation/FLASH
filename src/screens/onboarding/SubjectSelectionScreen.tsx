@@ -469,12 +469,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0f1e',
     ...(Platform.OS === 'web' && {
-      minHeight: '100vh',
+      minHeight: '100vh' as any,
       backgroundImage: `
         linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px)
-      `,
-      backgroundSize: '50px 50px',
+      ` as any,
+      backgroundSize: '50px 50px' as any,
     }),
   },
   safeArea: {
