@@ -57,6 +57,7 @@ export default function SubjectSelectionScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showScrollHint, setShowScrollHint] = useState(false);
 
   useEffect(() => {
     fetchExamBoards();
@@ -155,6 +156,9 @@ export default function SubjectSelectionScreen() {
     
     if (existingIndex >= 0) {
       setSelectedSubjects(selectedSubjects.filter((_, index) => index !== existingIndex));
+      if (selectedSubjects.length === 1) {
+        setShowScrollHint(false); // Hide hint if deselecting last subject
+      }
     } else {
       // Check subscription limits for lite users
       if (tier === 'lite') {
@@ -185,6 +189,10 @@ export default function SubjectSelectionScreen() {
             subjectName: subject.subject_name,
             examBoard: selectedExamBoard!.code,
           }]);
+          // Show scroll hint after first selection
+          if (selectedSubjects.length === 0) {
+            setShowScrollHint(true);
+          }
         };
         
         checkAndToggle();
@@ -195,6 +203,10 @@ export default function SubjectSelectionScreen() {
           subjectName: subject.subject_name,
           examBoard: selectedExamBoard!.code,
         }]);
+        // Show scroll hint after first selection
+        if (selectedSubjects.length === 0) {
+          setShowScrollHint(true);
+        }
       }
     }
   };
@@ -375,6 +387,30 @@ export default function SubjectSelectionScreen() {
             </>
           )}
 
+          {/* Sticky floating continue button */}
+          {selectedExamBoard && selectedSubjects.length > 0 && (
+            <View style={styles.stickyFooter}>
+              {showScrollHint && (
+                <View style={styles.scrollHintContainer}>
+                  <Text style={styles.scrollHintText}>
+                    Scroll down to continue or select more subjects
+                  </Text>
+                  <Text style={styles.scrollHintArrow}>↓</Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={styles.stickyButton}
+                onPress={handleContinue}
+              >
+                <Text style={styles.stickyButtonText}>
+                  {selectedSubjects.length} subject{selectedSubjects.length !== 1 ? 's' : ''} selected
+                </Text>
+                <Text style={styles.stickyButtonContinue}>Continue →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bottom continue button (for when scrolled down) */}
           {selectedExamBoard && (
             <TouchableOpacity
               style={[
@@ -602,5 +638,63 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
     lineHeight: 20,
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#0a0f1e',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 245, 255, 0.2)',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.5)',
+    }),
+  },
+  scrollHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  scrollHintText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginRight: 8,
+    fontStyle: 'italic',
+  },
+  scrollHintArrow: {
+    fontSize: 20,
+    color: '#00F5FF',
+  },
+  stickyButton: {
+    backgroundColor: '#00F5FF',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 30px rgba(0, 245, 255, 0.8)',
+    } : {
+      shadowColor: '#00F5FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 1,
+      shadowRadius: 25,
+      elevation: 10,
+    }),
+  },
+  stickyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f1e',
+    marginBottom: 4,
+  },
+  stickyButtonContinue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0a0f1e',
+    letterSpacing: 0.5,
   },
 });

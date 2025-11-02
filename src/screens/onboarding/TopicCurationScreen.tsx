@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import TopicEditModal from '../../components/TopicEditModal';
 import ColorPickerModal from '../../components/ColorPickerModal';
 import { SelectedSubject } from '../../types';
@@ -59,7 +58,7 @@ export default function TopicCurationScreen() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#94A3B8" />
+            <Text style={{ fontSize: 24, color: "#94A3B8" }}>←</Text>
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -72,7 +71,7 @@ export default function TopicCurationScreen() {
           {/* Importance Banner */}
           <View style={styles.importanceBanner}>
             <View style={styles.bannerIconContainer}>
-              <Ionicons name="bulb" size={28} color="#FFD700" />
+              <Text style={{ fontSize: 28 }}>💡</Text>
             </View>
             <View style={styles.bannerContent}>
               <Text style={styles.bannerTitle}>Why This Matters 🎯</Text>
@@ -104,9 +103,9 @@ export default function TopicCurationScreen() {
                     </Text>
                   </View>
                   {isCompleted ? (
-                    <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
+                    <Text style={{ fontSize: 28 }}>✅</Text>
                   ) : (
-                    <Ionicons name="chevron-forward" size={24} color="#64748B" />
+                    <Text style={{ fontSize: 24, color: "#64748B" }}>›</Text>
                   )}
                 </TouchableOpacity>
               );
