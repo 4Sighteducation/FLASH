@@ -5,7 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useSubscription } from '../../contexts/SubscriptionContext.mock';
 
 interface ExamBoard {
   id: string;
