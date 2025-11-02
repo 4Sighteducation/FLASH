@@ -206,7 +206,11 @@ export default function WelcomeScreen() {
               {/* Daily stats cards */}
               <View style={styles.statsGrid}>
                 <View style={[styles.statCard, styles.statCardCyan]}>
-                  <Ionicons name="flame" size={32} color="#FF006E" />
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 32 }}>🔥</Text>
+                  ) : (
+                    <Ionicons name="flame" size={32} color="#FF006E" />
+                  )}
                   <Text style={styles.statNumber}>{dailyStats.streak}</Text>
                   <Text style={styles.statLabel}>Day Streak 🔥</Text>
                   <Text style={styles.statHint}>
@@ -215,7 +219,11 @@ export default function WelcomeScreen() {
                 </View>
 
                 <View style={[styles.statCard, styles.statCardPink]}>
-                  <Ionicons name="checkbox-outline" size={32} color="#00F5FF" />
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 32 }}>☑️</Text>
+                  ) : (
+                    <Ionicons name="checkbox-outline" size={32} color="#00F5FF" />
+                  )}
                   <Text style={styles.statNumber}>{dailyStats.cardsToReview}</Text>
                   <Text style={styles.statLabel}>Cards Due ✓</Text>
                   <Text style={styles.statHint}>
@@ -226,7 +234,11 @@ export default function WelcomeScreen() {
 
               <View style={styles.statsGrid}>
                 <View style={[styles.statCard, styles.statCardGradient]}>
-                  <Ionicons name="add-circle-outline" size={32} color="#00F5FF" />
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 32 }}>➕</Text>
+                  ) : (
+                    <Ionicons name="add-circle-outline" size={32} color="#00F5FF" />
+                  )}
                   <Text style={styles.statNumber}>{dailyStats.newCards}</Text>
                   <Text style={styles.statLabel}>New Today 📚</Text>
                   <Text style={styles.statHint}>
@@ -235,7 +247,11 @@ export default function WelcomeScreen() {
                 </View>
 
                 <View style={[styles.statCard, styles.statCardGradient]}>
-                  <Ionicons name="trophy" size={32} color="#FFD700" />
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 32 }}>🏆</Text>
+                  ) : (
+                    <Ionicons name="trophy" size={32} color="#FFD700" />
+                  )}
                   <Text style={styles.statNumber}>
                     {dailyStats.cardsToReview > 0 ? '📖' : '🎉'}
                   </Text>
@@ -253,7 +269,11 @@ export default function WelcomeScreen() {
                     style={[styles.actionButton, styles.actionButtonPrimary]}
                     onPress={() => navigation.navigate('Main' as never)}
                   >
-                    <Ionicons name="flash" size={24} color="#0a0f1e" />
+                    {Platform.OS === 'web' ? (
+                      <Text style={{ fontSize: 24 }}>⚡</Text>
+                    ) : (
+                      <Ionicons name="flash" size={24} color="#0a0f1e" />
+                    )}
                     <Text style={styles.actionButtonTextPrimary}>
                       Start Studying ({dailyStats.cardsToReview})
                     </Text>
@@ -264,7 +284,11 @@ export default function WelcomeScreen() {
                   style={[styles.actionButton, styles.actionButtonSecondary]}
                   onPress={() => navigation.navigate('Main' as never)}
                 >
-                  <Ionicons name="home-outline" size={24} color="#00F5FF" />
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 24 }}>🏠</Text>
+                  ) : (
+                    <Ionicons name="home-outline" size={24} color="#00F5FF" />
+                  )}
                   <Text style={styles.actionButtonTextSecondary}>Go to Dashboard</Text>
                 </TouchableOpacity>
               </View>

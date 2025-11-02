@@ -31,7 +31,11 @@ export default function ExamTypeSelectionScreen() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#94A3B8" />
+            {Platform.OS === 'web' ? (
+              <Text style={{ fontSize: 24, color: "#94A3B8" }}>←</Text>
+            ) : (
+              <Ionicons name="arrow-back" size={24} color="#94A3B8" />
+            )}
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -64,7 +68,11 @@ export default function ExamTypeSelectionScreen() {
                   </Text>
                 </View>
                 {selectedExamType === exam.id && (
-                  <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
+                  Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 28 }}>✅</Text>
+                  ) : (
+                    <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
+                  )
                 )}
               </TouchableOpacity>
             ))}

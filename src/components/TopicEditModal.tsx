@@ -12,6 +12,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -265,13 +266,21 @@ export default function TopicEditModal({
                 onPress={handleSaveEdit}
                 style={styles.iconButton}
               >
-                <Text style={{ fontSize: 24 }}>✅</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 24 }}>✅</Text>
+                ) : (
+                  <Ionicons name="checkmark-circle" size={24} color="#00F5FF" />
+                )}
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={() => setEditingTopic(null)}
                 style={styles.iconButton}
               >
-                <Text style={{ fontSize: 24 }}>❌</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 24 }}>❌</Text>
+                ) : (
+                  <Ionicons name="close-circle" size={24} color="#FF006E" />
+                )}
               </TouchableOpacity>
             </View>
           ) : (
@@ -282,12 +291,20 @@ export default function TopicEditModal({
                     onPress={() => toggleExpanded(topic.id)}
                     style={styles.expandButton}
                   >
-                    <Text style={{ 
-                      fontSize: 20, 
-                      color: isMainTopic ? "#00F5FF" : isModule ? "#94A3B8" : "#64748B"
-                    }}>
-                      {isExpanded ? "▾" : "›"}
-                    </Text>
+                    {Platform.OS === 'web' ? (
+                      <Text style={{ 
+                        fontSize: 20, 
+                        color: isMainTopic ? "#00F5FF" : isModule ? "#94A3B8" : "#64748B"
+                      }}>
+                        {isExpanded ? "▾" : "›"}
+                      </Text>
+                    ) : (
+                      <Ionicons
+                        name={isExpanded ? "chevron-down" : "chevron-forward"}
+                        size={20}
+                        color={isMainTopic ? "#00F5FF" : isModule ? "#94A3B8" : "#64748B"}
+                      />
+                    )}
                   </TouchableOpacity>
                 )}
                 <View style={styles.topicTextContainer}>
@@ -311,21 +328,33 @@ export default function TopicEditModal({
                   onPress={() => handleEditTopic(topic.id, topic.title)}
                   style={styles.actionButton}
                 >
-                  <Text style={{ fontSize: 20 }}>✏️</Text>
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 20 }}>✏️</Text>
+                  ) : (
+                    <Ionicons name="create-outline" size={20} color="#94A3B8" />
+                  )}
                 </TouchableOpacity>
                 {(isMainTopic || isModule) && (
                   <TouchableOpacity
                     onPress={() => handleAddTopic(topic.id)}
                     style={styles.actionButton}
                   >
-                    <Text style={{ fontSize: 20 }}>{isMainTopic ? "➕" : "➕"}</Text>
+                    {Platform.OS === 'web' ? (
+                      <Text style={{ fontSize: 20 }}>➕</Text>
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={20} color={isMainTopic ? "#00F5FF" : "#94A3B8"} />
+                    )}
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
                   onPress={() => handleDeleteTopic(topic.id)}
                   style={styles.actionButton}
                 >
-                  <Text style={{ fontSize: 20 }}>🗑️</Text>
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 20 }}>🗑️</Text>
+                  ) : (
+                    <Ionicons name="trash-outline" size={20} color="#FF006E" />
+                  )}
                 </TouchableOpacity>
               </View>
             </>
@@ -349,12 +378,20 @@ export default function TopicEditModal({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.subjectIconContainer}>
-                <Text style={{ fontSize: 24 }}>📚</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 24 }}>📚</Text>
+                ) : (
+                  <Ionicons name="book" size={24} color="#00F5FF" />
+                )}
               </View>
               <Text style={styles.title}>{subject.subjectName}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={{ fontSize: 28, color: "#94A3B8" }}>✕</Text>
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 28, color: "#94A3B8" }}>✕</Text>
+              ) : (
+                <Ionicons name="close" size={28} color="#94A3B8" />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -362,7 +399,11 @@ export default function TopicEditModal({
           {showHelp && (
             <View style={styles.helpBanner}>
               <View style={styles.helpContent}>
-                <Text style={{ fontSize: 24 }}>ℹ️</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 24 }}>ℹ️</Text>
+                ) : (
+                  <Ionicons name="information-circle" size={24} color="#00F5FF" />
+                )}
                 <View style={styles.helpTextContainer}>
                   <Text style={styles.helpTitle}>Customize Your Topics 📚</Text>
                   <Text style={styles.helpText}>
@@ -377,7 +418,11 @@ export default function TopicEditModal({
                 onPress={() => setShowHelp(false)}
                 style={styles.helpClose}
               >
-                <Text style={{ fontSize: 20, color: "#64748B" }}>✕</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 20, color: "#64748B" }}>✕</Text>
+                ) : (
+                  <Ionicons name="close" size={20} color="#64748B" />
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -387,7 +432,11 @@ export default function TopicEditModal({
               style={styles.showHelpButton}
               onPress={() => setShowHelp(true)}
             >
-              <Text style={{ fontSize: 20 }}>❓</Text>
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 20 }}>❓</Text>
+              ) : (
+                <Ionicons name="help-circle-outline" size={20} color="#00F5FF" />
+              )}
               <Text style={styles.showHelpText}>Show help</Text>
             </TouchableOpacity>
           )}
@@ -402,7 +451,11 @@ export default function TopicEditModal({
               <ScrollView style={styles.topicsList} showsVerticalScrollIndicator={false}>
                 {topics.filter(t => !t.parentId && !t.isDeleted).length === 0 ? (
                   <View style={styles.emptyState}>
-                    <Text style={{ fontSize: 64 }}>📂</Text>
+                    {Platform.OS === 'web' ? (
+                      <Text style={{ fontSize: 64 }}>📂</Text>
+                    ) : (
+                      <Ionicons name="folder-open-outline" size={64} color="#64748B" />
+                    )}
                     <Text style={styles.emptyStateTitle}>No topics yet</Text>
                     <Text style={styles.emptyStateText}>
                       Add your first topic to get started
@@ -414,7 +467,11 @@ export default function TopicEditModal({
                 
                 {addingTopic && !addingToParent && (
                   <View style={styles.addTopicContainer}>
-                    <Text style={{ fontSize: 24 }}>➕</Text>
+                    {Platform.OS === 'web' ? (
+                      <Text style={{ fontSize: 24 }}>➕</Text>
+                    ) : (
+                      <Ionicons name="add-circle" size={24} color="#00F5FF" />
+                    )}
                     <TextInput
                       style={styles.addTopicInput}
                       placeholder="Enter new topic name..."
@@ -427,13 +484,21 @@ export default function TopicEditModal({
                       onPress={handleSaveNewTopic}
                       style={styles.iconButton}
                     >
-                      <Text style={{ fontSize: 28 }}>✅</Text>
+                      {Platform.OS === 'web' ? (
+                        <Text style={{ fontSize: 28 }}>✅</Text>
+                      ) : (
+                        <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity 
                       onPress={() => setAddingTopic(false)}
                       style={styles.iconButton}
                     >
-                      <Text style={{ fontSize: 28 }}>❌</Text>
+                      {Platform.OS === 'web' ? (
+                        <Text style={{ fontSize: 28 }}>❌</Text>
+                      ) : (
+                        <Ionicons name="close-circle" size={28} color="#FF006E" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}
@@ -444,7 +509,11 @@ export default function TopicEditModal({
                   style={styles.addMainTopicButton}
                   onPress={() => handleAddTopic(null)}
                 >
-                  <Text style={{ fontSize: 22 }}>➕</Text>
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 22 }}>➕</Text>
+                  ) : (
+                    <Ionicons name="add-circle" size={22} color="#00F5FF" />
+                  )}
                   <Text style={styles.addMainTopicText}>Add Main Topic</Text>
                 </TouchableOpacity>
 

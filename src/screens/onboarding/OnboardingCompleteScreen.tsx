@@ -43,7 +43,11 @@ export default function OnboardingCompleteScreen() {
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark-circle" size={100} color="#00F5FF" />
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 100 }}>✅</Text>
+              ) : (
+                <Ionicons name="checkmark-circle" size={100} color="#00F5FF" />
+              )}
             </View>
           </View>
 
@@ -60,15 +64,27 @@ export default function OnboardingCompleteScreen() {
 
           <View style={styles.featuresContainer}>
             <View style={styles.feature}>
-              <Ionicons name="flash" size={28} color="#FF006E" />
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 28 }}>⚡</Text>
+              ) : (
+                <Ionicons name="flash" size={28} color="#FF006E" />
+              )}
               <Text style={styles.featureText}>Create flashcards from your topics</Text>
             </View>
             <View style={styles.feature}>
-              <Ionicons name="trending-up" size={28} color="#00F5FF" />
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 28 }}>📈</Text>
+              ) : (
+                <Ionicons name="trending-up" size={28} color="#00F5FF" />
+              )}
               <Text style={styles.featureText}>Track your progress with analytics</Text>
             </View>
             <View style={styles.feature}>
-              <Ionicons name="trophy" size={28} color="#FFD700" />
+              {Platform.OS === 'web' ? (
+                <Text style={{ fontSize: 28 }}>🏆</Text>
+              ) : (
+                <Ionicons name="trophy" size={28} color="#FFD700" />
+              )}
               <Text style={styles.featureText}>Earn achievements as you learn</Text>
             </View>
           </View>

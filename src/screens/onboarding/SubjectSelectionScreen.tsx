@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -277,7 +278,11 @@ export default function SubjectSelectionScreen() {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={{ fontSize: 24, color: "#94A3B8" }}>←</Text>
+            {Platform.OS === 'web' ? (
+              <Text style={{ fontSize: 24, color: "#94A3B8" }}>←</Text>
+            ) : (
+              <Ionicons name="arrow-back" size={24} color="#94A3B8" />
+            )}
           </TouchableOpacity>
 
           <View style={styles.header}>
@@ -294,7 +299,11 @@ export default function SubjectSelectionScreen() {
           {!selectedExamBoard ? (
             <View style={styles.examBoardsContainer}>
               <View style={styles.infoBox}>
-                <Text style={{ fontSize: 24 }}>ℹ️</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 24 }}>ℹ️</Text>
+                ) : (
+                  <Ionicons name="information-circle" size={24} color="#00F5FF" />
+                )}
                 <Text style={styles.infoText}>
                   Each exam board has different subjects and topic structures. Selecting your exam board ensures you get the exact curriculum for your studies.
                 </Text>
@@ -311,7 +320,11 @@ export default function SubjectSelectionScreen() {
                     <Text style={styles.examBoardCode}>{board.code}</Text>
                     <Text style={styles.examBoardName}>{board.full_name}</Text>
                   </View>
-                  <Text style={{ fontSize: 24, color: "#00F5FF" }}>›</Text>
+                  {Platform.OS === 'web' ? (
+                    <Text style={{ fontSize: 24, color: "#00F5FF" }}>›</Text>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={24} color="#00F5FF" />
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -325,7 +338,11 @@ export default function SubjectSelectionScreen() {
                   setSearchQuery('');
                 }}
               >
-                <Text style={{ fontSize: 20 }}>🔄</Text>
+                {Platform.OS === 'web' ? (
+                  <Text style={{ fontSize: 20 }}>🔄</Text>
+                ) : (
+                  <Ionicons name="swap-horizontal" size={20} color="#00F5FF" />
+                )}
                 <Text style={styles.changeExamBoardText}>
                   Change exam board (Currently: {selectedExamBoard.code})
                 </Text>
@@ -338,7 +355,11 @@ export default function SubjectSelectionScreen() {
               ) : (
                 <>
                   <View style={styles.searchContainer}>
-                    <Text style={[styles.searchIcon, { fontSize: 20 }]}>🔍</Text>
+                    {Platform.OS === 'web' ? (
+                      <Text style={[styles.searchIcon, { fontSize: 20 }]}>🔍</Text>
+                    ) : (
+                      <Ionicons name="search" size={20} color="#64748B" style={styles.searchIcon} />
+                    )}
                     <TextInput
                       style={styles.searchInput}
                       placeholder="Search subjects..."
@@ -351,7 +372,11 @@ export default function SubjectSelectionScreen() {
                         style={styles.clearButton}
                         onPress={() => setSearchQuery('')}
                       >
-                        <Text style={{ fontSize: 20 }}>✕</Text>
+                        {Platform.OS === 'web' ? (
+                          <Text style={{ fontSize: 20 }}>✕</Text>
+                        ) : (
+                          <Ionicons name="close-circle" size={20} color="#64748B" />
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
@@ -374,9 +399,17 @@ export default function SubjectSelectionScreen() {
                             <Text style={[styles.subjectName, isSelected && styles.selectedText]}>
                               {subject.subject_name}
                             </Text>
-                            <Text style={{ fontSize: 28 }}>
-                              {isSelected ? "✅" : "➕"}
-                            </Text>
+                            {Platform.OS === 'web' ? (
+                              <Text style={{ fontSize: 28 }}>
+                                {isSelected ? "✅" : "➕"}
+                              </Text>
+                            ) : (
+                              <Ionicons 
+                                name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
+                                size={28} 
+                                color={isSelected ? "#00F5FF" : "#64748B"} 
+                              />
+                            )}
                           </TouchableOpacity>
                         );
                       })
