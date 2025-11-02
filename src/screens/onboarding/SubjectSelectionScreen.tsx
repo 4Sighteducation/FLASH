@@ -640,7 +640,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   stickyFooter: {
-    position: 'absolute',
+    ...(Platform.OS === 'web' ? {
+      position: 'fixed' as any,
+    } : {
+      position: 'absolute',
+    }),
     bottom: 0,
     left: 0,
     right: 0,
