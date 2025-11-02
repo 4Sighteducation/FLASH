@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 180, // Space for sticky footer
     paddingTop: 16,
   },
   backButton: {
@@ -650,8 +650,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 245, 255, 0.2)',
+    zIndex: 1000,
+    elevation: 20,
     ...(Platform.OS === 'web' && {
-      boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.5)',
+      boxShadow: '0 -4px 30px rgba(0, 0, 0, 0.8)',
     }),
   },
   scrollHintContainer: {
