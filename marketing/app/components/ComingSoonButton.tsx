@@ -64,7 +64,7 @@ export default function ComingSoonButton({ children, variant = 'primary', classN
         </div>
         
         <div className={styles.launchDate}>
-          <strong>Sunday, December 1st, 2025</strong>
+          <strong>Saturday, February 1st, 2025</strong>
         </div>
         
         <p className={styles.offer}>

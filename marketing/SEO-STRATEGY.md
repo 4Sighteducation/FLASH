@@ -285,7 +285,7 @@ Each targets long-tail keywords and establishes authority.
 
 ## 🚀 Pre-Launch Quick Win Strategy (FUTURE)
 
-### **Create These 10 Pages Before Dec 1st Launch:**
+### **Create These 10 Pages Before Feb 1st Launch:**
 
 **Landing Pages (5 pages):**
 1. `/gcse-flashcards` - Main GCSE landing page
@@ -348,7 +348,7 @@ Each targets long-tail keywords and establishes authority.
 
 ### **Implementation Priority**
 
-**Phase 1 (Before Launch - Dec 1):**
+**Phase 1 (Before Launch - Feb 1):**
 - Create 5 landing pages (exam boards + levels)
 - Create 4 subject pages (top subjects)
 - Write 1 blog post about Leitner system
@@ -411,13 +411,13 @@ Each targets long-tail keywords and establishes authority.
 4. 📝 Plan content strategy for pre-launch
 5. 📊 Set up Google Analytics 4
 
-### **Pre-Launch Focus (Nov 1 - Dec 1):**
+### **Pre-Launch Focus (Nov 1 - Feb 1):**
 1. Create 10 core pages (landing + subjects)
 2. Write 3-5 blog posts
 3. Build initial backlinks (The Student Room, Reddit)
 4. Request indexing for all new pages
 
-### **Post-Launch Focus (Dec 1+):**
+### **Post-Launch Focus (Feb 1+):**
 1. Monitor Search Console weekly
 2. Add 2-3 new pages per week
 3. Publish 1-2 blog posts per week

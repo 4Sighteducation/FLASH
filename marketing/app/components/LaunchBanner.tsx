@@ -55,7 +55,7 @@ export default function LaunchBanner() {
       <div className={styles.container}>
         <div className={styles.content}>
           <div className={styles.message}>
-            <span className={styles.badge}>🚀 DEC 1ST 2025</span>
+            <span className={styles.badge}>🚀 FEB 1ST 2025</span>
             <Countdown />
             <p>
               Get <strong className={styles.highlight}>Pro FREE for 1 YEAR</strong> - 
