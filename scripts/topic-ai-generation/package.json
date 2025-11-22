@@ -1,0 +1,23 @@
+{
+  "name": "topic-ai-generation",
+  "version": "1.0.0",
+  "description": "Batch generation of AI metadata (embeddings + summaries) for curriculum topics",
+  "type": "module",
+  "main": "generate-topic-metadata.js",
+  "scripts": {
+    "generate": "node generate-topic-metadata.js",
+    "pilot": "node generate-topic-metadata.js --pilot",
+    "dry-run": "node generate-topic-metadata.js --dry-run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "openai": "^4.20.0",
+    "dotenv": "^16.3.1",
+    "p-limit": "^5.0.0",
+    "cli-progress": "^3.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
