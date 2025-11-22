@@ -277,5 +277,9 @@ SELECT
 FROM topics_with_context
 LIMIT 5;
 
-RAISE NOTICE '✅ All setup complete! Ready for batch metadata generation.';
+-- Final success message
+DO $$
+BEGIN
+  RAISE NOTICE '✅ All setup complete! Ready for batch metadata generation.';
+END $$;
 
