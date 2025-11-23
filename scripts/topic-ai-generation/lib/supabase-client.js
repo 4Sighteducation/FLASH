@@ -99,16 +99,71 @@ export async function getExistingMetadataIds() {
 }
 
 /**
- * Upsert topic metadata in batches
+ * Upsert topic metadata in batches with timeout handling
  */
 export async function upsertTopicMetadata(metadataArray) {
-  const { error } = await supabase
-    .from('topic_ai_metadata')
-    .upsert(metadataArray, { onConflict: 'topic_id' });
+  // Much smaller chunks to avoid Supabase timeouts with large embeddings
+  const CHUNK_SIZE = 20; // Reduced from 100 to avoid timeouts
   
-  if (error) {
-    console.error('Upsert error:', error);
-    throw error;
+  if (metadataArray.length > CHUNK_SIZE) {
+    console.log(`  Saving ${metadataArray.length} topics in chunks of ${CHUNK_SIZE}...`);
+    
+    for (let i = 0; i < metadataArray.length; i += CHUNK_SIZE) {
+      const chunk = metadataArray.slice(i, Math.min(i + CHUNK_SIZE, metadataArray.length));
+      const chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+      const totalChunks = Math.ceil(metadataArray.length / CHUNK_SIZE);
+      
+      process.stdout.write(`  Chunk ${chunkNum}/${totalChunks}... `);
+      
+      const { error } = await supabase
+        .from('topic_ai_metadata')
+        .upsert(chunk, { onConflict: 'topic_id' });
+      
+      if (error) {
+        console.error(`\n  ⚠️ Error in chunk ${chunkNum}:`, error.message);
+        
+        // If timeout, try even smaller batches
+        if (error.code === '57014' || error.message.includes('timeout')) {
+          console.log('  Retrying with tiny batches...');
+          for (let j = 0; j < chunk.length; j += 5) {
+            const miniChunk = chunk.slice(j, Math.min(j + 5, chunk.length));
+            const { error: retryError } = await supabase
+              .from('topic_ai_metadata')
+              .upsert(miniChunk, { onConflict: 'topic_id' });
+            
+            if (retryError) {
+              // Try one by one as last resort
+              console.log('  Trying one by one...');
+              for (const item of miniChunk) {
+                const { error: singleError } = await supabase
+                  .from('topic_ai_metadata')
+                  .upsert([item], { onConflict: 'topic_id' });
+                
+                if (singleError) {
+                  console.error(`  Single item failed:`, singleError.message);
+                  // Continue anyway to save what we can
+                }
+              }
+            }
+          }
+          console.log('  Retry complete.');
+        } else {
+          throw error;
+        }
+      } else {
+        process.stdout.write('✓\n');
+      }
+    }
+  } else {
+    // Small batch, save directly
+    const { error } = await supabase
+      .from('topic_ai_metadata')
+      .upsert(metadataArray, { onConflict: 'topic_id' });
+    
+    if (error) {
+      console.error('Upsert error:', error);
+      throw error;
+    }
   }
 }
 
