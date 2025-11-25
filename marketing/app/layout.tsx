@@ -32,9 +32,9 @@ export const metadata: Metadata = {
     siteName: 'FL4SH Flashcards',
     images: [
       {
-        url: 'https://www.fl4sh.cards/flash_assets/flash-logo-512.png',
-        width: 512,
-        height: 512,
+        url: 'https://www.fl4sh.cards/flash_assets/banner-1500x500.png',
+        width: 1500,
+        height: 500,
         alt: 'FL4SH - AI-Powered Flashcards for GCSE & A-Level',
       },
     ],
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'FL4SH Flashcards - AI-Powered Revision for GCSE & A-Level',
     description: 'Ace your GCSEs & A-Levels with FL4SH flashcards. AI-generated revision cards and intelligent spaced repetition.',
-    images: ['https://www.fl4sh.cards/flash_assets/flash-logo-512.png'],
+    images: ['https://www.fl4sh.cards/flash_assets/banner-1500x500.png'],
   },
   verification: {
     google: 'add-your-google-search-console-code-here',
