@@ -1,23 +1,5 @@
 {
-  "framework": null,
+  "framework": "nextjs",
   "installCommand": "cd marketing && npm install",
-  "buildCommand": "cd marketing && npm run build",
-  "outputDirectory": "marketing/out",
-  "functions": {
-    "api/generate-cards.js": {
-      "maxDuration": 30
-    },
-    "api/transcribe-audio.js": {
-      "maxDuration": 30
-    },
-    "api/analyze-answer.js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    }
-  ]
-} 
+  "buildCommand": "cd marketing && npm run build"
+}
