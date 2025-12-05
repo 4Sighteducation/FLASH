@@ -15,7 +15,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../services/supabase';
 
 interface SelectedSubject {
   subjectId: string;
@@ -76,26 +75,6 @@ export default function FirstTopicWizardScreen() {
     searchDebounceRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        // Generate embedding for search query
-        const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: query,
-          }),
-        });
-
-        if (!embeddingResponse.ok) {
-          throw new Error('Failed to generate embedding');
-        }
-
-        const embeddingData = await embeddingResponse.json();
-        const queryEmbedding = embeddingData.data[0].embedding;
-
         // Format subject name for search (must include qualification)
         const qualificationMap: Record<string, string> = {
           gcse: 'GCSE',
@@ -109,18 +88,32 @@ export default function FirstTopicWizardScreen() {
           ? currentSubject.subjectName
           : `${currentSubject.subjectName} (${qualLevel})`;
 
-        // Call Supabase RPC function for vector search
-        const { data, error } = await supabase.rpc('match_topics', {
-          query_embedding: queryEmbedding,
-          p_exam_board: currentSubject.examBoard,
-          p_qualification_level: examType.toUpperCase(),
-          p_subject_name: formattedSubjectName,
-          p_limit: 10,
+        // Call backend API endpoint for search
+        const response = await fetch('/api/search-topics', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query,
+            examBoard: currentSubject.examBoard,
+            qualificationLevel: examType.toUpperCase(),
+            subjectName: formattedSubjectName,
+            limit: 10,
+          }),
         });
 
-        if (error) throw error;
+        if (!response.ok) {
+          throw new Error('Search request failed');
+        }
 
-        setSearchResults(data || []);
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message || 'Search failed');
+        }
+
+        setSearchResults(data.results || []);
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
