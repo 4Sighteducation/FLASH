@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../contexts/SubscriptionContext.mock';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 

@@ -89,7 +89,7 @@ export default function FirstTopicWizardScreen() {
           : `${currentSubject.subjectName} (${qualLevel})`;
 
         // Call backend API endpoint for search
-        const response = await fetch('/api/search-topics', {
+        const response = await fetch('https://flash-gules.vercel.app/api/search-topics', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

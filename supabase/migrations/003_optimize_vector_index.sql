@@ -34,3 +34,12 @@ DO $$
 BEGIN
   RAISE NOTICE '✅ Vector index optimized for 50k+ topics!';
 END $$;
+
+
+
+
+
+
+
+
+

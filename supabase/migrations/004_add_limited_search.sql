@@ -110,3 +110,12 @@ DO $$
 BEGIN
   RAISE NOTICE '✅ Added limited search functions to prevent timeouts!';
 END $$;
+
+
+
+
+
+
+
+
+

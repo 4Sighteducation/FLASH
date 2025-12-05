@@ -144,3 +144,10 @@ Vercel will auto-deploy if you have it connected.
 - Google may take 1-2 weeks to re-crawl and update
 - Submit URL to Google Search Console for re-indexing
 
+
+
+
+
+
+
+
