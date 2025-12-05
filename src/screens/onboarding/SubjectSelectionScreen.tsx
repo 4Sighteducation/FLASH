@@ -247,11 +247,10 @@ export default function SubjectSelectionScreen() {
           [{ text: 'OK' }]
         );
       } else {
-        // If in onboarding flow, go to topic curation
-        navigation.navigate('TopicCuration' as never, { 
+        // If in onboarding flow, go to first topic wizard
+        navigation.navigate('FirstTopicWizard' as never, { 
           subjects: selectedSubjects,
           examType,
-          isAddingSubjects: false
         } as never);
       }
     } catch (error) {
