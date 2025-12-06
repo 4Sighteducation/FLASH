@@ -88,8 +88,8 @@ export default function FirstTopicWizardScreen() {
           ? currentSubject.subjectName
           : `${currentSubject.subjectName} (${qualLevel})`;
 
-        // Call backend API endpoint for search
-        const response = await fetch('https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/search-topics', {
+        // Call backend API endpoint for search (no /api prefix when deployed from api folder)
+        const response = await fetch('https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/search-topics', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
