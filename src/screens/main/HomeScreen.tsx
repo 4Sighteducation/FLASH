@@ -187,7 +187,7 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const handleSubjectPress = (subject: UserSubject) => {
-    navigation.navigate('TopicList', { 
+    navigation.navigate('SmartTopicDiscovery', { 
       subjectId: subject.subject_id,
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
