@@ -64,6 +64,65 @@ export default function SubjectSearchScreen() {
     igcse: 'IGCSE',
   };
 
+  // Subject abbreviation/synonym mapping
+  const subjectSynonyms: { [key: string]: string } = {
+    // PE variations
+    'pe': 'Physical Education',
+    'phys ed': 'Physical Education',
+    'p.e': 'Physical Education',
+    'p.e.': 'Physical Education',
+    
+    // Science subjects
+    'bio': 'Biology',
+    'chem': 'Chemistry',
+    'phys': 'Physics',
+    'sci': 'Science',
+    
+    // Maths variations
+    'maths': 'Mathematics',
+    'math': 'Mathematics',
+    
+    // Computer Science
+    'cs': 'Computer Science',
+    'comp sci': 'Computer Science',
+    'computing': 'Computer Science',
+    
+    // Languages
+    'eng': 'English',
+    'eng lit': 'English Literature',
+    'eng lang': 'English Language',
+    'fr': 'French',
+    'ger': 'German',
+    'span': 'Spanish',
+    
+    // Humanities
+    'hist': 'History',
+    'geo': 'Geography',
+    'psych': 'Psychology',
+    'socio': 'Sociology',
+    're': 'Religious Studies',
+    'rs': 'Religious Studies',
+    
+    // Business/Economics
+    'bus': 'Business',
+    'econ': 'Economics',
+    'acc': 'Accounting',
+    'acct': 'Accounting',
+    
+    // Arts
+    'art': 'Art and Design',
+    'dt': 'Design and Technology',
+    'd&t': 'Design and Technology',
+    'music': 'Music',
+    'drama': 'Drama',
+    'pe': 'Physical Education',
+    
+    // Other
+    'it': 'Information Technology',
+    'ict': 'Information Technology',
+    'food tech': 'Food Technology',
+  };
+
   // Don't auto-search on mount - let user type their subject
   // This was causing wrong qualification level to show
 
@@ -80,7 +139,15 @@ export default function SubjectSearchScreen() {
     }
 
     searchDebounceRef.current = setTimeout(async () => {
-      await performSearch(query);
+      // Expand abbreviations/synonyms
+      const lowercaseQuery = query.toLowerCase().trim();
+      const expandedQuery = subjectSynonyms[lowercaseQuery] || query;
+      
+      if (expandedQuery !== query) {
+        console.log(`🔄 Expanded "${query}" → "${expandedQuery}"`);
+      }
+      
+      await performSearch(expandedQuery);
     }, 300);
   };
 
