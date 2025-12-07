@@ -19,7 +19,7 @@
     "build:ios:dev": "npm run iap:real && eas build --platform ios --profile development",
     "postinstall": "patch-package",
     "vercel-build": "npx expo export --platform web",
-    "build:web": "npx expo export --platform web && cp -r api dist/api",
+    "build:web": "npx expo export --platform web && cp -r api dist/api && cp vercel.json dist/vercel.json",
     "deploy:web": "npm run build:web && cd dist && vercel --prod"
   },
   "dependencies": {

@@ -115,7 +115,6 @@ export default function SubjectSearchScreen() {
     'd&t': 'Design and Technology',
     'music': 'Music',
     'drama': 'Drama',
-    'pe': 'Physical Education',
     
     // Other
     'it': 'Information Technology',
