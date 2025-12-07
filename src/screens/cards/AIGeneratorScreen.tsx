@@ -148,6 +148,27 @@ export default function AIGeneratorScreen() {
         addToStudyBank
       );
 
+      // Mark topic as discovered (NEW!)
+      const routeParams = (route.params as any);
+      if (topicId && routeParams?.subjectId) {
+        console.log('📍 Marking topic as discovered...');
+        
+        const { error: discoveryError } = await supabase.rpc('discover_topic', {
+          p_user_id: user.id,
+          p_subject_id: routeParams.subjectId,
+          p_topic_id: topicId,
+          p_discovery_method: routeParams.discoveryMethod || 'search',
+          p_search_query: routeParams.searchQuery || topic,
+        });
+
+        if (discoveryError) {
+          console.error('Error marking topic as discovered:', discoveryError);
+          // Don't fail the whole operation if discovery tracking fails
+        } else {
+          console.log('✅ Topic marked as discovered!');
+        }
+      }
+
       // Small delay to ensure database updates are processed
       await new Promise<void>(resolve => setTimeout(resolve, 500));
 
@@ -157,7 +178,7 @@ export default function AIGeneratorScreen() {
         [{ 
           text: 'OK', 
           onPress: () => {
-            // Simply navigate back - the TopicListScreen will refresh automatically
+            // Navigate back - the TopicListScreen will refresh with updated %
             navigation.goBack();
           }
         }]
