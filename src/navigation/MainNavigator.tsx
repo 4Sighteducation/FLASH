@@ -43,15 +43,7 @@ function HomeStack() {
       />
       <Stack.Screen 
         name="SubjectSelection" 
-        component={SubjectSelectionScreen}
-        options={{ 
-          headerShown: false,
-          presentation: 'modal'
-        }}
-      />
-      <Stack.Screen 
-        name="TopicCuration" 
-        component={TopicCurationScreen}
+        component={SubjectSearchScreen}
         options={{ 
           headerShown: false,
           presentation: 'modal'

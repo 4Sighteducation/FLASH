@@ -18,7 +18,9 @@
     "build:android:dev": "npm run iap:real && eas build --platform android --profile development",
     "build:ios:dev": "npm run iap:real && eas build --platform ios --profile development",
     "postinstall": "patch-package",
-    "vercel-build": "npx expo export --platform web"
+    "vercel-build": "npx expo export --platform web",
+    "build:web": "npx expo export --platform web && cp -r api dist/api",
+    "deploy:web": "npm run build:web && cd dist && vercel --prod"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
