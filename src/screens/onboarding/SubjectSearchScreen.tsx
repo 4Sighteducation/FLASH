@@ -64,19 +64,8 @@ export default function SubjectSearchScreen() {
     igcse: 'IGCSE',
   };
 
-  useEffect(() => {
-    // Load popular subjects on mount to give users examples
-    if (searchQuery.length === 0) {
-      loadPopularSubjects();
-    }
-  }, []);
-
-  const loadPopularSubjects = async () => {
-    // Show common subjects as starting point
-    const popularSearches = ['Biology', 'Chemistry', 'Physics', 'Mathematics', 'English'];
-    // Just search for the first one to show how it works
-    handleSearch(popularSearches[0]);
-  };
+  // Don't auto-search on mount - let user type their subject
+  // This was causing wrong qualification level to show
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
