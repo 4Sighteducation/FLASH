@@ -74,14 +74,14 @@ export default function CardSubjectSelector() {
   };
 
   const handleSubjectPress = (subject: UserSubject) => {
-    // Navigate to topic selection for this subject
-    navigation.navigate('CardTopicSelector' as never, {
+    // Navigate to SMART topic discovery (uses vector search!)
+    navigation.navigate('SmartTopicDiscovery' as never, {
       subjectId: subject.subject_id,
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
       examBoard: subject.exam_board,
       examType: userData?.exam_type,
-      mode: mode, // Pass the mode through
+      mode: mode,
     } as never);
   };
 

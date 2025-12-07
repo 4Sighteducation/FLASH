@@ -21,6 +21,7 @@ import CardTopicSelector from '../screens/cards/CardTopicSelector';
 import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
 import TopicHubScreen from '../screens/topics/TopicHubScreen';
 import ImageCardGeneratorScreen from '../screens/cards/ImageCardGeneratorScreen';
+import SmartTopicDiscoveryScreen from '../screens/topics/SmartTopicDiscoveryScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import UserManagement from '../screens/admin/UserManagement';
 import TestTools from '../screens/admin/TestTools';
@@ -52,6 +53,14 @@ function HomeStack() {
       <Stack.Screen 
         name="CardSubjectSelector" 
         component={CardSubjectSelector}
+        options={{ 
+          headerShown: false,
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="SmartTopicDiscovery" 
+        component={SmartTopicDiscoveryScreen}
         options={{ 
           headerShown: false,
           presentation: 'modal'
