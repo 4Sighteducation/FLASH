@@ -19,7 +19,7 @@ export default function ExamTypeSelectionScreen() {
 
   const handleContinue = () => {
     if (selectedExamType) {
-      navigation.navigate('SubjectSelection' as never, { examType: selectedExamType } as never);
+      navigation.navigate('SubjectSearch' as never, { examType: selectedExamType } as never);
     }
   };
 

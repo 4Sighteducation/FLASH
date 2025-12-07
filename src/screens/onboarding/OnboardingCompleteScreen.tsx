@@ -52,40 +52,53 @@ export default function OnboardingCompleteScreen() {
           </View>
 
           <View style={styles.textContainer}>
-            <Text style={styles.title}>All Set! ⚡</Text>
+            <Text style={styles.title}>You're All Set! 🎉</Text>
             <Text style={styles.subtitle}>
-              Your personalized study plan is ready
+              Let's create your first flashcards
             </Text>
             <Text style={styles.description}>
-              You've successfully customized your subjects and topics. 
-              Start creating flashcards and begin your learning journey!
+              You'll use our smart search to find topics as you learn. 
+              The more you study, the more your personalized topic list grows!
             </Text>
           </View>
 
-          <View style={styles.featuresContainer}>
-            <View style={styles.feature}>
-              {Platform.OS === 'web' ? (
-                <Text style={{ fontSize: 28 }}>⚡</Text>
-              ) : (
-                <Ionicons name="flash" size={28} color="#FF006E" />
-              )}
-              <Text style={styles.featureText}>Create flashcards from your topics</Text>
+          <View style={styles.howItWorksContainer}>
+            <Text style={styles.howItWorksTitle}>How FLASH works:</Text>
+            
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Search for a Topic</Text>
+                <Text style={styles.stepDescription}>
+                  Type what you're learning (e.g., "photosynthesis")
+                </Text>
+              </View>
             </View>
-            <View style={styles.feature}>
-              {Platform.OS === 'web' ? (
-                <Text style={{ fontSize: 28 }}>📈</Text>
-              ) : (
-                <Ionicons name="trending-up" size={28} color="#00F5FF" />
-              )}
-              <Text style={styles.featureText}>Track your progress with analytics</Text>
+
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>2</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>AI Generates Flashcards</Text>
+                <Text style={styles.stepDescription}>
+                  Get exam-focused cards instantly
+                </Text>
+              </View>
             </View>
-            <View style={styles.feature}>
-              {Platform.OS === 'web' ? (
-                <Text style={{ fontSize: 28 }}>🏆</Text>
-              ) : (
-                <Ionicons name="trophy" size={28} color="#FFD700" />
-              )}
-              <Text style={styles.featureText}>Earn achievements as you learn</Text>
+
+            <View style={styles.step}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>3</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Study & Master</Text>
+                <Text style={styles.stepDescription}>
+                  Cards move through 5 boxes as you learn
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -93,7 +106,7 @@ export default function OnboardingCompleteScreen() {
             style={styles.button}
             onPress={handleGetStarted}
           >
-            <Text style={styles.buttonText}>Start Learning →</Text>
+            <Text style={styles.buttonText}>Create Your First Flashcards →</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -167,25 +180,53 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  featuresContainer: {
+  howItWorksContainer: {
     width: '100%',
-  },
-  feature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 20,
+    padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(0, 245, 255, 0.2)',
   },
-  featureText: {
-    fontSize: 16,
-    color: '#E2E8F0',
+  howItWorksTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#00F5FF',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  step: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  stepNumber: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FF006E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  stepNumberText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  stepContent: {
     flex: 1,
-    marginLeft: 16,
-    fontWeight: '500',
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
   },
   button: {
     backgroundColor: '#00F5FF',

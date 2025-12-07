@@ -9,8 +9,7 @@ import MainNavigator from './MainNavigator';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
 import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen';
-import TopicCurationScreen from '../screens/onboarding/TopicCurationScreen';
-import FirstTopicWizardScreen from '../screens/onboarding/FirstTopicWizardScreen';
+import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import SplashScreen from '../screens/SplashScreen';
 
@@ -86,9 +85,7 @@ export default function AppNavigator() {
             <>
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
               <Stack.Screen name="ExamTypeSelection" component={ExamTypeSelectionScreen} />
-              <Stack.Screen name="SubjectSelection" component={SubjectSelectionScreen} />
-              <Stack.Screen name="FirstTopicWizard" component={FirstTopicWizardScreen} />
-              <Stack.Screen name="TopicCuration" component={TopicCurationScreen} />
+              <Stack.Screen name="SubjectSearch" component={SubjectSearchScreen} />
               <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
               <Stack.Screen name="Main" component={MainNavigator} />
             </>
