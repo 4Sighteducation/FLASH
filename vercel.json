@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "name": "flash-web-app",
   "builds": [
     {
       "src": "package.json",
@@ -28,9 +27,6 @@
       "dest": "/index.html"
     }
   ],
-  "buildCommand": "npx expo export --platform web",
-  "env": {
-    "OPENAI_API_KEY": "@openai-api-key"
-  }
+  "buildCommand": "npx expo export --platform web"
 }
 
