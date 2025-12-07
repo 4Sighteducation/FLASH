@@ -109,20 +109,26 @@ export default function SmartTopicDiscoveryScreen() {
     setIsSearching(true);
 
     try {
+      const searchParams = {
+        query,
+        examBoard,
+        qualificationLevel: examType.toUpperCase(),
+        subjectName,
+        limit: 15,
+      };
+      
+      console.log('🔍 Searching with params:', searchParams);
+      
       // Generate embedding and search using your vector search API
       const response = await fetch('https://www.fl4sh.cards/api/search-topics', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query,
-          examBoard,
-          qualificationLevel: examType.toUpperCase(),
-          subjectName,
-          limit: 15,
-        }),
+        body: JSON.stringify(searchParams),
       });
+      
+      console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
         throw new Error('Search failed');
@@ -130,11 +136,17 @@ export default function SmartTopicDiscoveryScreen() {
 
       const data = await response.json();
       
+      console.log('📊 Search results:', data);
+      
       if (data.success) {
+        console.log(`✅ Found ${data.results?.length || 0} topics`);
         setSearchResults(data.results || []);
+      } else {
+        console.error('❌ Search failed:', data.message);
+        Alert.alert('Search Failed', data.message || 'No results found');
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('❌ Search error:', error);
       Alert.alert('Search Error', 'Failed to search topics. Please try again.');
     } finally {
       setIsSearching(false);
