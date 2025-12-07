@@ -211,6 +211,8 @@ export default function SubjectSearchScreen() {
     setIsSaving(true);
 
     try {
+      console.log('💾 Saving subjects...', selectedSubjects);
+      
       // Save all selected subjects to database
       const subjectsToInsert = selectedSubjects.map((s) => ({
         user_id: user?.id,
@@ -218,28 +220,42 @@ export default function SubjectSearchScreen() {
         exam_board: s.exam_board_code,
       }));
 
-      const { error: subjectsError } = await supabase
+      console.log('📝 Inserting to user_subjects:', subjectsToInsert);
+
+      const { data: insertData, error: subjectsError } = await supabase
         .from('user_subjects')
         .upsert(subjectsToInsert, {
           onConflict: 'user_id,subject_id',
         });
 
-      if (subjectsError) throw subjectsError;
+      if (subjectsError) {
+        console.error('❌ Subjects insert error:', subjectsError);
+        throw subjectsError;
+      }
+
+      console.log('✅ Subjects saved successfully!');
 
       // Update user's exam type
+      console.log('📝 Updating user exam_type to:', examType);
+      
       const { error: userError } = await supabase
         .from('users')
         .update({ exam_type: examType })
         .eq('id', user?.id);
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error('❌ User update error:', userError);
+        throw userError;
+      }
+
+      console.log('✅ User exam_type updated!');
+      console.log('🚀 Navigating to OnboardingComplete...');
 
       // Navigate to onboarding complete
       navigation.navigate('OnboardingComplete' as never);
     } catch (error) {
-      console.error('Error saving subjects:', error);
+      console.error('❌ Error saving subjects:', error);
       Alert.alert('Error', 'Failed to save your subjects. Please try again.');
-    } finally {
       setIsSaving(false);
     }
   };
