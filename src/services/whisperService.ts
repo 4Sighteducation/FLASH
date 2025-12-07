@@ -10,7 +10,7 @@ export class WhisperService {
 
   constructor() {
     // Use the same backend API pattern as AIService
-    this.apiUrl = 'https://flash-gules.vercel.app/api/transcribe-audio';
+    this.apiUrl = 'https://www.fl4sh.cards/api/transcribe-audio';
   }
 
   async transcribeAudio(audioUri: string): Promise<TranscriptionResult> {

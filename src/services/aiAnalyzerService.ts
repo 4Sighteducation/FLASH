@@ -12,7 +12,7 @@ export class AIAnalyzerService {
 
   constructor() {
     // Use the same backend API pattern
-    this.apiUrl = 'https://flash-gules.vercel.app/api/analyze-answer';
+    this.apiUrl = 'https://www.fl4sh.cards/api/analyze-answer';
   }
 
   async analyzeAnswer(

@@ -66,14 +66,13 @@ export class AIService {
     // e.g., http://192.168.1.100:3000/api/generate-cards
     const isDev = __DEV__ ?? false;
     
-    // For now, always use the production URL since it's already deployed
-    // This avoids the localhost connection issues
-    this.apiUrl = 'https://flash-gules.vercel.app/api/generate-cards';
+    // Use same domain as web app for API calls
+    // This ensures API functions are deployed with the main app
+    this.apiUrl = isDev
+      ? 'http://localhost:3000/api/generate-cards'  // Local testing
+      : 'https://www.fl4sh.cards/api/generate-cards';  // Production
     
-    // If you want to test with a local backend later, uncomment this:
-    // this.apiUrl = isDev
-    //   ? 'http://192.168.0.243:3000/api/generate-cards'  // Your local IP
-    //   : 'https://flash-gules.vercel.app/api/generate-cards';
+    console.log('🔑 [AIService] Using API URL:', this.apiUrl);
   }
 
   async generateCards(params: CardGenerationParams): Promise<GeneratedCard[]> {
