@@ -357,24 +357,27 @@ export default function SmartTopicDiscoveryScreen() {
                 Found {searchResults.length} topics
               </Text>
 
-              {searchResults.map((result) => (
+              {searchResults.map((result, index) => (
                 <TouchableOpacity
                   key={result.topic_id}
                   style={styles.resultCard}
                   onPress={() => handleSelectTopic(result)}
                 >
+                  {/* Best Match Badge */}
+                  {index === 0 && (
+                    <View style={styles.bestMatchBadge}>
+                      <Text style={styles.bestMatchText}>🎯 Best Match</Text>
+                    </View>
+                  )}
+
                   <View style={styles.resultContent}>
-                    {/* Topic Name */}
+                    {/* Topic Name - PROMINENT */}
                     <Text style={styles.resultTitle}>{result.topic_name}</Text>
 
-                    {/* AI Summary */}
-                    <Text style={styles.resultSummary} numberOfLines={2}>
-                      {result.plain_english_summary}
-                    </Text>
-
-                    {/* Breadcrumb Path */}
-                    {result.full_path && result.full_path.length > 0 && (
+                    {/* Breadcrumb Path - SHOW CONTEXT */}
+                    {result.full_path && result.full_path.length > 1 && (
                       <View style={styles.breadcrumbContainer}>
+                        <Text style={styles.breadcrumbLabel}>Location: </Text>
                         {result.full_path.slice(0, -1).map((crumb, idx) => (
                           <React.Fragment key={idx}>
                             {idx > 0 && <Text style={styles.breadcrumbSeparator}> › </Text>}
@@ -384,6 +387,18 @@ export default function SmartTopicDiscoveryScreen() {
                           </React.Fragment>
                         ))}
                       </View>
+                    )}
+
+                    {/* Level indicator */}
+                    <Text style={styles.topicLevelText}>
+                      Level {result.topic_level} Topic
+                    </Text>
+
+                    {/* AI Summary - SHORTER */}
+                    {result.plain_english_summary && (
+                      <Text style={styles.resultSummary} numberOfLines={3}>
+                        {result.plain_english_summary}
+                      </Text>
                     )}
 
                     {/* Metadata Row */}
@@ -414,23 +429,35 @@ export default function SmartTopicDiscoveryScreen() {
                       {result.exam_importance > 0 && (
                         <View style={styles.importanceContainer}>
                           <Text style={styles.importanceText}>
-                            ⭐ {Math.round(result.exam_importance * 100)}% importance
+                            ⭐ {Math.round(result.exam_importance * 100)}%
                           </Text>
                         </View>
                       )}
+                      
+                      {/* Relevance Score */}
+                      <View style={styles.relevanceContainer}>
+                        <Text style={styles.relevanceText}>
+                          {Math.round((1 - result.similarity) * 100)}% match
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
                   {/* Create Button */}
                   <View style={styles.createButtonContainer}>
-                    <LinearGradient
-                      colors={['#FF006E', '#00F5FF']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.createButton}
+                    <TouchableOpacity
+                      style={styles.createButtonTouchable}
+                      onPress={() => handleSelectTopic(result)}
                     >
-                      <Text style={styles.createButtonText}>Create Cards</Text>
-                    </LinearGradient>
+                      <LinearGradient
+                        colors={['#FF006E', '#00F5FF']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.createButton}
+                      >
+                        <Text style={styles.createButtonText}>+</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -626,35 +653,66 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#1A1A1A',
+    position: 'relative',
+  },
+  bestMatchBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  bestMatchText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#000',
   },
   resultContent: {
     marginBottom: 12,
   },
   resultTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#FFF',
+    marginBottom: 4,
+    paddingRight: 100, // Space for best match badge
+  },
+  breadcrumbLabel: {
+    fontSize: 12,
+    color: '#00F5FF',
+    fontWeight: '600',
+  },
+  topicLevelText: {
+    fontSize: 11,
+    color: '#666',
     marginBottom: 8,
   },
   resultSummary: {
-    fontSize: 14,
-    color: '#AAA',
-    lineHeight: 20,
+    fontSize: 13,
+    color: '#999',
+    lineHeight: 18,
+    marginTop: 8,
     marginBottom: 8,
   },
   breadcrumbContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    padding: 6,
+    borderRadius: 6,
   },
   breadcrumbText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#AAA',
   },
   breadcrumbSeparator: {
-    fontSize: 12,
-    color: '#444',
+    fontSize: 11,
+    color: '#666',
   },
   metadataRow: {
     flexDirection: 'row',
@@ -677,21 +735,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   importanceText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#FFD700',
     fontWeight: '600',
   },
+  relevanceContainer: {
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  relevanceText: {
+    fontSize: 11,
+    color: '#00F5FF',
+    fontWeight: '600',
+  },
   createButtonContainer: {
+    marginTop: 8,
+  },
+  createButtonTouchable: {
     borderRadius: 8,
     overflow: 'hidden',
   },
   createButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   createButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFF',
   },
