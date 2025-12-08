@@ -96,6 +96,16 @@ export default function AIGeneratorScreen() {
         contentGuidance: additionalGuidance,
       };
 
+      console.log('🎨 Generating cards with full params:', {
+        subject,
+        topic,
+        examBoard,
+        examType,
+        questionType: selectedType,
+        numCards: parseInt(numCards, 10),
+        topicId,
+      });
+
       const cards = await aiService.generateCards(params);
       setGeneratedCards(cards);
       setCurrentStep('preview');
