@@ -51,6 +51,7 @@ export default function SmartTopicDiscoveryScreen() {
   const [recentTopics, setRecentTopics] = useState<RecentTopic[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicSearchResult | null>(null);
+  const [showAllResults, setShowAllResults] = useState(false);
   
   const searchDebounceRef = useRef<NodeJS.Timeout>();
 
@@ -398,10 +399,10 @@ export default function SmartTopicDiscoveryScreen() {
           ) : searchResults.length > 0 ? (
             <View style={styles.resultsSection}>
               <Text style={styles.sectionTitle}>
-                Found {searchResults.length} topics (showing top {Math.min(3, searchResults.length)})
+                Found {searchResults.length} topics
               </Text>
 
-              {searchResults.slice(0, 3).map((result, index) => (
+              {(showAllResults ? searchResults : searchResults.slice(0, 3)).map((result, index) => (
                 <TouchableOpacity
                   key={result.topic_id}
                   style={styles.resultCard}
@@ -505,6 +506,29 @@ export default function SmartTopicDiscoveryScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
+              
+              {/* Show More Button */}
+              {!showAllResults && searchResults.length > 3 && (
+                <TouchableOpacity 
+                  style={styles.showMoreButton}
+                  onPress={() => setShowAllResults(true)}
+                >
+                  <Text style={styles.showMoreText}>
+                    Show {searchResults.length - 3} More Results
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#00F5FF" />
+                </TouchableOpacity>
+              )}
+              
+              {showAllResults && searchResults.length > 3 && (
+                <TouchableOpacity 
+                  style={styles.showMoreButton}
+                  onPress={() => setShowAllResults(false)}
+                >
+                  <Text style={styles.showMoreText}>Show Less</Text>
+                  <Ionicons name="chevron-up" size={20} color="#00F5FF" />
+                </TouchableOpacity>
+              )}
             </View>
           ) : searchQuery.length > 2 ? (
             <View style={styles.emptyState}>
@@ -868,5 +892,23 @@ const styles = StyleSheet.create({
   browseCTASubtext: {
     fontSize: 14,
     color: '#666',
+  },
+  showMoreButton: {
+    backgroundColor: 'rgba(0, 245, 255, 0.1)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+  },
+  showMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00F5FF',
+    marginRight: 8,
   },
 });
