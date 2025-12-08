@@ -15,15 +15,40 @@ interface CardCreationChoiceProps {
 }
 
 export default function CardCreationChoice({ navigation, route }: CardCreationChoiceProps) {
-  const { topicId, topicName, subjectName, examBoard, examType } = route.params;
+  const { 
+    topicId, 
+    topicName, 
+    subjectName, 
+    examBoard, 
+    examType,
+    // Discovery metadata (from SmartTopicDiscovery)
+    discoveryMethod,
+    searchQuery,
+    subjectId
+  } = route.params as any;
 
   const handleAICreate = () => {
+    console.log('🎨 Navigating to AIGenerator with params:', {
+      subject: subjectName,
+      topic: topicName,
+      topicId,
+      examBoard,
+      examType,
+      subjectId,
+      discoveryMethod,
+      searchQuery
+    });
+    
     navigation.replace('AIGenerator', {
       subject: subjectName,
       topic: topicName,
       topicId,
       examBoard,
       examType,
+      // Pass through discovery metadata
+      subjectId,
+      discoveryMethod,
+      searchQuery,
     });
   };
 
