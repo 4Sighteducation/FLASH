@@ -117,8 +117,19 @@ export default function AIGeneratorScreen() {
   };
 
   const handleSaveCards = async () => {
-    if (!user || !selectedType || selectedType === 'notes') return;
+    console.log('💾 Save button clicked!', {
+      hasUser: !!user,
+      selectedType,
+      cardsCount: generatedCards.length
+    });
+    
+    if (!user || !selectedType || selectedType === 'notes') {
+      console.log('❌ Save cancelled - missing requirements');
+      return;
+    }
 
+    console.log('✅ Showing save dialog...');
+    
     // Ask user if they want to add to study bank
     Alert.alert(
       'Add to Study Bank?',
@@ -126,12 +137,18 @@ export default function AIGeneratorScreen() {
       [
         {
           text: 'No, Card Bank Only',
-          onPress: () => saveCards(false),
+          onPress: () => {
+            console.log('User selected: Card Bank Only');
+            saveCards(false);
+          },
           style: 'cancel'
         },
         {
           text: 'Yes, Add to Study Bank Too',
-          onPress: () => saveCards(true),
+          onPress: () => {
+            console.log('User selected: Study Bank Too');
+            saveCards(true);
+          },
           style: 'default'
         }
       ]
