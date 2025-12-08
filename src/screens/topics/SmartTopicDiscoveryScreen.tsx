@@ -176,11 +176,19 @@ export default function SmartTopicDiscoveryScreen() {
         console.log(`🔧 After deduplication: ${deduplicated.length} topics`);
         
         // Step 2: Boost more specific topics (prefer Level 4 over Level 3)
-        const ranked = deduplicated.map((result: TopicSearchResult) => ({
-          ...result,
-          adjustedSimilarity: result.similarity - (result.topic_level * 0.02), // Lower = better, so subtract
-          isSpecific: result.topic_level >= 4,
-        })).sort((a: any, b: any) => a.adjustedSimilarity - b.adjustedSimilarity);
+        const ranked = deduplicated.map((result: TopicSearchResult) => {
+          // Extract topic name from full_path (last element)
+          const topicName = result.full_path && result.full_path.length > 0
+            ? result.full_path[result.full_path.length - 1]
+            : 'Unknown Topic';
+          
+          return {
+            ...result,
+            topic_name: topicName, // Add missing topic_name
+            adjustedSimilarity: result.similarity - (result.topic_level * 0.02),
+            isSpecific: result.topic_level >= 4,
+          };
+        }).sort((a: any, b: any) => a.adjustedSimilarity - b.adjustedSimilarity);
         
         console.log(`🎯 After ranking: ${ranked.length} topics (specific topics boosted)`);
         
