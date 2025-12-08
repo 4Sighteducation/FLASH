@@ -217,7 +217,7 @@ export default function SmartTopicDiscoveryScreen() {
     });
     
     // Navigate to card creation choice
-    navigation.navigate('CardCreationChoice' as never, {
+    (navigation.navigate as any)('CardCreationChoice', {
       topicId: topic.topic_id,
       topicName: topic.topic_name,
       subjectName: subjectName,
@@ -227,23 +227,23 @@ export default function SmartTopicDiscoveryScreen() {
       discoveryMethod: 'search',
       searchQuery: searchQuery,
       subjectId: subjectId,
-    } as never);
+    });
   };
 
   const handleBrowseAll = () => {
     // Navigate to full hierarchy browser
-    navigation.navigate('CardTopicSelector' as never, {
+    (navigation.navigate as any)('CardTopicSelector', {
       subjectId,
       subjectName,
       examBoard,
       examType,
       mode: 'browse',
-    } as never);
+    });
   };
 
   const handleRecentTopicPress = (topic: RecentTopic) => {
     // Navigate to card creation for this topic
-    navigation.navigate('CardCreationChoice' as never, {
+    (navigation.navigate as any)('CardCreationChoice', {
       topicId: topic.topic_id,
       topicName: topic.topic_name,
       subjectName,
@@ -251,7 +251,7 @@ export default function SmartTopicDiscoveryScreen() {
       examType,
       discoveryMethod: 'recent',
       subjectId: subjectId,
-    } as never);
+    });
   };
 
   const getDifficultyColor = (difficulty: string) => {
