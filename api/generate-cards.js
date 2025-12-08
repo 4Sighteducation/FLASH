@@ -44,10 +44,19 @@ module.exports = async function handler(req, res) {
     // Exam complexity guidance
     const examComplexityGuidance = {
       "A-Level": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
+      "alevel": "Focus on in-depth specialized knowledge with emphasis on critical analysis, evaluation and application. Include detailed technical terminology and expect students to demonstrate independent thinking.",
       "GCSE": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
+      "gcse": "Cover foundational knowledge with clear explanations of key concepts. Focus on comprehension and basic application rather than complex analysis. Ensure terminology is appropriate for a broad introduction to the subject.",
       "BTEC": "Focus on practical applications, industry standards, and vocational context.",
+      "btec": "Focus on practical applications, industry standards, and vocational context.",
       "IB": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
-      "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations."
+      "ib": "Similar to A-Level with critical thinking and application focus, but slightly broader in scope as students take six subjects. Include appropriate technical terminology while balancing depth with the wider curriculum demands.",
+      "iGCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations.",
+      "igcse": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations.",
+      "International GCSE": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations.",
+      "International A-Level": "Similar to A-Level with international curriculum. Focus on in-depth knowledge with critical analysis and evaluation.",
+      "internationalgcse": "Similar to GCSE but with international perspectives. Cover foundational knowledge with clear explanations.",
+      "internationalalevel": "Similar to A-Level with international curriculum. Focus on in-depth knowledge with critical analysis and evaluation."
     };
 
     // Build the prompt
