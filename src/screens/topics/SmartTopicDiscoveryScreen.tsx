@@ -402,16 +402,26 @@ export default function SmartTopicDiscoveryScreen() {
                 Found {searchResults.length} topics
               </Text>
 
-              {(showAllResults ? searchResults : searchResults.slice(0, 3)).map((result, index) => (
+              {(showAllResults ? searchResults : searchResults.slice(0, 3)).map((result, index) => {
+                const isTopResult = index === 0;
+                const isSpecific = result.topic_level >= 4;
+                const matchScore = Math.round((1 - result.similarity) * 100);
+                
+                return (
                 <TouchableOpacity
                   key={result.topic_id}
                   style={styles.resultCard}
                   onPress={() => handleSelectTopic(result)}
                 >
-                  {/* Best Match Badge */}
-                  {index === 0 && (
-                    <View style={styles.bestMatchBadge}>
-                      <Text style={styles.bestMatchText}>🎯 Best Match</Text>
+                  {/* Smart Badge */}
+                  {isTopResult && (
+                    <View style={[
+                      styles.bestMatchBadge,
+                      { backgroundColor: isSpecific ? '#00F5FF' : '#FFD700' }
+                    ]}>
+                      <Text style={styles.bestMatchText}>
+                        {isSpecific ? '🎯 Most Specific' : '⭐ Best Match'}
+                      </Text>
                     </View>
                   )}
 
