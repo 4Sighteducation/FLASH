@@ -61,7 +61,11 @@ export default function SmartTopicDiscoveryScreen() {
     'aslevel': 'AS_LEVEL',
     'btec': 'BTEC',
     'ib': 'IB',
-    'igcse': 'IGCSE',
+    'igcse': 'INTERNATIONAL_GCSE',
+    'internationalgcse': 'INTERNATIONAL_GCSE',
+    'international-gcse': 'INTERNATIONAL_GCSE',
+    'internationalalevel': 'INTERNATIONAL_A_LEVEL',
+    'international-alevel': 'INTERNATIONAL_A_LEVEL',
   };
 
   useEffect(() => {
