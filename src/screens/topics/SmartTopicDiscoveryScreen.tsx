@@ -515,7 +515,8 @@ export default function SmartTopicDiscoveryScreen() {
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
-              ))}
+              );
+              })}
               
               {/* Show More Button */}
               {!showAllResults && searchResults.length > 3 && (
