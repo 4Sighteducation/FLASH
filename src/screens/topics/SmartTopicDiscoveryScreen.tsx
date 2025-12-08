@@ -155,8 +155,36 @@ export default function SmartTopicDiscoveryScreen() {
       console.log('📊 Search results:', data);
       
       if (data.success) {
-        console.log(`✅ Found ${data.results?.length || 0} topics`);
-        setSearchResults(data.results || []);
+        const rawResults = data.results || [];
+        console.log(`✅ Found ${rawResults.length} raw topics`);
+        
+        // SMART FILTERING & RANKING
+        
+        // Step 1: Remove duplicate parent-child topics
+        const deduplicated = rawResults.filter((result: TopicSearchResult, index: number, array: TopicSearchResult[]) => {
+          // Keep topic if no more specific child exists in results
+          const hasMoreSpecificChild = array.some(other => 
+            other.full_path && 
+            result.full_path &&
+            other.full_path.length > result.full_path.length && // Child is deeper
+            other.full_path.slice(0, result.full_path.length).join('/') === result.full_path.join('/') && // Shares same path
+            other.topic_level > result.topic_level // Is more specific
+          );
+          return !hasMoreSpecificChild;
+        });
+        
+        console.log(`🔧 After deduplication: ${deduplicated.length} topics`);
+        
+        // Step 2: Boost more specific topics (prefer Level 4 over Level 3)
+        const ranked = deduplicated.map((result: TopicSearchResult) => ({
+          ...result,
+          adjustedSimilarity: result.similarity - (result.topic_level * 0.02), // Lower = better, so subtract
+          isSpecific: result.topic_level >= 4,
+        })).sort((a: any, b: any) => a.adjustedSimilarity - b.adjustedSimilarity);
+        
+        console.log(`🎯 After ranking: ${ranked.length} topics (specific topics boosted)`);
+        
+        setSearchResults(ranked as TopicSearchResult[]);
       } else {
         console.error('❌ Search failed:', data.message);
         Alert.alert('Search Failed', data.message || 'No results found');
