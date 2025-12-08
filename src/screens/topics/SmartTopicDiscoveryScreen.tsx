@@ -54,6 +54,16 @@ export default function SmartTopicDiscoveryScreen() {
   
   const searchDebounceRef = useRef<NodeJS.Timeout>();
 
+  // Map exam type to database code format
+  const examTypeToCode: { [key: string]: string } = {
+    'gcse': 'GCSE',
+    'alevel': 'A_LEVEL',
+    'aslevel': 'AS_LEVEL',
+    'btec': 'BTEC',
+    'ib': 'IB',
+    'igcse': 'IGCSE',
+  };
+
   useEffect(() => {
     fetchRecentTopics();
   }, []);
@@ -109,10 +119,12 @@ export default function SmartTopicDiscoveryScreen() {
     setIsSearching(true);
 
     try {
+      const qualificationLevel = examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE';
+      
       const searchParams = {
         query,
         examBoard,
-        qualificationLevel: examType.toUpperCase(),
+        qualificationLevel,
         subjectName,
         limit: 15,
       };
