@@ -166,7 +166,12 @@ export default function HomeScreen({ navigation }: any) {
         );
         setUserSubjects(subjectsWithCounts);
       } else {
-        setUserSubjects(subjects || []);
+        // Fix: Ensure subject is object not array
+        const fixedSubjects = (subjects || []).map((s: any) => ({
+          ...s,
+          subject: Array.isArray(s.subject) ? s.subject[0] : s.subject
+        }));
+        setUserSubjects(fixedSubjects as UserSubject[]);
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
