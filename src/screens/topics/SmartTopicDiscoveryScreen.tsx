@@ -171,13 +171,21 @@ export default function SmartTopicDiscoveryScreen() {
 
   const handleSelectTopic = (topic: TopicSearchResult) => {
     setSelectedTopic(topic);
-    // Navigate to card creation choice
-    navigation.navigate('CardCreationChoice' as never, {
+    console.log('🎯 Selected topic:', {
       topicId: topic.topic_id,
       topicName: topic.topic_name,
       subjectName,
       examBoard,
-      examType,
+      examType
+    });
+    
+    // Navigate to card creation choice
+    navigation.navigate('CardCreationChoice' as never, {
+      topicId: topic.topic_id,
+      topicName: topic.topic_name,
+      subjectName: subjectName,
+      examBoard: examBoard,
+      examType: examType,
       // Pass discovery metadata
       discoveryMethod: 'search',
       searchQuery: searchQuery,
@@ -354,10 +362,10 @@ export default function SmartTopicDiscoveryScreen() {
           ) : searchResults.length > 0 ? (
             <View style={styles.resultsSection}>
               <Text style={styles.sectionTitle}>
-                Found {searchResults.length} topics
+                Found {searchResults.length} topics (showing top {Math.min(3, searchResults.length)})
               </Text>
 
-              {searchResults.map((result, index) => (
+              {searchResults.slice(0, 3).map((result, index) => (
                 <TouchableOpacity
                   key={result.topic_id}
                   style={styles.resultCard}
