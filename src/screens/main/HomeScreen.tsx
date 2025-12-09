@@ -244,7 +244,7 @@ export default function HomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LinearGradient
-          colors={theme === 'cyber' ? colors.gradient : ['#6366F1', '#8B5CF6']}
+          colors={colors.gradient}
           style={styles.headerGradient}
         >
           <View style={styles.header}>
@@ -536,22 +536,23 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingBottom: 30,
     paddingHorizontal: 20,
     marginBottom: 10,
-    ...(theme === 'cyber' && {
-      borderWidth: 1,
-      borderColor: colors.border,
-    }),
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(0, 245, 255, 0.3)',
   },
   header: {
     marginBottom: 10,
   },
   greeting: {
     fontSize: 24,
-    color: theme === 'cyber' ? colors.textSecondary : '#E0E7FF',
+    color: colors.textSecondary,
   },
   username: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: theme === 'cyber' ? colors.text : '#FFFFFF',
+    color: colors.text,
+    textShadowColor: colors.primary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   examTypeBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -636,25 +637,29 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     justifyContent: 'space-between',
   },
   subjectCard: {
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
   },
   subjectCardGrid: {
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
     overflow: 'hidden',
     width: '48%',
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
   },
   subjectGradient: {
     padding: 20,
@@ -741,20 +746,18 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: theme === 'cyber' ? colors.primary : '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: theme === 'cyber' ? 0.3 : 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
     minWidth: 90,
-    ...(theme === 'cyber' && {
-      borderWidth: 1,
-      borderColor: colors.border,
-    }),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   actionText: {
     marginTop: 8,

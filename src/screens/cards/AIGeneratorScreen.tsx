@@ -575,9 +575,11 @@ const styles = StyleSheet.create({
   bottomButtons: {
     flexDirection: 'row',
     padding: 16,
+    paddingBottom: 24, // Extra padding for mobile safe area
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    gap: 12,
   },
   primaryButton: {
     flex: 1,
