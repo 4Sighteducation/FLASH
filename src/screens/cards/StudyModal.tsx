@@ -85,6 +85,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [animationPoints, setAnimationPoints] = useState(0);
   
+  // New: Session summary and preview
+  const [showSessionSummary, setShowSessionSummary] = useState(false);
+  const [cardsDeferredToTomorrow, setCardsDeferredToTomorrow] = useState(0);
+  const [tomorrowCards, setTomorrowCards] = useState<any[]>([]);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [initialDueCount, setInitialDueCount] = useState(0);
+  
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(1)).current;
@@ -420,12 +427,22 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     const oldBoxNumber = card.box_number;
     const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
 
-    // Show feedback with more subtle styling
+    // Track deferred cards
+    if (!correct && card.box_number === 1) {
+      setCardsDeferredToTomorrow(prev => prev + 1);
+    }
+
+    // Enhanced feedback with box names and details
+    const boxInfo = LeitnerSystem.getBoxInfo(newBoxNumber);
+    const oldBoxInfo = LeitnerSystem.getBoxInfo(oldBoxNumber);
+    const feedbackMessage = correct 
+      ? `Moving to ${boxInfo.name} ${boxInfo.emoji}\n Review: ${boxInfo.displayInterval}`
+      : `Back to ${LeitnerSystem.getBoxInfo(1).name} ${LeitnerSystem.getBoxInfo(1).emoji}\nAvailable: Tomorrow`;
+
     setAnswerFeedback({
       correct,
-      message: correct 
-        ? `Nice! → Box ${newBoxNumber}` 
-        : 'Oops! → Box 1'
+      message: feedbackMessage,
+      correctAnswer: correct ? null : card.answer, // Show correct answer if wrong
     });
     setShowAnswerFeedback(true);
     
@@ -490,7 +507,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       [`box${newBoxNumber}`]: prev[`box${newBoxNumber}` as keyof typeof prev] + 1,
     }));
 
-    // Wait for animation to complete before advancing
+    // Wait 2 seconds (auto-advance) before proceeding
     setTimeout(() => {
       // Animate feedback modal exit
       Animated.timing(feedbackScale, {
@@ -524,7 +541,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           saveStudySession();
         }
       });
-    }, 1800);
+    }, 2000); // Changed from 1800 to 2000ms for 2-second auto-advance
   };
 
   const saveStudySession = async () => {
@@ -582,15 +599,34 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         // Store points for display
         setPointsEarned(pointsEarned);
       }
+      
+      // Get tomorrow's cards (deferred Box 1 cards)
+      const tomorrow = flashcards.filter(c => c.isFrozen && c.box_number === 1);
+      setTomorrowCards(tomorrow);
+      
     } catch (error) {
       console.error('Error in saveStudySession:', error);
       animatingRef.current = false; // Unlock animation on error
     }
     
-    // Show completion modal
-    setShowAllCaughtUp(true);
+    // Show session summary instead of "all caught up"
+    setShowSessionSummary(true);
     // Unlock animations after session is saved
     animatingRef.current = false;
+  };
+  
+  const handlePreviewTomorrow = () => {
+    setShowSessionSummary(false);
+    setPreviewMode(true);
+    
+    // Load tomorrow's cards in preview mode
+    setFlashcards(tomorrowCards.map(c => ({ ...c, preview: true })));
+    setCurrentIndex(0);
+  };
+  
+  const exitPreview = () => {
+    setPreviewMode(false);
+    navigation.goBack();
   };
 
   const handleClose = () => {
@@ -635,8 +671,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
-          <Text style={styles.counter}>{currentIndex + 1}/{flashcards.length}</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
+            {previewMode && <Text style={styles.previewBadge}>👀 PREVIEW</Text>}
+          </View>
+          <View style={styles.progressInfo}>
+            <Text style={styles.counter}>Card {currentIndex + 1}/{initialDueCount}</Text>
+            {cardsDeferredToTomorrow > 0 && (
+              <Text style={styles.deferredCount}>❌ {cardsDeferredToTomorrow} →tomorrow</Text>
+            )}
+          </View>
         </View>
 
         {/* Leitner Boxes Visualization */}
@@ -661,10 +705,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               ]}
             >
               <View ref={cardRef} collapsable={false}>
-                {currentCard.isFrozen ? (
+                {currentCard.isFrozen || previewMode ? (
                   <FrozenCard
                     card={currentCard}
                     color={subjectColor}
+                    preview={previewMode}
                   />
                 ) : (
                   <FlashcardCard
@@ -706,7 +751,15 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               <Text style={styles.swipeHint}>Swipe to navigate</Text>
             </View>
 
-            {currentIndex === flashcards.length - 1 ? (
+            {previewMode ? (
+              <TouchableOpacity
+                style={[styles.finishButton, { backgroundColor: '#666' }]}
+                onPress={exitPreview}
+              >
+                <Text style={styles.finishButtonText}>Exit Preview</Text>
+                <Icon name="close-circle" size={24} color="#fff" />
+              </TouchableOpacity>
+            ) : currentIndex === flashcards.length - 1 ? (
               <TouchableOpacity
                 style={styles.finishButton}
                 onPress={handleClose}
@@ -742,7 +795,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           onComplete={() => setShowPointsAnimation(false)}
         />
 
-        {/* Answer Feedback Modal */}
+        {/* Enhanced Answer Feedback Modal */}
         <Modal
           visible={showAnswerFeedback}
           transparent={true}
@@ -763,21 +816,107 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               <View style={styles.feedbackContent}>
                 <Ionicons 
                   name={answerFeedback.correct ? "checkmark-circle" : "close-circle"} 
-                  size={32} 
+                  size={64} 
                   color={answerFeedback.correct ? '#4CAF50' : '#F44336'} 
                 />
+                <Text style={styles.feedbackTitle}>
+                  {answerFeedback.correct ? "Correct!" : "Not Quite!"}
+                </Text>
                 <Text style={[
                   styles.feedbackText,
                   { color: answerFeedback.correct ? '#2E7D32' : '#C62828' }
                 ]}>
                   {answerFeedback.message}
                 </Text>
+                
+                {!answerFeedback.correct && answerFeedback.correctAnswer && (
+                  <View style={styles.correctAnswerBox}>
+                    <Text style={styles.correctAnswerLabel}>Correct Answer:</Text>
+                    <Text style={styles.correctAnswerText}>{answerFeedback.correctAnswer}</Text>
+                  </View>
+                )}
+                
+                <View style={styles.autoAdvanceIndicator}>
+                  <Text style={styles.autoAdvanceText}>Next in 2s...</Text>
+                </View>
               </View>
             </Animated.View>
           </View>
         </Modal>
 
-        {/* All Caught Up Modal */}
+        {/* Session Summary Modal */}
+        <Modal
+          visible={showSessionSummary}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            setShowSessionSummary(false);
+            navigation.goBack();
+          }}
+        >
+          <View style={styles.summaryOverlay}>
+            <View style={styles.summaryCard}>
+              <Icon name="trophy" size={64} color="#FFD700" />
+              <Text style={styles.summaryTitle}>Session Complete!</Text>
+              
+              <View style={styles.summaryStats}>
+                {sessionStats.correctAnswers > 0 && (
+                  <View style={styles.summaryStatRow}>
+                    <Icon name="checkmark-circle" size={28} color="#4CAF50" />
+                    <View style={styles.summaryStatText}>
+                      <Text style={styles.summaryStatValue}>{sessionStats.correctAnswers} cards mastered</Text>
+                      <Text style={styles.summaryStatDetail}>
+                        Moving to {LeitnerSystem.getBoxInfo(2).name} {LeitnerSystem.getBoxInfo(2).emoji}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                
+                {cardsDeferredToTomorrow > 0 && (
+                  <View style={styles.summaryStatRow}>
+                    <Icon name="time" size={28} color="#FF9500" />
+                    <View style={styles.summaryStatText}>
+                      <Text style={styles.summaryStatValue}>{cardsDeferredToTomorrow} cards for tomorrow</Text>
+                      <Text style={styles.summaryStatDetail}>
+                        Back to New 🌱 (Daily)
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                
+                <View style={styles.summaryStatRow}>
+                  <Icon name="star" size={28} color="#FFD700" />
+                  <View style={styles.summaryStatText}>
+                    <Text style={styles.summaryStatValue}>{pointsEarned} XP earned</Text>
+                    <Text style={styles.summaryStatDetail}>
+                      {sessionStats.totalReviewed} cards reviewed
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.summaryButtons}>
+                {tomorrowCards.length > 0 && !previewMode && (
+                  <TouchableOpacity 
+                    style={styles.previewButton}
+                    onPress={handlePreviewTomorrow}
+                  >
+                    <Icon name="eye-outline" size={20} color="#6366F1" />
+                    <Text style={styles.previewButtonText}>Preview Tomorrow</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  style={styles.doneButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* All Caught Up Modal (kept for backwards compat) */}
         <Modal
           visible={showAllCaughtUp}
           transparent={true}
@@ -1086,24 +1225,60 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   feedbackModal: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 30,
-    borderWidth: 2,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    borderRadius: 20,
+    borderWidth: 3,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
+    minWidth: 300,
   },
   feedbackContent: {
-    flexDirection: 'row',
     alignItems: 'center',
+  },
+  feedbackTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 12,
+    marginBottom: 8,
   },
   feedbackText: {
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  correctAnswerBox: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 12,
+    width: '100%',
+  },
+  correctAnswerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  correctAnswerText: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 20,
+  },
+  autoAdvanceIndicator: {
+    marginTop: 16,
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+  },
+  autoAdvanceText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
   },
   caughtUpOverlay: {
     flex: 1,
@@ -1231,5 +1406,116 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontWeight: '600',
+  },
+  // New styles for enhanced features
+  headerTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6366F1',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  progressInfo: {
+    alignItems: 'flex-end',
+  },
+  deferredCount: {
+    fontSize: 11,
+    color: '#FF9500',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  summaryOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+  },
+  summaryCard: {
+    backgroundColor: 'white',
+    borderRadius: 24,
+    padding: 32,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  summaryTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  summaryStats: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  summaryStatRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  summaryStatText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  summaryStatValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  summaryStatDetail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  summaryButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    gap: 8,
+  },
+  previewButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  doneButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    backgroundColor: '#6366F1',
+  },
+  doneButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
   },
 }); 
