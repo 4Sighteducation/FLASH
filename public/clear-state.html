@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FLASH - Clear App State</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1f3a;
+            color: white;
+        }
+        button {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #FF8E8E;
+        }
+        .success {
+            background: #4CAF50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 FLASH Test Utilities</h1>
+    
+    <div class="info">
+        <h3>Use these tools to reset your testing environment:</h3>
+    </div>
+
+    <button onclick="clearAll()">Clear Everything (Logout + Reset)</button>
+    <button onclick="clearStorage()">Clear LocalStorage Only</button>
+    <button onclick="clearWizard()">Reset Study Wizard</button>
+    <button onclick="goHome()">Go to App</button>
+
+    <div id="success" class="success"></div>
+
+    <div class="info">
+        <h4>What each button does:</h4>
+        <ul>
+            <li><strong>Clear Everything:</strong> Logs you out and clears all local data</li>
+            <li><strong>Clear LocalStorage:</strong> Clears app state but keeps you logged in</li>
+            <li><strong>Reset Study Wizard:</strong> Makes the wizard show again on next visit</li>
+            <li><strong>Go to App:</strong> Navigate back to fl4sh.cards</li>
+        </ul>
+    </div>
+
+    <script>
+        function showSuccess(message) {
+            const el = document.getElementById('success');
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 3000);
+        }
+
+        function clearAll() {
+            // Clear all storage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Clear cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            showSuccess('✅ Everything cleared! Redirecting...');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            showSuccess('✅ Storage cleared!');
+        }
+
+        function clearWizard() {
+            localStorage.removeItem('hasSeenStudyWizard');
+            showSuccess('✅ Study wizard reset! You\'ll see it again on next visit.');
+        }
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        // Show current storage info
+        console.log('Current localStorage keys:', Object.keys(localStorage));
+        console.log('Current sessionStorage keys:', Object.keys(sessionStorage));
+    </script>
+</body>
+</html>
+

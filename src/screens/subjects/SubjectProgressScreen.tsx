@@ -48,7 +48,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const { subjectId, subjectName, subjectColor, examBoard, examType } = route.params;
   const { user } = useAuth();
   const { colors, theme } = useTheme();
-  const styles = createStyles(colors, theme, subjectColor);
+  const safeSubjectColor = subjectColor || '#6366F1'; // Fallback color if null
+  const styles = createStyles(colors, theme, safeSubjectColor);
 
   const [loading, setLoading] = useState(true);
   const [discoveredTopics, setDiscoveredTopics] = useState<DiscoveredTopic[]>([]);
@@ -201,7 +202,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       <ScrollView style={styles.scrollView}>
         {/* Progress Card */}
         <LinearGradient
-          colors={[subjectColor, adjustColor(subjectColor, -30)]}
+          colors={[safeSubjectColor, adjustColor(safeSubjectColor, -30)]}
           style={styles.progressCard}
         >
           <View style={styles.progressContent}>
@@ -245,7 +246,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             <Text style={styles.emptyText}>
               Search for topics you're studying and create flashcards to build your knowledge base.
             </Text>
-            <TouchableOpacity style={styles.discoverButton} onPress={handleDiscoverMore}>
+            <TouchableOpacity style={[styles.discoverButton, { backgroundColor: safeSubjectColor }]} onPress={handleDiscoverMore}>
               <Icon name="search" size={20} color="#fff" />
               <Text style={styles.discoverButtonText}>Discover Topics</Text>
             </TouchableOpacity>
@@ -271,7 +272,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                         <Icon
                           name={isExpanded ? "folder-open" : "folder"}
                           size={24}
-                          color={subjectColor}
+                          color={safeSubjectColor}
                         />
                         <View style={styles.groupHeaderText}>
                           <Text style={styles.groupTitle}>{group.level1}</Text>
@@ -283,7 +284,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                       <View style={styles.groupHeaderRight}>
                         <View style={styles.cardCountBadge}>
                           <Text style={styles.cardCountText}>{cardCount}</Text>
-                          <Icon name="albums" size={14} color={subjectColor} />
+                          <Icon name="albums" size={14} color={safeSubjectColor} />
                         </View>
                         <Icon
                           name={isExpanded ? "chevron-up" : "chevron-down"}
@@ -303,7 +304,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                             onPress={() => handleTopicPress(topic)}
                           >
                             <View style={styles.topicCardLeft}>
-                              <View style={[styles.levelIndicator, { backgroundColor: subjectColor }]}>
+                              <View style={[styles.levelIndicator, { backgroundColor: safeSubjectColor }]}>
                                 <Text style={styles.levelText}>L{topic.topic_level}</Text>
                               </View>
                               <View style={styles.topicInfo}>
@@ -345,8 +346,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
               style={styles.discoverMoreButton}
               onPress={handleDiscoverMore}
             >
-              <Icon name="add-circle" size={24} color={subjectColor} />
-              <Text style={[styles.discoverMoreText, { color: subjectColor }]}>
+              <Icon name="add-circle" size={24} color={safeSubjectColor} />
+              <Text style={[styles.discoverMoreText, { color: safeSubjectColor }]}>
                 Discover More Topics
               </Text>
             </TouchableOpacity>
@@ -357,7 +358,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   );
 }
 
-const adjustColor = (color: string, amount: number): string => {
+const adjustColor = (color: string | null | undefined, amount: number): string => {
+  if (!color) return '#6366F1'; // Default fallback color
   const hex = color.replace('#', '');
   const r = Math.max(0, Math.min(255, parseInt(hex.substr(0, 2), 16) + amount));
   const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
@@ -485,7 +487,6 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   discoverButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: subjectColor,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
@@ -555,7 +556,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   cardCountText: {
     fontSize: 14,
     fontWeight: '600',
-    color: subjectColor,
+    color: subjectColor || '#6366F1',
   },
   topicsList: {
     paddingTop: 8,
@@ -637,7 +638,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: subjectColor,
+    borderColor: subjectColor || '#6366F1',
     borderStyle: 'dashed',
   },
   discoverMoreText: {
