@@ -7,12 +7,14 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { abbreviateTopicName } from '../../utils/topicNameUtils';
 
 interface DiscoveredTopic {
   id: string;
@@ -61,6 +63,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     topicsDiscovered: 0,
     cardsMastered: 0,
   });
+  const [showTopicOptions, setShowTopicOptions] = useState<DiscoveredTopic | null>(null);
 
   useEffect(() => {
     fetchDiscoveredTopics();
@@ -157,12 +160,32 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   };
 
   const handleTopicPress = (topic: DiscoveredTopic) => {
-    // Navigate to study this topic's cards
+    // Show options menu instead of directly studying
+    setShowTopicOptions(topic);
+  };
+  
+  const handleStudyTopic = () => {
+    if (!showTopicOptions) return;
+    setShowTopicOptions(null);
     navigation.navigate('StudyModal', {
-      topicName: topic.topic_name,
+      topicName: showTopicOptions.topic_name,
       subjectName: subjectName,
-      subjectColor: subjectColor,
-      topicId: topic.topic_id,
+      subjectColor: safeSubjectColor,
+      topicId: showTopicOptions.topic_id,
+    });
+  };
+  
+  const handleDiscoverRelated = () => {
+    if (!showTopicOptions) return;
+    setShowTopicOptions(null);
+    // Navigate to SmartTopicDiscovery with pre-filled search
+    navigation.navigate('SmartTopicDiscovery', {
+      subjectId,
+      subjectName,
+      subjectColor: safeSubjectColor,
+      examBoard,
+      examType,
+      initialSearch: showTopicOptions.full_path[showTopicOptions.full_path.length - 2] || showTopicOptions.topic_name, // Parent topic
     });
   };
 
@@ -309,7 +332,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                               </View>
                               <View style={styles.topicInfo}>
                                 <Text style={styles.topicName} numberOfLines={2}>
-                                  {topic.topic_name}
+                                  {abbreviateTopicName(topic.topic_name)}
                                 </Text>
                                 <View style={styles.topicMeta}>
                                   <Text style={styles.topicMetaText}>
@@ -354,6 +377,54 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </>
         )}
       </ScrollView>
+      
+      {/* Topic Options Modal */}
+      <Modal
+        visible={showTopicOptions !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTopicOptions(null)}
+      >
+        <TouchableOpacity 
+          style={styles.optionsOverlay}
+          activeOpacity={1}
+          onPress={() => setShowTopicOptions(null)}
+        >
+          <View style={styles.optionsCard}>
+            <Text style={styles.optionsTitle}>
+              {showTopicOptions?.topic_name}
+            </Text>
+            <Text style={styles.optionsSubtitle}>
+              {showTopicOptions?.card_count} cards created
+            </Text>
+            
+            <TouchableOpacity
+              style={[styles.optionButton, styles.optionPrimary]}
+              onPress={handleStudyTopic}
+            >
+              <Icon name="play-circle" size={24} color="#fff" />
+              <Text style={styles.optionButtonText}>Study These Cards</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.optionButton, styles.optionSecondary]}
+              onPress={handleDiscoverRelated}
+            >
+              <Icon name="search" size={24} color={safeSubjectColor} />
+              <Text style={[styles.optionButtonTextSecondary, { color: safeSubjectColor }]}>
+                Discover Related Topics
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.optionCancel}
+              onPress={() => setShowTopicOptions(null)}
+            >
+              <Text style={styles.optionCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -645,6 +716,69 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  optionsOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  optionsCard: {
+    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    ...( theme === 'cyber' && {
+      borderWidth: 1,
+      borderColor: colors.border,
+    }),
+  },
+  optionsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme === 'cyber' ? colors.text : '#333',
+    marginBottom: 8,
+  },
+  optionsSubtitle: {
+    fontSize: 14,
+    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    marginBottom: 24,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  optionPrimary: {
+    backgroundColor: subjectColor || '#6366F1',
+  },
+  optionSecondary: {
+    backgroundColor: theme === 'cyber' ? 'rgba(0, 0, 0, 0.2)' : '#f5f5f5',
+    borderWidth: 2,
+    borderColor: subjectColor || '#6366F1',
+  },
+  optionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  optionButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  optionCancel: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  optionCancelText: {
+    fontSize: 15,
+    color: theme === 'cyber' ? colors.textSecondary : '#666',
   },
 });
 

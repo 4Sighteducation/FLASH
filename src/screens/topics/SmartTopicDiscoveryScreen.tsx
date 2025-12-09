@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
+import { abbreviateTopicName } from '../../utils/topicNameUtils';
 
 interface TopicSearchResult {
   topic_id: string;
@@ -373,7 +374,7 @@ export default function SmartTopicDiscoveryScreen() {
                   onPress={() => handleRecentTopicPress(topic)}
                 >
                   <View style={styles.recentTopicContent}>
-                    <Text style={styles.recentTopicName}>{topic.topic_name}</Text>
+                    <Text style={styles.recentTopicName}>{abbreviateTopicName(topic.topic_name)}</Text>
                     {topic.search_query && (
                       <Text style={styles.recentSearchQuery}>
                         Searched: "{topic.search_query}"
@@ -426,8 +427,8 @@ export default function SmartTopicDiscoveryScreen() {
                   )}
 
                   <View style={styles.resultContent}>
-                    {/* Topic Name - PROMINENT */}
-                    <Text style={styles.resultTitle}>{result.topic_name}</Text>
+                    {/* Topic Name - PROMINENT (Abbreviated for readability) */}
+                    <Text style={styles.resultTitle}>{abbreviateTopicName(result.topic_name)}</Text>
 
                     {/* Breadcrumb Path - SHOW CONTEXT */}
                     {result.full_path && result.full_path.length > 1 && (

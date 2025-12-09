@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from './Icon';
@@ -20,15 +21,59 @@ interface FrozenCardProps {
   card: {
     id: string;
     question: string;
+    answer?: string;
     box_number: number;
     topic?: string;
     next_review_date: string;
     daysUntilReview?: number;
   };
   color: string;
+  preview?: boolean;
 }
 
-export default function FrozenCard({ card, color }: FrozenCardProps) {
+export default function FrozenCard({ card, color, preview = false }: FrozenCardProps) {
+  const [isFlipped, setIsFlipped] = React.useState(false);
+  
+  // If preview mode, act like a flippable flashcard (read-only)
+  if (preview) {
+    return (
+      <View style={[styles.container, { borderColor: color }]}>
+        <TouchableOpacity 
+          style={styles.previewCard}
+          onPress={() => setIsFlipped(!isFlipped)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.previewBadge}>
+            <Icon name="eye-outline" size={16} color="#6366F1" />
+            <Text style={styles.previewBadgeText}>Preview Only</Text>
+          </View>
+          
+          {card.topic && (
+            <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
+          )}
+          
+          {!isFlipped ? (
+            <>
+              <Text style={styles.question}>{card.question}</Text>
+              <Text style={styles.tapToFlip}>Tap to see answer</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.answerLabel}>Answer:</Text>
+              <Text style={styles.answer}>{card.answer || 'No answer available'}</Text>
+              <Text style={styles.tapToFlip}>Tap to flip back</Text>
+            </>
+          )}
+          
+          <View style={[styles.boxIndicator, { backgroundColor: color + '20' }]}>
+            <Text style={[styles.boxText, { color }]}>Available Tomorrow</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  // Normal frozen card display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = { 
@@ -174,5 +219,47 @@ const styles = StyleSheet.create({
   boxText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  previewCard: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+  },
+  previewBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  previewBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  answer: {
+    fontSize: 16,
+    color: '#333',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  answerLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 12,
+  },
+  tapToFlip: {
+    position: 'absolute',
+    bottom: 60,
+    alignSelf: 'center',
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
   },
 }); 
