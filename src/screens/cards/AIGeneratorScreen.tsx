@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, CardGenerationParams, GeneratedCard } from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
