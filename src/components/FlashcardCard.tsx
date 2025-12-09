@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from './Icon';
+import DetailedAnswerModal from './DetailedAnswerModal';
+import VoiceAnswerModal from './VoiceAnswerModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { LeitnerSystem } from '../utils/leitnerSystem';
 import { abbreviateTopicName } from '../utils/topicNameUtils';
@@ -39,69 +41,97 @@ interface FlashcardCardProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Mobile-first responsive constants
+// Mobile-first responsive sizing
 const IS_MOBILE = screenWidth < 768;
-const CARD_MAX_WIDTH = 650;
-const CARD_WIDTH = Math.min(screenWidth - 24, CARD_MAX_WIDTH);
-const CARD_MIN_HEIGHT = 450;
-const CARD_MAX_HEIGHT = Math.min(screenHeight * 0.65, 550);
+const CARD_MAX_WIDTH = 600;
+const CARD_WIDTH = Math.min(screenWidth - 32, CARD_MAX_WIDTH);
+const CARD_HEIGHT = IS_MOBILE ? Math.min(screenHeight * 0.6, 500) : 450;
+
+// Helper function to calculate dynamic font size based on text length
+const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 14): number => {
+  const length = text.length;
+  if (length < 50) return baseSize;
+  if (length < 100) return Math.max(baseSize - 2, minSize);
+  if (length < 150) return Math.max(baseSize - 4, minSize);
+  if (length < 200) return Math.max(baseSize - 6, minSize);
+  return minSize;
+};
+
+// Helper function to calculate font size for multiple choice options
+const getOptionsFontSize = (options: string[], baseSize: number = 16): number => {
+  const totalLength = options.join('').length;
+  const longestOption = Math.max(...options.map(opt => opt.length));
+  
+  // If any option is very long, reduce font size
+  if (longestOption > 100) return 12;
+  if (longestOption > 80) return 13;
+  if (longestOption > 60) return 14;
+  if (totalLength > 300) return 13;
+  if (totalLength > 200) return 14;
+  if (totalLength > 150) return 15;
+  
+  return baseSize;
+};
+
+// Helper function to strip exam type from subject name
+const stripExamType = (subjectName: string): string => {
+  // Remove common exam type patterns like "(A-Level)", "(GCSE)", etc.
+  return subjectName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+};
 
 export default function FlashcardCard({
   card,
   color,
   onAnswer,
-  showDeleteButton = false,
+  showDeleteButton,
   onDelete,
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [answered, setAnswered] = useState(false);
+  const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [userAnswerCorrect, setUserAnswerCorrect] = useState<boolean | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   
-  const displayColor = color || colors.primary;
+  // Get box info for display
   const boxInfo = LeitnerSystem.getBoxInfo(card.box_number);
+  const displayColor = color || colors.primary;
 
+  // Reset state when card changes
   useEffect(() => {
-    // Reset on card change
     setIsFlipped(false);
     setSelectedOption(null);
-    setAnswered(false);
+    setUserAnswerCorrect(null);
+    setShowFeedback(false);
     flipAnimation.setValue(0);
   }, [card.id]);
 
   const flipCard = () => {
-    const toValue = isFlipped ? 0 : 1;
-    Animated.spring(flipAnimation, {
-      toValue,
-      friction: 8,
-      tension: 10,
-      useNativeDriver: true,
-    }).start();
-    setIsFlipped(!isFlipped);
+    if (isFlipped) {
+      Animated.spring(flipAnimation, {
+        toValue: 0,
+        friction: 8,
+        tension: 10,
+        useNativeDriver: true,
+      }).start(() => setIsFlipped(false));
+    } else {
+      Animated.spring(flipAnimation, {
+        toValue: 1,
+        friction: 8,
+        tension: 10,
+        useNativeDriver: true,
+      }).start(() => setIsFlipped(true));
+    }
   };
 
-  const handleOptionSelect = (option: string) => {
-    if (answered || selectedOption) return;
-    
-    setSelectedOption(option);
-    const isCorrect = option === card.correct_answer;
-    
-    // Give visual feedback before calling parent
-    setTimeout(() => {
-      if (onAnswer) {
-        onAnswer(isCorrect);
-        setAnswered(true);
-      }
-    }, 100);
-  };
-
-  const frontRotation = flipAnimation.interpolate({
+  const frontInterpolate = flipAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
   });
 
-  const backRotation = flipAnimation.interpolate({
+  const backInterpolate = flipAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['180deg', '360deg'],
   });
@@ -116,384 +146,469 @@ export default function FlashcardCard({
     outputRange: [0, 0, 1],
   });
 
-  // Render card type badge
-  const renderCardTypeBadge = () => {
-    const badges = {
-      multiple_choice: { text: 'MC', icon: 'list' },
-      short_answer: { text: 'SA', icon: 'create' },
-      essay: { text: 'Essay', icon: 'document-text' },
-      acronym: { text: 'Acronym', icon: 'text' },
-      manual: { text: 'Manual', icon: 'hand-left' },
+  const frontAnimatedStyle = {
+    transform: [{ rotateY: frontInterpolate }],
+    opacity: frontOpacity,
+  };
+
+  const backAnimatedStyle = {
+    transform: [{ rotateY: backInterpolate }],
+    opacity: backOpacity,
+  };
+
+  const handleOptionSelect = (option: string) => {
+    if (selectedOption !== null) return; // Prevent re-selection
+    
+    setSelectedOption(option);
+    if (card.card_type === 'multiple_choice') {
+      const isCorrect = option === card.correct_answer;
+      if (onAnswer) {
+        onAnswer(isCorrect === true);
+      }
+      // Auto-flip after selection
+      setTimeout(() => flipCard(), 500);
+    }
+  };
+
+  const getOptionStyle = (option: string) => {
+    if (selectedOption === null) return {};
+    
+    if (option === card.correct_answer) {
+      return {
+        backgroundColor: '#D1FAE5',
+        borderColor: '#10B981',
+      };
+    } else if (option === selectedOption) {
+      return {
+        backgroundColor: '#FEE2E2',
+        borderColor: '#EF4444',
+      };
+    }
+    return {};
+  };
+
+  const questionFontSize = getDynamicFontSize(card.question, 22, 16);
+  const optionFontSize = card.options 
+    ? getOptionsFontSize(card.options) 
+    : 16;
+
+  const handleUserAnswer = (correct: boolean) => {
+    setUserAnswerCorrect(correct);
+    setShowFeedback(true);
+    if (onAnswer) {
+      onAnswer(correct === true);
+    }
+    // Auto-hide feedback after 2 seconds
+    setTimeout(() => {
+      setShowFeedback(false);
+    }, 2000);
+  };
+
+  const handleVoiceAnswer = (correct: boolean) => {
+    setShowVoiceModal(false);
+    handleUserAnswer(correct);
+    // Flip the card to show the answer
+    if (!isFlipped) {
+      flipCard();
+    }
+  };
+
+  const renderFront = () => {
+    const isMultipleChoice = card.card_type === 'multiple_choice';
+    const needsUserConfirmation = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
+    const hasLongContent = isMultipleChoice && card.options && 
+      (card.question.length > 100 || card.options.some(opt => opt.length > 50));
+
+    // Box colors matching the new Leitner design
+    const boxColors = {
+      1: '#FF6B6B',
+      2: '#4ECDC4',
+      3: '#45B7D1',
+      4: '#96CEB4',
+      5: '#DDA0DD',
     };
-    
-    const badge = badges[card.card_type as keyof typeof badges] || badges.manual;
-    
+
+    const boxLabels = {
+      1: 'New',
+      2: 'Learning',
+      3: 'Growing',
+      4: 'Strong',
+      5: 'Mastered',
+    };
+
     return (
-      <View style={[styles.cardTypeBadge, { backgroundColor: colors.surface }]}>
-        <Icon name={badge.icon as any} size={14} color={colors.primary} />
-        <Text style={[styles.cardTypeText, { color: colors.primary }]}>{badge.text}</Text>
-      </View>
-    );
-  };
-
-  // Render box badge  
-  const renderBoxBadge = () => {
-    return (
-      <View style={[styles.boxBadge, { backgroundColor: displayColor + '20', borderColor: displayColor }]}>
-        <Text style={[styles.boxText, { color: displayColor }]}>
-          {boxInfo.emoji} {boxInfo.name}
-        </Text>
-      </View>
-    );
-  };
-
-  return (
-    <View style={styles.cardWrapper}>
-      {/* Card Container with Neon Glow */}
-      <View style={[styles.cardContainer, { 
-        shadowColor: displayColor,
-        borderColor: displayColor,
-      }]}>
-        {/* Front Side - Question */}
-        <Animated.View
-          style={[
-            styles.cardFace,
-            styles.cardFront,
-            {
-              transform: [{ rotateY: frontRotation }],
-              opacity: frontOpacity,
-            },
-          ]}
-        >
-          {/* Header Bar with Gradient */}
-          <LinearGradient
-            colors={[displayColor, displayColor + 'CC']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cardHeader}
-          >
-            {card.topic && (
-              <Text style={styles.topicLabel} numberOfLines={1}>
-                {abbreviateTopicName(card.topic).toUpperCase()}
-              </Text>
-            )}
-            <View style={styles.headerBadges}>
-              {renderCardTypeBadge()}
-              {renderBoxBadge()}
-            </View>
-          </LinearGradient>
-
-          {/* Question Content */}
+      <TouchableWithoutFeedback onPress={!isMultipleChoice || selectedOption ? flipCard : undefined}>
+        <View style={styles.touchableArea}>
           <ScrollView 
-            style={styles.cardContent}
-            contentContainerStyle={styles.cardContentInner}
+            style={styles.cardContent} 
+            contentContainerStyle={styles.cardContentContainer}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.questionText} numberOfLines={8}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardHeaderLeft}>
+                {card.topic && (
+                  <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
+                )}
+              </View>
+              <View style={[
+                styles.boxIndicator, 
+                { backgroundColor: boxColors[card.box_number as keyof typeof boxColors] || '#666' }
+              ]}>
+                <Text style={styles.boxIndicatorText}>
+                  Box {card.box_number} • {boxLabels[card.box_number as keyof typeof boxLabels] || 'Unknown'}
+                </Text>
+              </View>
+            </View>
+            
+            <Text style={[styles.question, { fontSize: questionFontSize }]}>
               {card.question}
             </Text>
 
-            {/* Multiple Choice Options */}
-            {card.card_type === 'multiple_choice' && card.options && (
-              <View style={styles.optionsContainer}>
+            {isMultipleChoice && card.options && (
+              <View style={[styles.optionsContainer, hasLongContent && styles.compactOptionsContainer]}>
                 {card.options.map((option, index) => {
-                  const isSelected = selectedOption === option;
-                  const isCorrect = option === card.correct_answer;
-                  const showResult = answered && selectedOption;
+                  // Check if option already has a letter prefix (e.g., "A) ", "a) ", "A. ", "a. ")
+                  const letterPrefixMatch = option.match(/^[A-Za-z][\)\.]\s*/);
+                  const hasLetterPrefix = letterPrefixMatch !== null;
+                  
+                  // If it has a prefix, remove it and use our own consistent format
+                  const cleanOption = hasLetterPrefix 
+                    ? option.substring(letterPrefixMatch[0].length).trim()
+                    : option;
+                  
+                  // Always use our consistent format: "A. Option text"
+                  const displayText = `${String.fromCharCode(65 + index)}. ${cleanOption}`;
                   
                   return (
                     <TouchableOpacity
                       key={index}
                       style={[
                         styles.optionButton,
-                        isSelected && styles.optionSelected,
-                        showResult && isCorrect && styles.optionCorrect,
-                        showResult && isSelected && !isCorrect && styles.optionWrong,
-                        { borderColor: isSelected ? displayColor : colors.border },
+                        hasLongContent && styles.compactOptionButton,
+                        getOptionStyle(option),
                       ]}
                       onPress={() => handleOptionSelect(option)}
-                      disabled={answered}
-                      activeOpacity={0.7}
+                      disabled={selectedOption !== null}
                     >
-                      <View style={[
-                        styles.optionRadio,
-                        isSelected && { backgroundColor: displayColor, borderColor: displayColor },
+                      <Text style={[
+                        styles.optionText,
+                        { fontSize: optionFontSize },
+                        selectedOption === option && styles.selectedOptionText,
                       ]}>
-                        {isSelected && <View style={styles.optionRadioInner} />}
-                      </View>
-                      <Text 
-                        style={[
-                          styles.optionText,
-                          isSelected && { color: colors.text, fontWeight: '600' },
-                        ]}
-                        numberOfLines={3}
-                      >
-                        {option}
+                        {displayText}
                       </Text>
-                      {showResult && isCorrect && (
-                        <Icon name="checkmark-circle" size={24} color="#4CAF50" />
-                      )}
-                      {showResult && isSelected && !isCorrect && (
-                        <Icon name="close-circle" size={24} color="#FF6B6B" />
-                      )}
                     </TouchableOpacity>
                   );
                 })}
               </View>
             )}
 
-            {/* Flip Hint for non-MC cards */}
-            {card.card_type !== 'multiple_choice' && !isFlipped && (
-              <TouchableOpacity style={styles.flipHint} onPress={flipCard}>
-                <Icon name="swap-horizontal" size={20} color={displayColor} />
-                <Text style={[styles.flipHintText, { color: displayColor }]}>
-                  Tap to see answer
+            {needsUserConfirmation && (
+              <View style={styles.voiceAnswerSection}>
+                <Text style={styles.voicePromptText}>
+                  Try speaking your answer out loud!
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.voiceButton, { backgroundColor: color }]}
+                  onPress={() => setShowVoiceModal(true)}
+                >
+                  <Icon name="mic" size={24} color="white" />
+                  <Text style={styles.voiceButtonText}>Voice Answer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!isMultipleChoice && (
+              <View style={styles.flipHint}>
+                <Text style={styles.flipHintText}>Tap anywhere to reveal answer</Text>
+                <Icon name="refresh-outline" size={20} color="#666" />
+              </View>
             )}
           </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    );
+  };
 
-          {/* Delete Button if needed */}
-          {showDeleteButton && onDelete && (
+  const renderBack = () => {
+    const needsUserConfirmation = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
+    
+    return (
+      <TouchableWithoutFeedback onPress={flipCard}>
+        <View style={styles.touchableArea}>
+          <ScrollView 
+            style={styles.cardContent} 
+            contentContainerStyle={[
+              styles.cardContentContainer,
+              needsUserConfirmation && styles.cardContentWithConfirmation
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.backHeader}>
+              <Text style={[styles.answerLabel, { color }]}>Answer</Text>
+              {(card.detailed_answer || (card.card_type === 'short_answer' && card.key_points && card.answer)) && (
+                <TouchableOpacity
+                  style={styles.infoButton}
+                  onPress={(e: any) => {
+                    e.stopPropagation();
+                    setShowDetailedModal(true);
+                  }}
+                >
+                  <Ionicons 
+                    name="information-circle-outline"
+                    size={24} 
+                    color={color} 
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.answerContent}>
+              {/* Main Answer Section */}
+              {card.card_type === 'multiple_choice' && (
+                <View style={styles.answerContainer}>
+                  <Text style={styles.correctAnswerLabel}>Correct Answer:</Text>
+                  <Text style={styles.correctAnswerText}>{card.correct_answer}</Text>
+                </View>
+              )}
+
+              {card.card_type === 'short_answer' && (
+                <>
+                  {card.answer && (
+                    <Text style={styles.answerText}>{card.answer}</Text>
+                  )}
+                  {!card.answer && card.key_points && card.key_points.length > 0 && (
+                    <View style={styles.keyPointsContainer}>
+                      {card.key_points.map((point, index) => (
+                        <View key={index} style={styles.keyPoint}>
+                          <Text style={styles.bulletPoint}>•</Text>
+                          <Text style={styles.keyPointText}>{point}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
+
+              {card.card_type === 'essay' && (
+                <View style={styles.essayContainer}>
+                  <Text style={styles.essayStructureLabel}>Essay Structure:</Text>
+                  {card.key_points && card.key_points.map((point, index) => (
+                    <View key={index} style={styles.keyPoint}>
+                      <Text style={styles.bulletPoint}>•</Text>
+                      <Text style={styles.keyPointText}>{point}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {card.card_type === 'acronym' && (
+                <Text style={styles.acronymAnswer}>{card.answer}</Text>
+              )}
+
+              {card.card_type === 'manual' && (
+                <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+              )}
+
+              {/* Fallback for any other card types */}
+              {!['multiple_choice', 'short_answer', 'essay', 'acronym', 'manual'].includes(card.card_type) && (
+                <Text style={styles.answerText}>{card.answer || 'No answer provided'}</Text>
+              )}
+            </View>
+
+            {/* User Confirmation Section */}
+            {needsUserConfirmation && userAnswerCorrect === null && (
+              <View style={styles.confirmationSection}>
+                <Text style={styles.confirmationPrompt}>Did you get that correct?</Text>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.yesButton, { backgroundColor: '#10B981' }]}
+                    onPress={() => handleUserAnswer(true)}
+                  >
+                    <Icon name="checkmark-circle" size={24} color="white" />
+                    <Text style={styles.confirmButtonText}>Yes!</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmButton, styles.noButton, { backgroundColor: '#EF4444' }]}
+                    onPress={() => handleUserAnswer(false)}
+                  >
+                    <Icon name="close-circle" size={24} color="white" />
+                    <Text style={styles.confirmButtonText}>Not quite</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Feedback Message */}
+            {showFeedback && userAnswerCorrect !== null && (
+              <Animated.View style={[styles.feedbackContainer, { backgroundColor: userAnswerCorrect ? '#D1FAE5' : '#FEE2E2' }]}>
+                <Ionicons 
+                  name={userAnswerCorrect ? "happy-outline" : "refresh-outline"} 
+                  size={32} 
+                  color={userAnswerCorrect ? '#10B981' : '#EF4444'} 
+                />
+                <Text style={[styles.feedbackText, { color: userAnswerCorrect ? '#065F46' : '#991B1B' }]}>
+                  {userAnswerCorrect 
+                    ? "Well done! Keep up the great work! 🎉" 
+                    : "Unlucky! Well done for being honest - you'd only be cheating yourself anyway! 💪"}
+                </Text>
+              </Animated.View>
+            )}
+
+            <View style={styles.flipBackHint}>
+              <Text style={styles.flipHintText}>Tap anywhere to flip back</Text>
+            </View>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    );
+  };
+
+  return (
+    <>
+      <View style={styles.container}>
+        <Animated.View 
+          style={[
+            styles.card, 
+            frontAnimatedStyle, 
+            { borderColor: color },
+            !isFlipped && styles.cardActive
+          ]}
+          pointerEvents={isFlipped ? 'none' : 'auto'}
+        >
+          {renderFront()}
+          {showDeleteButton && (
             <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
-              <Icon name="trash" size={20} color="#FF6B6B" />
+              <Icon name="trash-outline" size={20} color="#EF4444" />
             </TouchableOpacity>
           )}
         </Animated.View>
 
-        {/* Back Side - Answer */}
-        <Animated.View
+        <Animated.View 
           style={[
-            styles.cardFace,
-            styles.cardBack,
-            {
-              transform: [{ rotateY: backRotation }],
-              opacity: backOpacity,
-            },
+            styles.card, 
+            backAnimatedStyle, 
+            { borderColor: color },
+            isFlipped && styles.cardActive
           ]}
+          pointerEvents={isFlipped ? 'auto' : 'none'}
         >
-          {/* Header Bar */}
-          <LinearGradient
-            colors={[displayColor, displayColor + 'CC']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.cardHeader}
-          >
-            <Text style={styles.topicLabel}>ANSWER</Text>
-            <View style={styles.headerBadges}>
-              {renderBoxBadge()}
-            </View>
-          </LinearGradient>
-
-          {/* Answer Content */}
-          <ScrollView 
-            style={styles.cardContent}
-            contentContainerStyle={styles.cardContentInner}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.answerText}>
-              {card.answer || 'No answer provided'}
-            </Text>
-
-            {/* Key Points if available */}
-            {card.key_points && card.key_points.length > 0 && (
-              <View style={styles.keyPointsContainer}>
-                <Text style={[styles.keyPointsTitle, { color: displayColor }]}>
-                  Key Points:
-                </Text>
-                {card.key_points.map((point, index) => (
-                  <View key={index} style={styles.keyPoint}>
-                    <Text style={[styles.keyPointBullet, { color: displayColor }]}>
-                      •
-                    </Text>
-                    <Text style={styles.keyPointText}>{point}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Flip Back Hint */}
-            <TouchableOpacity style={styles.flipHint} onPress={flipCard}>
-              <Icon name="swap-horizontal" size={20} color={displayColor} />
-              <Text style={[styles.flipHintText, { color: displayColor }]}>
-                Tap to flip back
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
+          {renderBack()}
         </Animated.View>
       </View>
-    </View>
+
+      <DetailedAnswerModal
+        visible={showDetailedModal}
+        onClose={() => setShowDetailedModal(false)}
+        detailedAnswer={card.detailed_answer}
+        keyPoints={card.card_type === 'short_answer' && card.answer ? card.key_points : undefined}
+        cardType={card.card_type}
+        color={color}
+      />
+
+      {['short_answer', 'essay', 'acronym'].includes(card.card_type) && (
+        <VoiceAnswerModal
+          visible={showVoiceModal}
+          onClose={() => setShowVoiceModal(false)}
+          onComplete={handleVoiceAnswer}
+          card={card as any}
+          color={color}
+        />
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  cardWrapper: {
-    width: CARD_WIDTH,
-    minHeight: CARD_MIN_HEIGHT,
-    maxHeight: CARD_MAX_HEIGHT,
-    alignSelf: 'center',
+  container: {
+    width: Math.min(screenWidth - 24, 650),
+    height: IS_MOBILE ? Math.min(screenHeight * 0.65, 520) : 500,
     marginVertical: 8,
+    alignSelf: 'center',
   },
-  cardContainer: {
+  card: {
+    position: 'absolute',
     width: '100%',
     height: '100%',
+    backgroundColor: '#0a0f1e', // Dark theme background
     borderRadius: 20,
     borderWidth: 3,
+    shadowColor: '#00F5FF', // Neon glow
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 12,
-    backgroundColor: '#0a0f1e',
-  },
-  cardFace: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
     backfaceVisibility: 'hidden',
-    borderRadius: 20,
-    overflow: 'hidden',
   },
-  cardFront: {
-    backgroundColor: '#0a0f1e',
+  cardActive: {
+    zIndex: 10,
   },
-  cardBack: {
-    backgroundColor: '#0a0f1e',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  topicLabel: {
-    fontSize: IS_MOBILE ? 11 : 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+  touchableArea: {
     flex: 1,
-  },
-  headerBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  cardTypeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  cardTypeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  boxBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  boxText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
   cardContent: {
     flex: 1,
+    padding: 20,
   },
-  cardContentInner: {
-    padding: IS_MOBILE ? 20 : 28,
+  cardContentContainer: {
     flexGrow: 1,
+    justifyContent: 'space-between',
   },
-  questionText: {
-    fontSize: IS_MOBILE ? 20 : 24,
+  cardContentWithConfirmation: {
+    paddingBottom: 20,
+  },
+  topicLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  question: {
     fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: IS_MOBILE ? 28 : 32,
+    color: '#FFFFFF', // White text on dark background
     marginBottom: 24,
+    lineHeight: IS_MOBILE ? 28 : 32,
+    fontSize: IS_MOBILE ? 20 : 24,
   },
   optionsContainer: {
-    gap: IS_MOBILE ? 10 : 12,
+    flex: 1,
+    justifyContent: 'center',
+    maxHeight: '60%',
+  },
+  compactOptionsContainer: {
+    justifyContent: 'flex-start',
   },
   optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 14,
-    borderWidth: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', // Translucent on dark
     padding: IS_MOBILE ? 14 : 16,
-    minHeight: IS_MOBILE ? 56 : 64,
-    gap: 12,
-  },
-  optionSelected: {
-    backgroundColor: 'rgba(0, 245, 255, 0.1)',
-  },
-  optionCorrect: {
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    borderColor: '#4CAF50',
-  },
-  optionWrong: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderColor: '#FF6B6B',
-  },
-  optionRadio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    borderRadius: 14,
+    marginBottom: IS_MOBILE ? 10 : 12,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: 'rgba(0, 245, 255, 0.2)',
+    minHeight: IS_MOBILE ? 56 : 64,
   },
-  optionRadioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+  compactOptionButton: {
+    padding: 8,
+    marginBottom: 6,
+  },
+  selectedOption: {
+    borderColor: '#6366F1',
+  },
+  correctOption: {
+    backgroundColor: '#D1FAE5',
+    borderColor: '#10B981',
+  },
+  incorrectOption: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
   },
   optionText: {
-    flex: 1,
-    fontSize: IS_MOBILE ? 15 : 17,
-    color: '#FFFFFF',
+    color: '#FFFFFF', // White text
     lineHeight: IS_MOBILE ? 20 : 24,
+    fontSize: IS_MOBILE ? 15 : 17,
   },
-  answerText: {
-    fontSize: IS_MOBILE ? 17 : 19,
-    color: '#FFFFFF',
-    lineHeight: IS_MOBILE ? 26 : 28,
-    marginBottom: 20,
-  },
-  keyPointsContainer: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: 'rgba(0, 245, 255, 0.05)',
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#00F5FF',
-  },
-  keyPointsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  keyPoint: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    paddingRight: 8,
-  },
-  keyPointBullet: {
-    fontSize: 20,
-    marginRight: 8,
-    lineHeight: 22,
-  },
-  keyPointText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#FFFFFF',
-    lineHeight: 22,
+  selectedOptionText: {
+    fontWeight: '600',
   },
   flipHint: {
     flexDirection: 'row',
@@ -501,23 +616,224 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 'auto',
     paddingTop: 20,
-    gap: 8,
   },
   flipHintText: {
     fontSize: 14,
+    color: '#666',
+    marginRight: 8,
+  },
+  flipBackHint: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 8,
+  },
+  backHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  answerLabel: {
+    fontSize: 14,
     fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  infoButton: {
+    padding: 4,
+  },
+  answerContainer: {
+    marginBottom: 16,
+  },
+  correctAnswerLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  correctAnswerText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  keyPointsContainer: {
+    marginBottom: 16,
+  },
+  keyPoint: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  bulletPoint: {
+    fontSize: 16,
+    color: '#6366F1',
+    marginRight: 8,
+  },
+  keyPointText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 22,
+  },
+  answerText: {
+    fontSize: 16,
+    color: '#374151',
+    lineHeight: 24,
+  },
+  essayContainer: {
+    marginBottom: 16,
+  },
+  essayStructureLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  acronymAnswer: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
   },
   deleteButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
+    bottom: 12,
+    right: 12,
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-});
-
+  speakPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  speakPromptText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    fontStyle: 'italic',
+  },
+  voiceAnswerSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 12,
+  },
+  voicePromptText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  voiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  voiceButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  confirmationSection: {
+    marginTop: 'auto',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  confirmationPrompt: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  yesButton: {
+    backgroundColor: '#10B981',
+  },
+  noButton: {
+    backgroundColor: '#EF4444',
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+    marginLeft: 6,
+  },
+  feedbackContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  feedbackText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1,
+    textAlign: 'center',
+  },
+  answerContent: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  boxIndicator: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  boxIndicatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'white',
+  },
+  createdDate: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+}); 
