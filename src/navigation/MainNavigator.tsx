@@ -22,6 +22,7 @@ import ColorPickerScreen from '../screens/settings/ColorPickerScreen';
 import TopicHubScreen from '../screens/topics/TopicHubScreen';
 import ImageCardGeneratorScreen from '../screens/cards/ImageCardGeneratorScreen';
 import SmartTopicDiscoveryScreen from '../screens/topics/SmartTopicDiscoveryScreen';
+import SubjectProgressScreen from '../screens/subjects/SubjectProgressScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import UserManagement from '../screens/admin/UserManagement';
 import TestTools from '../screens/admin/TestTools';
@@ -56,6 +57,13 @@ function HomeStack() {
         options={{ 
           headerShown: false,
           presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="SubjectProgress" 
+        component={SubjectProgressScreen}
+        options={{ 
+          headerShown: false
         }}
       />
       <Stack.Screen 

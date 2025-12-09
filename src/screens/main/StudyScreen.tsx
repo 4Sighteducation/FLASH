@@ -18,11 +18,13 @@ import { supabase } from '../../services/supabase';
 import { useNavigation } from '@react-navigation/native';
 import LeitnerBoxes from '../../components/LeitnerBoxes';
 import StudySubjectAccordion from '../../components/StudySubjectAccordion';
+import StudyWizard from '../../components/StudyWizard';
 import { UserSubjectWithName } from '../../types/database';
 import { debugCards } from '../../utils/debugCards';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -73,11 +75,34 @@ export default function StudyScreen({ route, navigation }: any) {
     topic?: string;
     color?: string;
   }>({});
+  const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
     fetchBoxStats();
     fetchDailyCardCount();
+    checkFirstTimeUser();
   }, []);
+
+  const checkFirstTimeUser = async () => {
+    try {
+      const hasSeenWizard = await AsyncStorage.getItem('hasSeenStudyWizard');
+      if (!hasSeenWizard) {
+        // Show wizard after a short delay for better UX
+        setTimeout(() => setShowWizard(true), 1000);
+      }
+    } catch (error) {
+      console.error('Error checking wizard status:', error);
+    }
+  };
+
+  const handleWizardClose = async () => {
+    setShowWizard(false);
+    try {
+      await AsyncStorage.setItem('hasSeenStudyWizard', 'true');
+    } catch (error) {
+      console.error('Error saving wizard status:', error);
+    }
+  };
 
   // Refresh when screen comes into focus
   useEffect(() => {
@@ -273,36 +298,8 @@ export default function StudyScreen({ route, navigation }: any) {
     handleCloseBoxModal();
   };
 
-  const getBoxInfo = (boxNumber: number): { title: string; description: string; reviewInterval: string } => {
-    const boxInfo = {
-      1: {
-        title: 'Learning Box',
-        description: 'New cards (review today) and cards you got wrong (review tomorrow). Master these before they advance.',
-        reviewInterval: 'Review: New cards today, Retry cards tomorrow',
-      },
-      2: {
-        title: 'Short-term Memory',
-        description: 'Cards you\'re starting to remember. These need review every 2 days.',
-        reviewInterval: 'Review: Every 2 days',
-      },
-      3: {
-        title: 'Building Confidence',
-        description: 'Cards that are sticking in your memory. Review every 3 days to reinforce.',
-        reviewInterval: 'Review: Every 3 days',
-      },
-      4: {
-        title: 'Nearly Mastered',
-        description: 'Cards you know well. Just a weekly check-in to keep them fresh.',
-        reviewInterval: 'Review: Weekly',
-      },
-      5: {
-        title: 'Mastered',
-        description: 'Cards you\'ve mastered! These only need occasional review every 3 weeks.',
-        reviewInterval: 'Review: Every 3 weeks',
-      },
-    };
-
-    return boxInfo[boxNumber as keyof typeof boxInfo] || { title: '', description: '', reviewInterval: '' };
+  const getBoxInfo = (boxNumber: number) => {
+    return LeitnerSystem.getBoxInfo(boxNumber);
   };
 
   const handleDailyCardsPress = () => {
@@ -335,147 +332,193 @@ export default function StudyScreen({ route, navigation }: any) {
         style={styles.gradientBackground}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header - Simplified */}
           <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <View style={styles.headerTitleContainer}>
-                <Icon name="school" size={32} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
-                <View style={styles.headerTextContainer}>
-                  <Text style={styles.headerTitle}>Study Hub</Text>
-                  <Text style={styles.headerSubtitle}>
-                    Your personal learning space
+            <View style={styles.headerTitleContainer}>
+              <Icon name="school" size={28} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+              <Text style={styles.headerTitle}>Study Hub</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.helpButton}
+              onPress={() => setShowWizard(true)}
+            >
+              <Icon name="help-circle-outline" size={24} color="#00D4FF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* HERO: Daily Review CTA - HUGE and PROMINENT */}
+          {dailyCardCount > 0 ? (
+            <View style={styles.heroSection}>
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E8E']}
+                style={styles.heroGradient}
+              >
+                <View style={styles.heroContent}>
+                  <View style={styles.heroIcon}>
+                    <Icon name="flame" size={48} color="#fff" />
+                  </View>
+                  <Text style={styles.heroTitle}>Ready to Study?</Text>
+                  <Text style={styles.heroCardCount}>{dailyCardCount} cards due today</Text>
+                  <Text style={styles.heroSubtitle}>
+                    Complete today to keep your streak! 🔥
                   </Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.heroButton}
+                    onPress={handleDailyCardsPress}
+                  >
+                    <Text style={styles.heroButtonText}>START REVIEW</Text>
+                    <Icon name="arrow-forward" size={24} color="#FF6B6B" />
+                  </TouchableOpacity>
                 </View>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View style={styles.heroSection}>
+              <View style={styles.heroDoneCard}>
+                <Icon name="checkmark-circle" size={64} color="#4CAF50" />
+                <Text style={styles.heroDoneTitle}>All Caught Up! 🎉</Text>
+                <Text style={styles.heroDoneText}>
+                  No cards due right now. Great job!
+                </Text>
+                <Text style={styles.heroDoneHint}>
+                  Cards: {boxStats.totalInStudyBank} • Next review coming soon
+                </Text>
               </View>
-              <View style={styles.headerStats}>
-                <View style={styles.headerStatItem}>
-                  <Text style={styles.headerStatValue}>{boxStats.totalInStudyBank}</Text>
-                  <Text style={styles.headerStatLabel}>Total Cards</Text>
-                </View>
-                <View style={styles.headerStatDivider} />
-                <View style={styles.headerStatItem}>
-                  <Text style={[styles.headerStatValue, styles.dueStatValue]}>{boxStats.totalDue}</Text>
-                  <Text style={styles.headerStatLabel}>Due Now</Text>
-                </View>
-              </View>
+            </View>
+          )}
+
+          {/* Quick Stats */}
+          <View style={styles.quickStats}>
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatValue}>{boxStats.totalInStudyBank}</Text>
+              <Text style={styles.quickStatLabel}>Total Cards</Text>
+            </View>
+            <View style={styles.quickStatDivider} />
+            <View style={styles.quickStatItem}>
+              <Text style={[styles.quickStatValue, styles.dueStatValue]}>{boxStats.totalDue}</Text>
+              <Text style={styles.quickStatLabel}>Due Now</Text>
             </View>
           </View>
 
-          {/* Daily Cards Section */}
-          {dailyCardCount > 0 && (
-            <TouchableOpacity 
-              style={styles.dailyCardsCard}
-              onPress={handleDailyCardsPress}
-            >
-              <View style={styles.dailyCardsContent}>
-                <View style={styles.dailyCardsLeft}>
-                  <Icon name="today" size={32} color="#FF6B6B" />
-                  <View style={styles.dailyCardsText}>
-                    <Text style={styles.dailyCardsTitle}>Daily Review</Text>
-                    <Text style={styles.dailyCardsSubtitle}>
-                      {dailyCardCount} cards due today
-                    </Text>
-                  </View>
-                </View>
-                <Icon name="chevron-forward" size={24} color="#666" />
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {/* Leitner Boxes Visual */}
-          <View style={styles.boxesContainer}>
-            <LeitnerBoxes
-              boxes={{
-                box1: boxStats.box1,
-                box2: boxStats.box2,
-                box3: boxStats.box3,
-                box4: boxStats.box4,
-                box5: boxStats.box5,
-              }}
-              activeBox={selectedBox || undefined}
-            />
+          {/* Learning Journey - Simplified Visual */}
+          <View style={styles.journeySection}>
+            <Text style={styles.sectionTitle}>Your Learning Journey</Text>
+            
+            {/* Progress Bar Visual */}
+            <View style={styles.journeyBar}>
+              {[1, 2, 3, 4, 5].map((boxNumber) => {
+                const info = getBoxInfo(boxNumber);
+                const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
+                const isActive = count > 0;
+                
+                return (
+                  <TouchableOpacity
+                    key={boxNumber}
+                    style={[styles.journeyStep, isActive && styles.journeyStepActive]}
+                    onPress={() => count > 0 && handleBoxPress(boxNumber)}
+                    disabled={count === 0}
+                  >
+                    <Text style={styles.journeyEmoji}>{info.emoji}</Text>
+                    <Text style={styles.journeyCount}>{count}</Text>
+                    <Text style={styles.journeyLabel}>{info.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            
+            <Text style={styles.journeyHint}>
+              Tap a stage to study those cards
+            </Text>
           </View>
 
-          {/* Box Details */}
-          <View style={styles.boxDetailsContainer}>
+          {/* Study Options - Collapsible */}
+          <View style={styles.optionsSection}>
+            <TouchableOpacity 
+              style={styles.optionsHeader}
+              onPress={() => setShowAccordion(!showAccordion)}
+            >
+              <View style={styles.optionsHeaderLeft}>
+                <Icon name="list" size={24} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+                <Text style={styles.optionsTitle}>Study by Subject or Topic</Text>
+              </View>
+              <Icon 
+                name={showAccordion ? "chevron-up" : "chevron-down"} 
+                size={24} 
+                color={theme === 'cyber' ? colors.textSecondary : "#999"} 
+              />
+            </TouchableOpacity>
+            
+            {showAccordion && selectedBox !== null && (
+              <Modal
+                visible={true}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={handleCloseBoxModal}
+              >
+                <SafeAreaView style={styles.modalContainer}>
+                  <View style={styles.modalHeader}>
+                    <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
+                      <Icon name="close" size={28} color="#333" />
+                    </TouchableOpacity>
+                    <Text style={styles.modalTitle}>{LeitnerSystem.getBoxDisplayName(selectedBox)} - Select Subject</Text>
+                    <View style={{ width: 28 }} />
+                  </View>
+                  <StudySubjectAccordion
+                    boxNumber={selectedBox}
+                    onSubjectStudy={handleSubjectStudy}
+                    onTopicStudy={handleTopicStudy}
+                  />
+                </SafeAreaView>
+              </Modal>
+            )}
+          </View>
+
+          {/* Box Details - Compact Expandable List */}
+          <View style={styles.boxListSection}>
             {[1, 2, 3, 4, 5].map((boxNumber) => {
               const info = getBoxInfo(boxNumber);
               const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
-              const totalCards = boxStats.totalInStudyBank || 1;
-              const percentage = Math.round((count / totalCards) * 100);
               
-              const boxIcons = {
-                1: { icon: 'flash', color: '#FF6B6B' },
-                2: { icon: 'trending-up', color: '#4ECDC4' },
-                3: { icon: 'rocket', color: '#45B7D1' },
-                4: { icon: 'shield-checkmark', color: '#96CEB4' },
-                5: { icon: 'trophy', color: '#DDA0DD' },
+              const boxColors = {
+                1: '#FF6B6B',
+                2: '#4ECDC4',
+                3: '#45B7D1',
+                4: '#96CEB4',
+                5: '#DDA0DD',
               };
               
-              const boxIcon = boxIcons[boxNumber as keyof typeof boxIcons];
+              const color = boxColors[boxNumber as keyof typeof boxColors];
               
               return (
                 <TouchableOpacity
                   key={boxNumber}
-                  style={styles.boxDetailCard}
+                  style={styles.boxListCard}
                   onPress={() => handleBoxPress(boxNumber)}
+                  disabled={count === 0}
                 >
-                  <View style={styles.boxDetailContent}>
-                    <View style={[styles.boxIconContainer, { backgroundColor: boxIcon.color + '20' }]}>
-                      <Icon name={boxIcon.icon as any} size={24} color={boxIcon.color} />
+                  <View style={[styles.boxListIndicator, { backgroundColor: color }]} />
+                  <View style={styles.boxListContent}>
+                    <View style={styles.boxListTop}>
+                      <Text style={styles.boxListName}>
+                        {info.name} {info.emoji}
+                      </Text>
+                      <Text style={styles.boxListCount}>{count} cards</Text>
                     </View>
-                    <View style={styles.boxDetailInfo}>
-                      <Text style={styles.boxDetailTitle}>{info.title}</Text>
-                      <Text style={styles.boxDetailInterval}>{info.reviewInterval}</Text>
-                    </View>
-                    <View style={styles.boxDetailStats}>
-                      <View style={styles.boxCountContainer}>
-                        <Text style={styles.boxDetailCount}>{count}</Text>
-                        <Text style={styles.boxDetailCountLabel}>cards</Text>
-                      </View>
-                      <View style={styles.boxProgressBar}>
-                        <View 
-                          style={[
-                            styles.boxProgressFill,
-                            { 
-                              width: `${percentage}%`,
-                              backgroundColor: boxIcon.color 
-                            }
-                          ]} 
-                        />
-                      </View>
-                    </View>
+                    <Text style={styles.boxListInterval}>Review: {info.displayInterval}</Text>
                   </View>
+                  {count > 0 && (
+                    <Icon name="chevron-forward" size={20} color="#999" />
+                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
         </ScrollView>
-
-        {/* Study Box Modal - Shows accordion when first opened */}
-        {showAccordion && selectedBox !== null && (
-          <Modal
-            visible={true}
-            animationType="slide"
-            presentationStyle="fullScreen"
-            onRequestClose={handleCloseBoxModal}
-          >
-            <SafeAreaView style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
-                  <Icon name="close" size={28} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>Box {selectedBox} - Select Subject</Text>
-                <View style={{ width: 28 }} />
-              </View>
-              <StudySubjectAccordion
-                boxNumber={selectedBox}
-                onSubjectStudy={handleSubjectStudy}
-                onTopicStudy={handleTopicStudy}
-              />
-            </SafeAreaView>
-          </Modal>
-        )}
       </LinearGradient>
+
+      {/* First-Time Wizard */}
+      <StudyWizard visible={showWizard} onClose={handleWizardClose} />
     </SafeAreaView>
   );
 }
@@ -491,127 +534,273 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  headerContent: {
-    flex: 1,
-  },
   headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTextContainer: {
-    marginLeft: 12,
+    gap: 12,
   },
   headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  helpButton: {
+    padding: 8,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderRadius: 20,
+  },
+  
+  // HERO SECTION - Daily Review CTA
+  heroSection: {
+    margin: 20,
+    marginBottom: 16,
+  },
+  heroGradient: {
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  heroContent: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  heroIcon: {
+    marginBottom: 16,
+  },
+  heroTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  headerSubtitle: {
+  heroCardCount: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  heroSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 24,
+    textAlign: 'center',
   },
-  headerStats: {
+  heroButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 30,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  headerStatItem: {
-    flex: 1,
+  heroButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF6B6B',
+    letterSpacing: 1,
+  },
+  
+  // All Caught Up State
+  heroDoneCard: {
+    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(76, 175, 80, 0.3)',
+  },
+  heroDoneTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginTop: 16,
+  },
+  heroDoneText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  heroDoneHint: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 12,
+  },
+  
+  // Quick Stats
+  quickStats: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  quickStatItem: {
     alignItems: 'center',
   },
-  headerStatValue: {
-    fontSize: 24,
+  quickStatValue: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#00D4FF',
   },
-  headerStatLabel: {
+  quickStatLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 4,
   },
-  headerStatDivider: {
+  quickStatDivider: {
     width: 1,
-    height: 30,
+    height: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  boxesContainer: {
-    padding: 16,
+  dueStatValue: {
+    color: '#FF6B6B',
   },
-  boxDetailsContainer: {
-    paddingHorizontal: 16,
+  
+  // Learning Journey
+  journeySection: {
+    margin: 20,
+    marginBottom: 16,
   },
-  boxDetailCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  journeyBar: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  journeyStep: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 0.5,
   },
-  boxDetailContent: {
+  journeyStepActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 1,
+  },
+  journeyEmoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  journeyCount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  journeyLabel: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+  journeyHint: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  
+  // Study Options
+  optionsSection: {
+    margin: 20,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  optionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
   },
-  boxIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+  optionsHeaderLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    gap: 12,
   },
-  boxDetailInfo: {
-    flex: 1,
-  },
-  boxDetailTitle: {
+  optionsTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  boxDetailInterval: {
-    fontSize: 12,
-    color: '#00D4FF',
-    marginTop: 2,
+  
+  // Box List - Compact
+  boxListSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  boxDetailStats: {
-    alignItems: 'flex-end',
-    minWidth: 60,
+  boxListCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
   },
-  boxCountContainer: {
+  boxListIndicator: {
+    width: 4,
+    height: '100%',
+    position: 'absolute',
+    left: 0,
+  },
+  boxListContent: {
+    flex: 1,
+    padding: 16,
+    paddingLeft: 20,
+  },
+  boxListTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  boxDetailCount: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  boxListName: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
-  boxDetailCountLabel: {
-    fontSize: 11,
+  boxListCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#00D4FF',
+  },
+  boxListInterval: {
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 2,
   },
-  boxProgressBar: {
-    width: 60,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  boxProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-    backgroundColor: '#6366F1',
-  },
+  
+  // Modal
   modalContainer: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -634,40 +823,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  dailyCardsCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: 'rgba(255, 107, 107, 0.15)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
-  },
-  dailyCardsContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dailyCardsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  dailyCardsText: {
-    marginLeft: 12,
-  },
-  dailyCardsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  dailyCardsSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 2,
-  },
-  dueStatValue: {
-    color: '#FF6B6B',
-  },
+  
   gradientBackground: {
     flex: 1,
   },
