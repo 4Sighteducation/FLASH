@@ -556,15 +556,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             console.log('🏁 No more cards, ending session');
             saveStudySession();
           } else if (currentIndexRef.current < currentCards.length - 1) {
-            // Ensure animations are reset before moving to next card
+            // DON'T call handleNext - just advance index directly (no animation)
+            // This prevents re-locking and allows immediate answer on next card
+            console.log('➡️ Auto-advancing to next card (no animation)');
             translateX.setValue(0);
             cardScale.setValue(1);
-            
-            // Small delay to ensure state is settled
-            setTimeout(() => {
-              console.log('➡️ Auto-advancing to next card');
-              handleNext();
-            }, 50);
+            setCurrentIndex(currentIndexRef.current + 1);
+            console.log('✅ Advanced to card', currentIndexRef.current + 2);
           } else {
             // We're on the last card, so the session should end
             console.log('🏁 Last card, ending session');
