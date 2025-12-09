@@ -761,7 +761,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               onPress={handlePrevious}
               disabled={currentIndex === 0}
             >
-              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
+              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#666' : '#00F5FF'} />
               <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
                 Previous
               </Text>
@@ -783,20 +783,30 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             </View>
 
             {previewMode ? (
-              <TouchableOpacity
-                style={[styles.finishButton, { backgroundColor: '#666' }]}
-                onPress={exitPreview}
-              >
-                <Text style={styles.finishButtonText}>Exit Preview</Text>
-                <Icon name="close-circle" size={24} color="#fff" />
-              </TouchableOpacity>
+              currentIndex === flashcards.length - 1 ? (
+                <TouchableOpacity
+                  style={styles.exitPreviewButton}
+                  onPress={exitPreview}
+                >
+                  <Text style={styles.exitPreviewText}>Exit Preview</Text>
+                  <Icon name="close-circle" size={20} color="#fff" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.navButton}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.navButtonText}>Next</Text>
+                  <Icon name="chevron-forward" size={24} color="#fff" />
+                </TouchableOpacity>
+              )
             ) : currentIndex === flashcards.length - 1 ? (
               <TouchableOpacity
                 style={styles.finishButton}
                 onPress={handleClose}
               >
                 <Text style={styles.finishButtonText}>Finish</Text>
-                <Icon name="checkmark-circle" size={24} color="#4CAF50" />
+                <Icon name="checkmark-circle" size={20} color="#fff" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -804,7 +814,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                 onPress={handleNext}
               >
                 <Text style={styles.navButtonText}>Next</Text>
-                <Icon name="chevron-forward" size={24} color="#333" />
+                <Icon name="chevron-forward" size={24} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
@@ -1095,14 +1105,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   );
 }
 
+const IS_MOBILE = screenWidth < 768;
+
 const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0a0f1e', // Theme dark background
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#0a0f1e',
   },
   loadingContainer: {
     flex: 1,
@@ -1113,28 +1125,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'white',
+    paddingHorizontal: IS_MOBILE ? 12 : 16,
+    paddingVertical: IS_MOBILE ? 12 : 16,
+    backgroundColor: 'rgba(0, 245, 255, 0.08)', // Theme surface
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderBottomColor: 'rgba(0, 245, 255, 0.25)', // Theme border
   },
   closeButton: {
     padding: 8,
     marginLeft: -8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: IS_MOBILE ? 16 : 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF', // Theme text
     flex: 1,
     textAlign: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
   },
   counter: {
     fontSize: 16,
@@ -1190,19 +1197,44 @@ const styles = StyleSheet.create({
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: IS_MOBILE ? 14 : 18,
+    paddingVertical: IS_MOBILE ? 10 : 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.15)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.3)',
+    gap: 6,
   },
   disabledButton: {
-    opacity: 0.5,
+    opacity: 0.3,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   navButtonText: {
-    fontSize: 16,
-    color: '#333',
-    marginHorizontal: 4,
+    fontSize: IS_MOBILE ? 14 : 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   disabledText: {
-    color: '#ccc',
+    color: '#666',
+  },
+  exitPreviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: IS_MOBILE ? 16 : 20,
+    paddingVertical: IS_MOBILE ? 10 : 12,
+    backgroundColor: '#6366F1',
+    borderRadius: 24,
+    gap: 6,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  exitPreviewText: {
+    fontSize: IS_MOBILE ? 14 : 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   progressContainer: {
     flex: 1,
@@ -1236,16 +1268,21 @@ const styles = StyleSheet.create({
   finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 20,
+    paddingHorizontal: IS_MOBILE ? 16 : 20,
+    paddingVertical: IS_MOBILE ? 10 : 12,
+    backgroundColor: '#4CAF50',
+    borderRadius: 24,
+    gap: 6,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   finishButtonText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    marginRight: 4,
-    fontWeight: '600',
+    fontSize: IS_MOBILE ? 14 : 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   feedbackOverlay: {
     flex: 1,
