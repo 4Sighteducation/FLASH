@@ -413,8 +413,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const handleCardAnswer = async (cardId: string, correct: boolean) => {
     const card = flashcards.find(c => c.id === cardId);
-    if (!card || card.isFrozen || animatingRef.current) return;
+    if (!card || card.isFrozen || animatingRef.current) {
+      console.log('⚠️ Answer blocked:', { 
+        cardFound: !!card, 
+        isFrozen: card?.isFrozen, 
+        animating: animatingRef.current 
+      });
+      return;
+    }
 
+    console.log('✅ Processing answer:', { cardId, correct, currentBox: card.box_number });
     animatingRef.current = true; // Lock animations during the process
 
     // Update session statistics
@@ -493,12 +501,20 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         reviewed_at: new Date().toISOString(),
       });
 
-    // Update local state
-    setFlashcards(flashcards.map(c => 
-      c.id === cardId 
-        ? { ...c, box_number: newBoxNumber, next_review_date: nextReviewDate.toISOString(), isFrozen: true }
-        : c
-    ));
+    // Update local state - use functional update to avoid stale state
+    setFlashcards(prevCards => {
+      const updated = prevCards.map(c => 
+        c.id === cardId 
+          ? { ...c, box_number: newBoxNumber, next_review_date: nextReviewDate.toISOString(), isFrozen: true }
+          : c
+      );
+      console.log('📝 Flashcards state updated:', { 
+        cardId, 
+        newBoxNumber,
+        frozenCount: updated.filter(c => c.isFrozen).length 
+      });
+      return updated;
+    });
 
     // Update box counts
     setBoxCounts(prev => ({
@@ -506,6 +522,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       [`box${oldBoxNumber}`]: prev[`box${oldBoxNumber}` as keyof typeof prev] - 1,
       [`box${newBoxNumber}`]: prev[`box${newBoxNumber}` as keyof typeof prev] + 1,
     }));
+
+    // CRITICAL: Unlock animation BEFORE starting timeout
+    // This allows next card to be answered while feedback shows
+    console.log('🔓 Unlocking animation lock early');
+    animatingRef.current = false;
 
     // Wait 2 seconds (auto-advance) before proceeding
     setTimeout(() => {
@@ -518,28 +539,40 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         setShowSwoosh(false);
         setShowAnswerFeedback(false);
         
-        // Reset animation lock before proceeding
-        animatingRef.current = false;
+        // Animation lock already unlocked earlier (before setTimeout)
+        // animatingRef.current = false; // REMOVED - already unlocked
+        
+        console.log('🎬 Feedback animation complete, checking remaining cards');
         
         // Check if there are any more due cards after the current index
-        const remainingDueCards = flashcards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
-        
-        if (remainingDueCards === 0 && currentIndexRef.current === flashcards.length - 1) {
-          // No more cards at all - save session and show completion
-          saveStudySession();
-        } else if (currentIndexRef.current < flashcards.length - 1) {
-          // Ensure animations are reset before moving to next card
-          translateX.setValue(0);
-          cardScale.setValue(1);
+        // Use functional state to get fresh flashcards array
+        setFlashcards(currentCards => {
+          const remainingDueCards = currentCards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
+          console.log('📊 Remaining due cards:', remainingDueCards);
+
           
-          // Small delay to ensure state is settled
-          setTimeout(() => {
-            handleNext();
-          }, 50);
-        } else {
-          // We're on the last card, so the session should end
-          saveStudySession();
-        }
+          if (remainingDueCards === 0 && currentIndexRef.current === currentCards.length - 1) {
+            // No more cards at all - save session and show completion
+            console.log('🏁 No more cards, ending session');
+            saveStudySession();
+          } else if (currentIndexRef.current < currentCards.length - 1) {
+            // Ensure animations are reset before moving to next card
+            translateX.setValue(0);
+            cardScale.setValue(1);
+            
+            // Small delay to ensure state is settled
+            setTimeout(() => {
+              console.log('➡️ Auto-advancing to next card');
+              handleNext();
+            }, 50);
+          } else {
+            // We're on the last card, so the session should end
+            console.log('🏁 Last card, ending session');
+            saveStudySession();
+          }
+          
+          return currentCards; // Return unchanged
+        });
       });
     }, 2000); // Changed from 1800 to 2000ms for 2-second auto-advance
   };
