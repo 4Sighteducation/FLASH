@@ -192,17 +192,24 @@ export class AIService {
     console.log('Attempting to save flashcards:', flashcards.length, 'cards');
     console.log('First card data:', flashcards[0]);
     
+    console.log('🔄 Calling Supabase insert...');
     const { data, error } = await supabase
       .from('flashcards')
       .insert(flashcards)
       .select();
+    
+    console.log('📡 Supabase insert completed!', { 
+      hasData: !!data, 
+      hasError: !!error,
+      dataLength: data?.length 
+    });
 
     if (error) {
-      console.error('Error saving flashcards:', error);
+      console.error('❌ Error saving flashcards:', error);
       throw error;
     }
     
-    console.log('Successfully saved cards:', data?.length, 'cards');
+    console.log('✅ Successfully saved cards:', data?.length, 'cards');
 
     // If adding to study bank and topicId exists, update topic preference
     if (addToStudyBank && topicId) {
