@@ -81,7 +81,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
         .select('*')
         .eq('user_id', user?.id)
         .eq('subject_name', subjectName)
-        .order('full_path');
+        .order('topic_name'); // Order by topic_name instead of full_path
 
       if (error) throw error;
 
