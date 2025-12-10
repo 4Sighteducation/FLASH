@@ -151,23 +151,24 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             }));
             
             setDiscoveredTopics(transformedTopics as any);
-          
-          // Calculate stats
-          const totalCards = transformedTopics.reduce((sum, t) => sum + (t.card_count || 0), 0);
-          const cardsMastered = transformedTopics.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
-          
-          setStats({
-            totalCards,
-            topicsDiscovered: transformedTopics.length,
-            cardsMastered,
-          });
+            
+            // Calculate stats
+            const totalCards = transformedTopics.reduce((sum, t) => sum + (t.card_count || 0), 0);
+            const cardsMastered = transformedTopics.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
+            
+            setStats({
+              totalCards,
+              topicsDiscovered: transformedTopics.length,
+              cardsMastered,
+            });
 
-          // Group topics by parent
-          const grouped = groupTopicsByHierarchy(transformedTopics as any);
-          setGroupedTopics(grouped);
-          
-          if (grouped.length > 0) {
-            setExpandedSections(new Set([grouped[0].level1]));
+            // Group topics by parent
+            const grouped = groupTopicsByHierarchy(transformedTopics as any);
+            setGroupedTopics(grouped);
+            
+            if (grouped.length > 0) {
+              setExpandedSections(new Set([grouped[0].level1]));
+            }
           }
         }
         return;
