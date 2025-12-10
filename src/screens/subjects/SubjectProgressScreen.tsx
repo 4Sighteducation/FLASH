@@ -193,16 +193,38 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     const groups: { [key: string]: TopicGroup } = {};
 
     topics.forEach((topic) => {
-      // Use parent hierarchy: grandparent > parent > topic
-      const level1 = topic.grandparent_name || topic.parent_name || 'Other Topics';
-      const level2 = topic.grandparent_name ? topic.parent_name : undefined;
+      // Build hierarchy: Level 0 parent > Level 1 section > Level 2+ topics
+      // Level 0 (root parent): grandparent_name (e.g., "Physical Chemistry")
+      // Level 1 (section): parent_name (e.g., "Atomic Structure")
+      // Level 2+: topic itself (e.g., "Fundamental Particles")
       
-      const groupKey = level2 ? `${level1}::${level2}` : level1;
+      let level0Parent: string; // The root parent (always shown as collapsible section)
+      let level1Section: string | undefined; // The sub-section (optional)
+      
+      if (topic.topic_level >= 3 && topic.grandparent_name) {
+        // Level 3+ topic: Show grandparent as Level 0, parent as Level 1
+        level0Parent = topic.grandparent_name;
+        level1Section = topic.parent_name;
+      } else if (topic.topic_level === 2 && topic.parent_name) {
+        // Level 2 topic: Show parent as Level 0, no Level 1 section
+        level0Parent = topic.parent_name;
+        level1Section = undefined;
+      } else if (topic.topic_level === 1 && topic.grandparent_name) {
+        // Level 1 topic with grandparent: Use grandparent as Level 0
+        level0Parent = topic.grandparent_name;
+        level1Section = undefined;
+      } else {
+        // Fallback: Use topic name or parent
+        level0Parent = topic.parent_name || topic.topic_name || 'Other Topics';
+        level1Section = topic.parent_name ? undefined : undefined;
+      }
+      
+      const groupKey = level1Section ? `${level0Parent}::${level1Section}` : level0Parent;
 
       if (!groups[groupKey]) {
         groups[groupKey] = {
-          level1,
-          level2,
+          level1: level0Parent,      // Level 0 parent name
+          level2: level1Section,     // Level 1 section name (optional)
           topics: [],
         };
       }
@@ -210,7 +232,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       groups[groupKey].topics.push(topic);
     });
 
-    // Sort groups by name
+    // Sort groups by Level 0 parent name
     const groupArray = Object.values(groups);
     groupArray.sort((a, b) => a.level1.localeCompare(b.level1));
 

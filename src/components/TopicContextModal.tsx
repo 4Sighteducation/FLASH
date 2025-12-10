@@ -115,7 +115,8 @@ export default function TopicContextModal({
   const handleQuickCreate = async (topic: Topic, isOverview: boolean = false) => {
     setGenerating(topic.id);
     
-    // If overview card, fetch children topics first
+    // Fetch children if creating overview cards
+    let childrenNames: string[] = [];
     if (isOverview) {
       try {
         const { data: children, error } = await supabase
@@ -124,22 +125,22 @@ export default function TopicContextModal({
           .eq('parent_topic_id', topic.id);
         
         if (error) throw error;
-        
-        const childrenNames = children?.map(c => c.topic_name) || [];
-        onCreateCards(topic.id, topic.name, isOverview, childrenNames);
+        childrenNames = children?.map(c => c.topic_name) || [];
       } catch (error) {
         console.error('Error fetching children for overview:', error);
-        onCreateCards(topic.id, topic.name, isOverview, []);
       }
-    } else {
-      onCreateCards(topic.id, topic.name, isOverview, []);
     }
     
-    // Refresh context after a delay
+    // Small delay to show "Creating..." state, then close modal and navigate
     setTimeout(() => {
-      fetchContext();
-      setGenerating(null);
-    }, 3000);
+      onClose(); // Close modal first for better UX
+      
+      // Navigate to AI Generator after modal closes
+      setTimeout(() => {
+        onCreateCards(topic.id, topic.name, isOverview, childrenNames);
+        setGenerating(null);
+      }, 300);
+    }, 500);
   };
 
   const renderTopicItem = (topic: Topic, type: 'current' | 'sibling' | 'child' | 'parent') => {
@@ -369,6 +370,21 @@ export default function TopicContextModal({
             {/* Bottom padding */}
             <View style={{ height: 40 }} />
           </ScrollView>
+        )}
+
+        {/* Creating Overlay */}
+        {generating && (
+          <View style={styles.creatingOverlay}>
+            <View style={[styles.creatingCard, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator size="large" color={subjectColor} />
+              <Text style={[styles.creatingTitle, { color: colors.text }]}>
+                Creating Cards...
+              </Text>
+              <Text style={[styles.creatingSubtitle, { color: colors.textSecondary }]}>
+                Generating your flashcards
+              </Text>
+            </View>
+          </View>
         )}
       </View>
     </Modal>
@@ -624,6 +640,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 245, 255, 0.1)',
     marginVertical: 16,
     marginHorizontal: 20,
+  },
+  creatingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  creatingCard: {
+    padding: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  creatingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  creatingSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
