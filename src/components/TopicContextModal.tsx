@@ -51,6 +51,7 @@ interface TopicContextModalProps {
   onClose: () => void;
   onCreateCards: (topicId: string, topicName: string, isOverview: boolean, childrenTopics?: string[]) => void;
   onStudyTopic: (topicId: string, topicName: string) => void;
+  onDiscoverMore?: () => void;
 }
 
 export default function TopicContextModal({
@@ -65,6 +66,7 @@ export default function TopicContextModal({
   onClose,
   onCreateCards,
   onStudyTopic,
+  onDiscoverMore,
 }: TopicContextModalProps) {
   const { colors } = useTheme();
   const { user } = useAuth();
@@ -435,6 +437,40 @@ export default function TopicContextModal({
               </>
             )}
 
+            {/* No Siblings/Children - Suggest Inspiration */}
+            {(!context.siblings || context.siblings.length === 0) && 
+             (!context.children || context.children.length === 0) && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.inspirationSection}>
+                  <Text style={[styles.inspirationLabel, { color: colors.textSecondary }]}>
+                    This topic doesn't have related siblings yet.
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.inspirationButton, { borderColor: subjectColor }]}
+                    onPress={() => {
+                      onClose();
+                      // Navigate to discovery
+                      if (onDiscoverMore) {
+                        setTimeout(() => onDiscoverMore(), 300);
+                      }
+                    }}
+                  >
+                    <Icon name="bulb-outline" size={24} color={subjectColor} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inspirationTitle, { color: subjectColor }]}>
+                        💡 Looking for Inspiration?
+                      </Text>
+                      <Text style={styles.inspirationSubtitle}>
+                        Discover related topics from {subjectName}
+                      </Text>
+                    </View>
+                    <Icon name="arrow-forward" size={20} color={subjectColor} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
             {/* Explore Broader */}
             {context.grandparent && (
               <>
@@ -719,6 +755,33 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   overviewSubtitle: {
+    fontSize: 13,
+    color: '#9CA3B8',
+  },
+  inspirationSection: {
+    marginHorizontal: 20,
+    marginTop: 8,
+  },
+  inspirationLabel: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  inspirationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    gap: 12,
+  },
+  inspirationTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  inspirationSubtitle: {
     fontSize: 13,
     color: '#9CA3B8',
   },

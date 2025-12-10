@@ -638,6 +638,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           onClose={() => setShowContextModal(null)}
           onCreateCards={handleCreateCardsFromContext}
           onStudyTopic={handleStudyTopicFromContext}
+          onDiscoverMore={handleDiscoverMore}
         />
       )}
     </SafeAreaView>

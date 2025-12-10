@@ -18,6 +18,7 @@ import { AIService, CardGenerationParams, GeneratedCard } from '../../services/a
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
+import { abbreviateTopicName } from '../../utils/topicNameUtils';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -369,7 +370,9 @@ export default function AIGeneratorScreen() {
 
       <View style={styles.topicInfo}>
         <Text style={styles.topicSubject}>{subject}</Text>
-        <Text style={styles.topicName}>{topic}</Text>
+        <Text style={styles.topicName} numberOfLines={2}>
+          {abbreviateTopicName(topic)}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
