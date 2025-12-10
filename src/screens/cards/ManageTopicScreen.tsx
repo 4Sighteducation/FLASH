@@ -211,6 +211,24 @@ export default function ManageTopicScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        {/* Study Button */}
+        {cards.length > 0 && (
+          <TouchableOpacity
+            style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1' }]}
+            onPress={() => navigation.navigate('StudyModal', {
+              topicName,
+              subjectName,
+              subjectColor,
+              topicId,
+            })}
+          >
+            <Icon name="play-circle" size={24} color="#fff" />
+            <Text style={styles.studyButtonText}>
+              Study These Cards ({cards.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Priority Rating */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>📊 Your Priority</Text>
@@ -395,6 +413,25 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  studyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: 16,
+    padding: 18,
+    borderRadius: 16,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  studyButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
   },
   section: {
     margin: 16,
