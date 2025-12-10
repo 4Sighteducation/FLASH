@@ -381,9 +381,23 @@ export default function AIGeneratorScreen() {
     </View>
   );
 
+  const handleDeletePreviewCard = (index: number) => {
+    const newCards = generatedCards.filter((_, i) => i !== index);
+    setGeneratedCards(newCards);
+    if (newCards.length === 0) {
+      Alert.alert('No Cards Left', 'All cards deleted. Generate new ones?', [
+        { text: 'Cancel', onPress: () => setCurrentStep('options') },
+        { text: 'Regenerate', onPress: handleGenerateCards }
+      ]);
+    }
+  };
+
   const renderPreview = () => (
     <ScrollView style={styles.previewContainer}>
-      <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
+      <View style={styles.previewHeader}>
+        <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
+        <Text style={styles.previewCount}>{generatedCards.length} cards</Text>
+      </View>
       {generatedCards.map((card, index) => {
         // Convert generated card to flashcard format
         const flashcard = {
@@ -401,6 +415,12 @@ export default function AIGeneratorScreen() {
 
         return (
           <View key={index} style={styles.previewCardWrapper}>
+            <TouchableOpacity
+              style={styles.deletePreviewButton}
+              onPress={() => handleDeletePreviewCard(index)}
+            >
+              <Text style={styles.deletePreviewText}>✕</Text>
+            </TouchableOpacity>
             <FlashcardCard
               card={flashcard}
               color="#6366F1"
@@ -576,7 +596,7 @@ export default function AIGeneratorScreen() {
           </>
         )}
         
-        {currentStep === 'preview' && (
+        {currentStep === 'preview' && generatedCards.length > 0 && (
           <>
             <TouchableOpacity
               style={styles.secondaryButton}
@@ -591,7 +611,7 @@ export default function AIGeneratorScreen() {
               style={styles.primaryButton}
               onPress={handleSaveCards}
             >
-              <Text style={styles.primaryButtonText}>Save All Cards</Text>
+              <Text style={styles.primaryButtonText}>Save {generatedCards.length} Card{generatedCards.length !== 1 ? 's' : ''}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -899,7 +919,41 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
   },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  previewCount: {
+    fontSize: 14,
+    color: '#00D4FF',
+    fontWeight: '600',
+  },
   previewCardWrapper: {
     padding: 16,
+    position: 'relative',
+  },
+  deletePreviewButton: {
+    position: 'absolute',
+    top: 24,
+    right: 24,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  deletePreviewText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 }); 
