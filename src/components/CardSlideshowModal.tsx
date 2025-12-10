@@ -76,6 +76,11 @@ const SimpleFlippableCard = ({
 
   const backAnimatedStyle = {
     transform: [{ rotateY: backInterpolate }],
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   };
 
   const cardColor = card.cardColor || card.subjectColor || '#6366F1';
@@ -389,6 +394,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+    right: 0,
+    bottom: 0,
   },
   cardLabel: {
     fontSize: 12,

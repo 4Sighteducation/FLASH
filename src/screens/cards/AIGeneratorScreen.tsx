@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -82,6 +84,61 @@ export default function AIGeneratorScreen() {
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
   const [currentStep, setCurrentStep] = useState<'select' | 'options' | 'preview'>('select');
   const [aiService] = useState(() => new AIService());
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  // Simulate progress during generation
+  useEffect(() => {
+    if (isGenerating) {
+      setGenerationProgress(0);
+      setGenerationStatus('Initializing AI...');
+      
+      // Start glow animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+
+      const statusMessages = [
+        { progress: 10, message: 'Connecting to AI...' },
+        { progress: 25, message: 'Analyzing topic...' },
+        { progress: 40, message: 'Generating questions...' },
+        { progress: 60, message: 'Crafting answers...' },
+        { progress: 75, message: 'Adding detailed explanations...' },
+        { progress: 85, message: 'Validating content...' },
+        { progress: 95, message: 'Almost done...' },
+      ];
+
+      statusMessages.forEach((status, index) => {
+        setTimeout(() => {
+          if (isGenerating) {
+            setGenerationProgress(status.progress);
+            setGenerationStatus(status.message);
+            Animated.timing(progressAnim, {
+              toValue: status.progress,
+              duration: 500,
+              useNativeDriver: false,
+            }).start();
+          }
+        }, index * 2000);
+      });
+    } else {
+      glowAnim.stopAnimation();
+      setGenerationProgress(0);
+    }
+  }, [isGenerating]);
 
   const handleGenerateCards = async () => {
     if (!selectedType || selectedType === 'notes') return;
@@ -113,6 +170,19 @@ export default function AIGeneratorScreen() {
       });
 
       const cards = await aiService.generateCards(params);
+      
+      // Complete animation
+      setGenerationProgress(100);
+      setGenerationStatus('Complete! ✨');
+      Animated.timing(progressAnim, {
+        toValue: 100,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+      
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       setGeneratedCards(cards);
       setCurrentStep('preview');
     } catch (error: any) {
@@ -221,8 +291,11 @@ export default function AIGeneratorScreen() {
       if (Platform.OS === 'web') {
         const message = `✅ ${generatedCards.length} cards saved successfully!\n\n${addToStudyBank ? '📚 Added to Study Bank - ready to review!' : '💾 Saved to Card Bank'}`;
         window.alert(message);
-        // Navigate to Home on web
-        (navigation.navigate as any)('Home');
+        // Reset navigation stack and go to Home
+        (navigation as any).reset({
+          index: 0,
+          routes: [{ name: 'HomeMain' }],
+        });
       } else {
         Alert.alert(
           'Success',
@@ -230,7 +303,11 @@ export default function AIGeneratorScreen() {
           [{ 
             text: 'OK', 
             onPress: () => {
-              navigation.navigate('Home' as never);
+              // Reset navigation stack and go to Home
+              (navigation as any).reset({
+                index: 0,
+                routes: [{ name: 'HomeMain' }],
+              });
             }
           }]
         );
@@ -385,15 +462,102 @@ export default function AIGeneratorScreen() {
 
         {isGenerating && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Generating cards...</Text>
+            <LinearGradient
+              colors={['rgba(0, 0, 0, 0.95)', 'rgba(0, 20, 40, 0.95)', 'rgba(0, 0, 0, 0.95)']}
+              style={styles.progressContainer}
+            >
+              {/* Cyber Grid Background */}
+              <View style={styles.cyberGrid} />
+              
+              {/* Main Content */}
+              <View style={styles.progressContent}>
+                {/* AI Brain Icon */}
+                <View style={styles.aiIconContainer}>
+                  <Animated.View
+                    style={[
+                      styles.aiIconGlow,
+                      {
+                        opacity: glowAnim,
+                        transform: [{
+                          scale: glowAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1, 1.2],
+                          }),
+                        }],
+                      },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={['#00D4FF', '#0088FF', '#00D4FF']}
+                      style={styles.aiIconGradient}
+                    >
+                      <Text style={styles.aiIconText}>🧠</Text>
+                    </LinearGradient>
+                  </Animated.View>
+                </View>
+
+                {/* Status Text */}
+                <Text style={styles.loadingTitle}>AI Generation In Progress</Text>
+                <Text style={styles.loadingStatus}>{generationStatus}</Text>
+
+                {/* Progress Bar Container */}
+                <View style={styles.progressBarContainer}>
+                  <View style={styles.progressBarBackground}>
+                    <Animated.View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: progressAnim.interpolate({
+                            inputRange: [0, 100],
+                            outputRange: ['0%', '100%'],
+                          }),
+                        },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={['#00D4FF', '#0088FF', '#00FFAA']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.progressGradient}
+                      />
+                    </Animated.View>
+                    
+                    {/* Animated Scanner Line */}
+                    <Animated.View
+                      style={[
+                        styles.scannerLine,
+                        {
+                          opacity: glowAnim,
+                        },
+                      ]}
+                    />
+                  </View>
+                  
+                  {/* Progress Text */}
+                  <Text style={styles.progressText}>{generationProgress}%</Text>
+                </View>
+
+                {/* Decorative Elements */}
+                <View style={styles.decorativeContainer}>
+                  <View style={styles.decorativeLine} />
+                  <Text style={styles.decorativeText}>◇ PROCESSING ◇</Text>
+                  <View style={styles.decorativeLine} />
+                </View>
+              </View>
+            </LinearGradient>
           </View>
         )}
 
         {isSaving && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Saving cards...</Text>
+            <LinearGradient
+              colors={['rgba(0, 0, 0, 0.95)', 'rgba(0, 40, 20, 0.95)', 'rgba(0, 0, 0, 0.95)']}
+              style={styles.progressContainer}
+            >
+              <ActivityIndicator size="large" color="#00FFAA" />
+              <Text style={styles.loadingTitle}>Saving Cards</Text>
+              <Text style={styles.loadingStatus}>Storing your flashcards...</Text>
+            </LinearGradient>
           </View>
         )}
       </KeyboardAvoidingView>
@@ -584,14 +748,132 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  progressContainer: {
+    width: '90%',
+    maxWidth: 400,
+    padding: 30,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    shadowColor: '#00D4FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  cyberGrid: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.1,
+    backgroundColor: 'transparent',
+  },
+  progressContent: {
+    alignItems: 'center',
+  },
+  aiIconContainer: {
+    marginBottom: 20,
+  },
+  aiIconGlow: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingText: {
-    marginTop: 12,
+  aiIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00D4FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+  },
+  aiIconText: {
+    fontSize: 40,
+  },
+  loadingTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#00D4FF',
+    marginBottom: 8,
+    textAlign: 'center',
+    textShadowColor: '#00D4FF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  loadingStatus: {
+    fontSize: 14,
+    color: '#00FFAA',
+    marginBottom: 30,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  progressBarContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 8,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    position: 'relative',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressGradient: {
+    flex: 1,
+    shadowColor: '#00D4FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+  },
+  scannerLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    width: 2,
+  },
+  progressText: {
     fontSize: 16,
-    color: '#666',
+    color: '#00D4FF',
+    fontWeight: 'bold',
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  decorativeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+    marginTop: 10,
+  },
+  decorativeLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  decorativeText: {
+    fontSize: 10,
+    color: 'rgba(0, 212, 255, 0.6)',
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   bottomButtons: {
     flexDirection: 'row',

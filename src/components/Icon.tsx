@@ -70,6 +70,11 @@ const emojiMap: Record<string, string> = {
   'trending-up': '📈',
   'rocket-outline': '🚀',
   'play-circle': '▶️',
+  'mic': '🎤',
+  'mic-outline': '🎤',
+  'volume-high': '🔊',
+  'refresh-outline': '🔄',
+  'sync': '🔄',
   
   // Organization  
   'list-outline': '📋',

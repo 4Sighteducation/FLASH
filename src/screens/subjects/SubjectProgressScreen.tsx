@@ -17,6 +17,7 @@ import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import TopicContextModal from '../../components/TopicContextModal';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface DiscoveredTopic {
   id?: string;
@@ -31,6 +32,7 @@ interface DiscoveredTopic {
   cards_mastered: number;
   is_newly_discovered?: boolean;
   last_studied?: string;
+  priority?: number | null;
   // Legacy support
   full_path?: string[];
 }
@@ -56,6 +58,19 @@ interface SubjectProgressScreenProps {
   navigation: any;
 }
 
+// Priority levels configuration
+const PRIORITY_LEVELS = [
+  { value: 1, label: "I've Got This", emoji: '😎', color: '#10B981' },
+  { value: 2, label: 'Worth a Look', emoji: '👀', color: '#3B82F6' },
+  { value: 3, label: 'Revision Mode', emoji: '📚', color: '#F59E0B' },
+  { value: 4, label: 'Exam Alert', emoji: '🚨', color: '#EF4444' },
+];
+
+const getPriorityInfo = (priority: number | null | undefined) => {
+  if (!priority) return null;
+  return PRIORITY_LEVELS.find(p => p.value === priority);
+};
+
 export default function SubjectProgressScreen({ route, navigation }: SubjectProgressScreenProps) {
   const { subjectId, subjectName, subjectColor, examBoard, examType } = route.params;
   const { user } = useAuth();
@@ -80,10 +95,37 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   });
   const [showTopicOptions, setShowTopicOptions] = useState<DiscoveredTopic | null>(null);
   const [showContextModal, setShowContextModal] = useState<DiscoveredTopic | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<number | null>(null); // null = show all
 
   useEffect(() => {
+    loadPriorityFilter();
     fetchDiscoveredTopics();
   }, []);
+
+  useEffect(() => {
+    if (priorityFilter !== null || priorityFilter === null) {
+      savePriorityFilter();
+    }
+  }, [priorityFilter]);
+
+  const loadPriorityFilter = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(`priorityFilter_${subjectId}`);
+      if (saved) {
+        setPriorityFilter(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Error loading priority filter:', error);
+    }
+  };
+
+  const savePriorityFilter = async () => {
+    try {
+      await AsyncStorage.setItem(`priorityFilter_${subjectId}`, JSON.stringify(priorityFilter));
+    } catch (error) {
+      console.error('Error saving priority filter:', error);
+    }
+  };
 
   const fetchDiscoveredTopics = async () => {
     try {
@@ -162,8 +204,9 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
               cardsMastered,
             });
 
-            // Group topics by parent
-            const grouped = groupTopicsByHierarchy(transformedTopics as any);
+            // Filter and group topics by parent
+            const filteredTopics = filterTopicsByPriority(transformedTopics as any);
+            const grouped = groupTopicsByHierarchy(filteredTopics);
             setGroupedTopics(grouped);
             
             if (grouped.length > 0) {
@@ -175,20 +218,35 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       }
 
       if (topics && topics.length > 0) {
-        setDiscoveredTopics(topics);
+        // Fetch priorities for all topics
+        const topicIds = topics.map(t => t.topic_id);
+        const { data: priorities } = await supabase
+          .from('user_topic_priorities')
+          .select('topic_id, priority')
+          .eq('user_id', user?.id)
+          .in('topic_id', topicIds);
+
+        // Merge priorities into topics
+        const topicsWithPriorities = topics.map(topic => ({
+          ...topic,
+          priority: priorities?.find(p => p.topic_id === topic.topic_id)?.priority || null
+        }));
+
+        setDiscoveredTopics(topicsWithPriorities);
         
         // Calculate stats
-        const totalCards = topics.reduce((sum, t) => sum + (t.card_count || 0), 0);
-        const cardsMastered = topics.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
+        const totalCards = topicsWithPriorities.reduce((sum, t) => sum + (t.card_count || 0), 0);
+        const cardsMastered = topicsWithPriorities.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
         
         setStats({
           totalCards,
-          topicsDiscovered: topics.length,
+          topicsDiscovered: topicsWithPriorities.length,
           cardsMastered,
         });
 
-        // Group topics by parent name
-        const grouped = groupTopicsByHierarchy(topics);
+        // Filter and group topics by parent name
+        const filteredTopics = filterTopicsByPriority(topicsWithPriorities);
+        const grouped = groupTopicsByHierarchy(filteredTopics);
         setGroupedTopics(grouped);
         
         // Expand first section by default
@@ -213,6 +271,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterTopicsByPriority = (topics: any[]): any[] => {
+    if (priorityFilter === null) return topics;
+    return topics.filter(t => t.priority === priorityFilter);
   };
 
   const groupTopicsByHierarchy = (topics: any[]): TopicGroup[] => {
@@ -326,6 +389,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const renderTopicCard = (topic: DiscoveredTopic, baseColor: string, group: TopicGroup) => {
     const topicIds = group.topics.map(t => t.topic_id);
     const topicShade = getTopicShade(topic.topic_id, baseColor, topicIds);
+    const priorityInfo = getPriorityInfo(topic.priority);
 
     return (
       <TouchableOpacity
@@ -338,9 +402,19 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             <Text style={styles.levelText}>L{topic.topic_level}</Text>
           </View>
           <View style={styles.topicInfo}>
-            <Text style={styles.topicName} numberOfLines={2}>
-              {abbreviateTopicName(topic.topic_name)}
-            </Text>
+            <View style={styles.topicNameRow}>
+              <Text style={styles.topicName} numberOfLines={2}>
+                {abbreviateTopicName(topic.topic_name)}
+              </Text>
+              {priorityInfo && (
+                <View 
+                  style={[styles.priorityStar, { backgroundColor: priorityInfo.color }]}
+                  title={`Priority: ${priorityInfo.label}`}
+                >
+                  <Text style={styles.priorityStarText}>⭐</Text>
+                </View>
+              )}
+            </View>
             <View style={styles.topicMeta}>
               <Text style={styles.topicMetaText}>
                 {topic.card_count} cards
@@ -350,6 +424,14 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                   <Text style={styles.topicMetaDivider}>•</Text>
                   <Text style={styles.topicMetaTextMastered}>
                     {topic.cards_mastered} mastered
+                  </Text>
+                </>
+              )}
+              {priorityInfo && (
+                <>
+                  <Text style={styles.topicMetaDivider}>•</Text>
+                  <Text style={[styles.priorityLabel, { color: priorityInfo.color }]}>
+                    {priorityInfo.emoji} {priorityInfo.label}
                   </Text>
                 </>
               )}
@@ -555,6 +637,50 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </View>
         ) : (
           <>
+            {/* Priority Filter Buttons */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterTitle}>Filter by Priority:</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterButtons}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.filterButton,
+                    priorityFilter === null && styles.filterButtonActive
+                  ]}
+                  onPress={() => setPriorityFilter(null)}
+                >
+                  <Text style={[
+                    styles.filterButtonText,
+                    priorityFilter === null && styles.filterButtonTextActive
+                  ]}>
+                    All Topics
+                  </Text>
+                </TouchableOpacity>
+                {PRIORITY_LEVELS.map(level => (
+                  <TouchableOpacity
+                    key={level.value}
+                    style={[
+                      styles.filterButton,
+                      { borderColor: level.color },
+                      priorityFilter === level.value && [styles.filterButtonActive, { backgroundColor: level.color }]
+                    ]}
+                    onPress={() => setPriorityFilter(level.value)}
+                  >
+                    <Text style={styles.filterButtonEmoji}>{level.emoji}</Text>
+                    <Text style={[
+                      styles.filterButtonText,
+                      priorityFilter === level.value && styles.filterButtonTextActive
+                    ]}>
+                      {level.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
             {/* Topic Tree - 4-Tier Progressive Discovery */}
             <View style={styles.topicsSection}>
               <Text style={styles.sectionTitle}>Your Discovered Topics</Text>
@@ -976,6 +1102,50 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     fontSize: 16,
     fontWeight: '600',
   },
+  filterSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+  },
+  filterTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme === 'cyber' ? colors.text : '#333',
+    marginBottom: 8,
+  },
+  filterButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    gap: 6,
+  },
+  filterButtonActive: {
+    borderColor: subjectColor || '#6366F1',
+    backgroundColor: subjectColor || '#6366F1',
+  },
+  filterButtonEmoji: {
+    fontSize: 14,
+  },
+  filterButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme === 'cyber' ? colors.text : '#333',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+  },
   topicsSection: {
     padding: 16,
   },
@@ -1118,15 +1288,42 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   topicInfo: {
     flex: 1,
   },
+  topicNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   topicName: {
     fontSize: 15,
     fontWeight: '500',
     color: theme === 'cyber' ? colors.text : '#333',
+    flex: 1,
+  },
+  priorityStar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  priorityStarText: {
+    fontSize: 10,
+  },
+  priorityLabel: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   topicMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   topicMetaText: {
     fontSize: 12,

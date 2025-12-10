@@ -213,34 +213,46 @@ CONTENT GUIDANCE:
     // Call OpenAI API
     const systemMessage = `You are an expert ${examType} ${subject} educator. Create precise, high-quality flashcards that match ${examBoard} standards.`;
     
+    // Update prompt to request JSON format explicitly
+    const jsonPrompt = prompt + `\n\nReturn the response in the following JSON format:\n${JSON.stringify({cards: [cardSchema]}, null, 2)}`;
+    
     const completion = await openai.chat.completions.create({
       model: questionType === 'essay' ? 'gpt-4-turbo' : 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: prompt }
+        { role: 'user', content: jsonPrompt }
       ],
-      functions: [{
-        name: 'generateFlashcards',
-        description: `Generate ${numCards} flashcards`,
-        parameters: {
-          type: "object",
-          properties: {
-            cards: {
-              type: "array",
-              items: cardSchema
-            }
-          },
-          required: ["cards"]
-        }
-      }],
-      function_call: { name: 'generateFlashcards' },
+      response_format: { type: "json_object" },  // Force JSON mode
       temperature: 0.7,
-      max_tokens: Math.min(3000, numCards * 250)
+      max_tokens: questionType === 'essay' ? 4000 : Math.min(3000, numCards * 250)
     });
 
     // Parse the response
-    if (completion.choices?.[0]?.message?.function_call) {
-      const functionArgs = JSON.parse(completion.choices[0].message.function_call.arguments);
+    if (completion.choices?.[0]?.message?.content) {
+      let functionArgs;
+      try {
+        const responseContent = completion.choices[0].message.content;
+        // Try parsing the JSON
+        functionArgs = JSON.parse(responseContent);
+      } catch (parseError) {
+        console.error('JSON parsing error:', parseError.message);
+        console.error('Raw content:', completion.choices[0].message.content);
+        
+        // Try to fix common JSON issues
+        try {
+          let fixedContent = completion.choices[0].message.content;
+          // Remove markdown code blocks if present
+          fixedContent = fixedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+          // Trim whitespace
+          fixedContent = fixedContent.trim();
+          functionArgs = JSON.parse(fixedContent);
+          console.log('Fixed JSON successfully');
+        } catch (fixError) {
+          console.error('Could not fix JSON:', fixError.message);
+          throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+        }
+      }
+      
       if (functionArgs.cards && Array.isArray(functionArgs.cards)) {
         // Process and return the cards
         const processedCards = functionArgs.cards.map(card => {

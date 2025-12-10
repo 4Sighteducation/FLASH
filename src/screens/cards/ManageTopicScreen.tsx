@@ -14,7 +14,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
-import CardSlideshowModal from '../../components/CardSlideshowModal';
+import FlashcardCard from '../../components/FlashcardCard';
 
 // Priority levels - using "Revision Urgency" set
 const PRIORITY_LEVELS = [
@@ -45,7 +45,7 @@ export default function ManageTopicScreen() {
   const [cards, setCards] = useState<FlashcardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [priority, setPriority] = useState<number | null>(null);
-  const [showSlideshow, setShowSlideshow] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadTopicData();
@@ -83,6 +83,16 @@ export default function ManageTopicScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleCardExpansion = (cardId: string) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(cardId)) {
+      newExpanded.delete(cardId);
+    } else {
+      newExpanded.add(cardId);
+    }
+    setExpandedCards(newExpanded);
   };
 
   const handlePriorityChange = async (newPriority: number) => {
@@ -217,7 +227,7 @@ export default function ManageTopicScreen() {
         {cards.length > 0 && (
           <View style={styles.studyOptions}>
             <TouchableOpacity
-              style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1', flex: 1 }]}
+              style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1' }]}
               onPress={() => navigation.navigate('StudyModal', {
                 topicName,
                 subjectName,
@@ -227,16 +237,6 @@ export default function ManageTopicScreen() {
             >
               <Icon name="play-circle" size={24} color="#fff" />
               <Text style={styles.studyButtonText}>Study (Leitner)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.browseButton, { borderColor: subjectColor, flex: 1 }]}
-              onPress={() => setShowSlideshow(true)}
-            >
-              <Icon name="book" size={24} color={subjectColor} />
-              <Text style={[styles.browseButtonText, { color: subjectColor }]}>
-                Browse & Flip
-              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -340,39 +340,78 @@ export default function ManageTopicScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Card List */}
+        {/* Card Accordion List */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>📋 All Cards</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>📋 All Cards ({cards.length})</Text>
           
-          {cards.map((card, index) => (
-            <View key={card.id} style={[styles.cardItem, { borderColor: colors.border }]}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardNumber}>
-                  <Text style={[styles.cardNumberText, { color: subjectColor }]}>#{index + 1}</Text>
-                </View>
-                <View style={styles.cardMeta}>
-                  <Text style={[styles.cardType, { color: colors.textSecondary }]}>
-                    {card.card_type === 'multiple_choice' ? 'MC' : 
-                     card.card_type === 'short_answer' ? 'SA' : 
-                     card.card_type === 'essay' ? 'Essay' : card.card_type}
-                  </Text>
-                  <Text style={[styles.cardBox, { color: colors.textSecondary }]}>
-                    • Box {card.box_number}
-                  </Text>
-                </View>
+          {cards.map((card, index) => {
+            const isExpanded = expandedCards.has(card.id);
+            
+            return (
+              <View key={card.id} style={[styles.cardAccordion, { borderColor: colors.border }]}>
+                {/* Collapsed Header - Always Visible */}
                 <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteCard(card.id)}
+                  style={styles.cardAccordionHeader}
+                  onPress={() => toggleCardExpansion(card.id)}
                 >
-                  <Icon name="trash-outline" size={20} color="#EF4444" />
+                  <View style={styles.cardHeaderLeft}>
+                    <View style={[styles.cardNumber, { backgroundColor: subjectColor + '20' }]}>
+                      <Text style={[styles.cardNumberText, { color: subjectColor }]}>#{index + 1}</Text>
+                    </View>
+                    <View style={styles.cardHeaderInfo}>
+                      <Text style={[styles.cardQuestion, { color: colors.text }]} numberOfLines={isExpanded ? 0 : 2}>
+                        {card.question}
+                      </Text>
+                      <View style={styles.cardMeta}>
+                        <Text style={[styles.cardType, { color: colors.textSecondary }]}>
+                          {card.card_type === 'multiple_choice' ? 'Multiple Choice' : 
+                           card.card_type === 'short_answer' ? 'Short Answer' : 
+                           card.card_type === 'essay' ? 'Essay' :
+                           card.card_type === 'acronym' ? 'Acronym' : card.card_type}
+                        </Text>
+                        <Text style={[styles.cardMetaDivider, { color: colors.textSecondary }]}>•</Text>
+                        <Text style={[styles.cardBox, { color: colors.textSecondary }]}>
+                          Box {card.box_number}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.cardHeaderRight}>
+                    <TouchableOpacity
+                      style={styles.deleteButtonCompact}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCard(card.id);
+                      }}
+                    >
+                      <Icon name="trash-outline" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                    <Icon 
+                      name={isExpanded ? "chevron-up" : "chevron-down"} 
+                      size={20} 
+                      color={colors.textSecondary} 
+                    />
+                  </View>
                 </TouchableOpacity>
-              </View>
 
-              <Text style={[styles.cardQuestion, { color: colors.text }]} numberOfLines={2}>
-                {card.question}
-              </Text>
-            </View>
-          ))}
+                {/* Expanded Card View */}
+                {isExpanded && (
+                  <View style={styles.cardAccordionContent}>
+                    <View style={styles.expandedCardContainer}>
+                      <FlashcardCard
+                        card={{
+                          ...card,
+                          topic: topicName,
+                        }}
+                        color={subjectColor || '#6366F1'}
+                        showDeleteButton={false}
+                      />
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {/* Danger Zone */}
@@ -393,16 +432,6 @@ export default function ManageTopicScreen() {
         {/* Bottom Padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Browse Cards Modal */}
-      <CardSlideshowModal
-        isVisible={showSlideshow}
-        onClose={() => setShowSlideshow(false)}
-        cards={cards}
-        topicName={topicName}
-        subjectName={subjectName}
-        subjectColor={subjectColor}
-      />
     </SafeAreaView>
   );
 }
@@ -437,8 +466,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   studyOptions: {
-    flexDirection: 'row',
-    gap: 12,
     margin: 16,
   },
   studyButton: {
@@ -458,20 +485,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-  },
-  browseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 2,
-    gap: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-  },
-  browseButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
   },
   section: {
     margin: 16,
@@ -555,48 +568,76 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  cardItem: {
-    padding: 12,
-    borderRadius: 8,
+  cardAccordion: {
+    borderRadius: 12,
     borderWidth: 1,
     marginBottom: 12,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
   },
-  cardHeader: {
+  cardAccordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  cardHeaderInfo: {
+    flex: 1,
+  },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   cardNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardNumberText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   cardMeta: {
-    flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
   },
   cardType: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
-  cardBox: {
-    fontSize: 12,
+  cardMetaDivider: {
+    fontSize: 11,
   },
-  deleteButton: {
-    padding: 4,
+  cardBox: {
+    fontSize: 11,
+  },
+  deleteButtonCompact: {
+    padding: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
   },
   cardQuestion: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  cardAccordionContent: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+  },
+  expandedCardContainer: {
+    minHeight: 300,
   },
   dangerButton: {
     flexDirection: 'row',
