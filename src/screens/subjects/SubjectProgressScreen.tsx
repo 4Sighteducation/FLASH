@@ -18,14 +18,19 @@ import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import TopicContextModal from '../../components/TopicContextModal';
 
 interface DiscoveredTopic {
-  id: string;
+  id?: string;
   topic_id: string;
   topic_name: string;
-  full_path: string[];
   topic_level: number;
+  parent_topic_id?: string;
+  parent_name?: string;
+  grandparent_name?: string;
   card_count: number;
   cards_mastered: number;
-  is_newly_discovered: boolean;
+  is_newly_discovered?: boolean;
+  last_studied?: string;
+  // Legacy support
+  full_path?: string[];
 }
 
 interface TopicGroup {
@@ -75,15 +80,73 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     try {
       setLoading(true);
 
-      // Fetch discovered topics using the view
+      // Fetch discovered topics with hierarchy built from parent relationships
       const { data: topics, error } = await supabase
-        .from('user_topics_with_progress')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('subject_name', subjectName)
-        .order('topic_name'); // Order by topic_name instead of full_path
+        .rpc('get_user_topics_with_hierarchy', {
+          p_user_id: user?.id,
+          p_subject_name: subjectName,
+        });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from RPC:', error);
+        // Fallback to simple query if RPC not available
+        const { data: fallbackTopics, error: fallbackError } = await supabase
+          .from('flashcards')
+          .select(`
+            topic_id,
+            topic:curriculum_topics!inner(
+              id,
+              topic_name,
+              topic_level,
+              parent_topic_id,
+              parent:curriculum_topics(topic_name)
+            )
+          `)
+          .eq('user_id', user?.id);
+        
+        if (!fallbackError && fallbackTopics) {
+          // Transform fallback data
+          const uniqueTopics = new Map();
+          fallbackTopics.forEach(item => {
+            const t = item.topic;
+            if (!uniqueTopics.has(t.id)) {
+              uniqueTopics.set(t.id, {
+                topic_id: t.id,
+                topic_name: t.topic_name,
+                topic_level: t.topic_level,
+                parent_topic_id: t.parent_topic_id,
+                parent_name: t.parent?.topic_name || null,
+                grandparent_name: null,
+                card_count: 0,
+                cards_mastered: 0,
+              });
+            }
+            uniqueTopics.get(t.id).card_count++;
+          });
+          
+          const transformedTopics = Array.from(uniqueTopics.values());
+          setDiscoveredTopics(transformedTopics as any);
+          
+          // Calculate stats
+          const totalCards = transformedTopics.reduce((sum, t) => sum + (t.card_count || 0), 0);
+          const cardsMastered = transformedTopics.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
+          
+          setStats({
+            totalCards,
+            topicsDiscovered: transformedTopics.length,
+            cardsMastered,
+          });
+
+          // Group topics by parent
+          const grouped = groupTopicsByHierarchy(transformedTopics as any);
+          setGroupedTopics(grouped);
+          
+          if (grouped.length > 0) {
+            setExpandedSections(new Set([grouped[0].level1]));
+          }
+        }
+        return;
+      }
 
       if (topics && topics.length > 0) {
         setDiscoveredTopics(topics);
@@ -98,7 +161,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           cardsMastered,
         });
 
-        // Group topics by Level 1 and Level 2
+        // Group topics by parent name
         const grouped = groupTopicsByHierarchy(topics);
         setGroupedTopics(grouped);
         
@@ -126,14 +189,13 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     }
   };
 
-  const groupTopicsByHierarchy = (topics: DiscoveredTopic[]): TopicGroup[] => {
+  const groupTopicsByHierarchy = (topics: any[]): TopicGroup[] => {
     const groups: { [key: string]: TopicGroup } = {};
 
     topics.forEach((topic) => {
-      if (!topic.full_path || topic.full_path.length === 0) return;
-
-      const level1 = topic.full_path[0] || 'Other';
-      const level2 = topic.full_path.length > 1 ? topic.full_path[1] : undefined;
+      // Use parent hierarchy: grandparent > parent > topic
+      const level1 = topic.grandparent_name || topic.parent_name || 'Other Topics';
+      const level2 = topic.grandparent_name ? topic.parent_name : undefined;
       
       const groupKey = level2 ? `${level1}::${level2}` : level1;
 
@@ -148,7 +210,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       groups[groupKey].topics.push(topic);
     });
 
-    return Object.values(groups);
+    // Sort groups by name
+    const groupArray = Object.values(groups);
+    groupArray.sort((a, b) => a.level1.localeCompare(b.level1));
+
+    return groupArray;
   };
 
   const toggleSection = (level1: string) => {
@@ -187,7 +253,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       subjectColor: safeSubjectColor,
       examBoard,
       examType,
-      initialSearch: showTopicOptions.full_path[showTopicOptions.full_path.length - 2] || showTopicOptions.topic_name, // Parent topic
+      initialSearch: showTopicOptions.parent_name || showTopicOptions.topic_name, // Parent topic or self
     });
   };
   
