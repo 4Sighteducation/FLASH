@@ -82,43 +82,56 @@ export default function ManageAllCardsScreen() {
     try {
       setLoading(true);
 
-      // Fetch all cards with topic hierarchy information
+      // Fetch all cards
       const { data: flashcards, error } = await supabase
         .from('flashcards')
-        .select(`
-          id,
-          question,
-          answer,
-          card_type,
-          box_number,
-          options,
-          correct_answer,
-          key_points,
-          detailed_answer,
-          topic_id,
-          subject_name,
-          curriculum_topics!topic_id (
-            topic_name,
-            display_name,
-            topic_level,
-            parent_topic_id
-          )
-        `)
+        .select('*')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching flashcards:', error);
+        throw error;
+      }
+
+      console.log('📚 Fetched', flashcards?.length || 0, 'cards');
 
       if (flashcards && flashcards.length > 0) {
-        // Get all unique topic IDs to fetch hierarchy
+        // Get all unique topic IDs
         const topicIds = [...new Set(flashcards.map(f => f.topic_id))];
+        console.log('🎯 Unique topic IDs:', topicIds.length);
         
-        // Fetch full hierarchy for topics
-        const { data: topicsWithHierarchy } = await supabase
-          .rpc('get_user_topics_with_hierarchy', {
-            p_user_id: user?.id,
-            p_subject_name: null,  // Get all subjects
-          });
+        // Fetch topic details with hierarchy (using direct query instead of RPC)
+        const { data: topicDetails, error: topicError } = await supabase
+          .from('curriculum_topics')
+          .select(`
+            id,
+            topic_name,
+            display_name,
+            topic_level,
+            parent_topic_id,
+            parent:curriculum_topics!parent_topic_id(
+              topic_name,
+              display_name,
+              parent_topic_id,
+              parent:curriculum_topics!parent_topic_id(
+                topic_name,
+                display_name,
+                parent_topic_id,
+                parent:curriculum_topics!parent_topic_id(
+                  topic_name,
+                  display_name
+                )
+              )
+            )
+          `)
+          .in('id', topicIds);
+
+        if (topicError) {
+          console.error('Error fetching topics:', topicError);
+        }
+
+        console.log('📋 Fetched topic details for', topicDetails?.length || 0, 'topics');
 
         // Fetch priorities
         const { data: priorities } = await supabase
@@ -140,11 +153,13 @@ export default function ManageAllCardsScreen() {
 
         // Enrich cards with hierarchy and priority info
         const enrichedCards: CardWithTopic[] = flashcards.map(card => {
+          const topicData = Array.isArray(card.curriculum_topics) ? card.curriculum_topics[0] : card.curriculum_topics;
           const topicInfo = topicsWithHierarchy?.find(t => t.topic_id === card.topic_id);
+          
           return {
             ...card,
-            topic_name: topicInfo?.topic_name || card.curriculum_topics?.display_name || card.curriculum_topics?.topic_name || 'Unknown',
-            topic_level: topicInfo?.topic_level || card.curriculum_topics?.topic_level || 3,
+            topic_name: topicInfo?.topic_name || topicData?.display_name || topicData?.topic_name || 'Unknown Topic',
+            topic_level: topicInfo?.topic_level || topicData?.topic_level || 3,
             parent_name: topicInfo?.parent_name,
             grandparent_name: topicInfo?.grandparent_name,
             great_grandparent_name: topicInfo?.great_grandparent_name,
@@ -152,6 +167,9 @@ export default function ManageAllCardsScreen() {
             priority: priorityMap.get(card.topic_id),
           };
         });
+
+        console.log('✅ Enriched', enrichedCards.length, 'cards');
+        console.log('📊 Sample card:', enrichedCards[0]);
 
         setAllCards(enrichedCards);
 
@@ -1016,10 +1034,11 @@ const styles = StyleSheet.create({
   cardAccordionContent: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
+    padding: 12,
   },
   expandedCardContainer: {
-    minHeight: 300,
+    height: 350,
+    maxHeight: 350,
   },
   emptyState: {
     alignItems: 'center',

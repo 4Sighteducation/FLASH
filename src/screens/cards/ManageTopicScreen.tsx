@@ -54,6 +54,7 @@ export default function ManageTopicScreen() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [cardsDue, setCardsDue] = useState(0);
   const [showPriorityInfo, setShowPriorityInfo] = useState(false);
+  const [selectedPriorityInfo, setSelectedPriorityInfo] = useState<typeof PRIORITY_LEVELS[0] | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -323,6 +324,7 @@ export default function ManageTopicScreen() {
                   priority === level.value && { backgroundColor: level.color },
                 ]}
                 onPress={() => handlePriorityChange(level.value)}
+                onLongPress={() => setSelectedPriorityInfo(level)}
               >
                 <Text style={styles.priorityChipEmoji}>{level.emoji}</Text>
               </TouchableOpacity>
@@ -521,6 +523,41 @@ export default function ManageTopicScreen() {
               onPress={() => setShowPriorityInfo(false)}
             >
               <Text style={styles.infoModalButtonText}>Got It</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Individual Priority Level Modal */}
+      <Modal
+        visible={selectedPriorityInfo !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPriorityInfo(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedPriorityInfo(null)}
+        >
+          <View style={[styles.priorityInfoModal, { backgroundColor: colors.surface, borderColor: selectedPriorityInfo?.color }]}>
+            <Text style={styles.priorityInfoEmoji}>{selectedPriorityInfo?.emoji}</Text>
+            <Text style={[styles.priorityInfoTitle, { color: colors.text }]}>
+              {selectedPriorityInfo?.label}
+            </Text>
+            <Text style={[styles.priorityInfoDesc, { color: colors.textSecondary }]}>
+              {selectedPriorityInfo?.description}
+            </Text>
+            <TouchableOpacity
+              style={[styles.priorityInfoButton, { backgroundColor: selectedPriorityInfo?.color }]}
+              onPress={() => {
+                if (selectedPriorityInfo) {
+                  handlePriorityChange(selectedPriorityInfo.value);
+                  setSelectedPriorityInfo(null);
+                }
+              }}
+            >
+              <Text style={styles.priorityInfoButtonText}>Set This Priority</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -751,6 +788,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  priorityInfoModal: {
+    borderRadius: 20,
+    padding: 32,
+    width: '85%',
+    maxWidth: 320,
+    borderWidth: 3,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  priorityInfoEmoji: {
+    fontSize: 56,
+    marginBottom: 16,
+  },
+  priorityInfoTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  priorityInfoDesc: {
+    fontSize: 15,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  priorityInfoButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  priorityInfoButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
   cardAccordion: {
     borderRadius: 12,
     borderWidth: 1,
@@ -817,10 +895,11 @@ const styles = StyleSheet.create({
   cardAccordionContent: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
+    padding: 12,
   },
   expandedCardContainer: {
-    minHeight: 300,
+    height: 350,
+    maxHeight: 350,
   },
 });
 
