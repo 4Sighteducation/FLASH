@@ -287,37 +287,23 @@ export default function AIGeneratorScreen() {
       // Small delay to ensure database updates are processed
       await new Promise<void>(resolve => setTimeout(resolve, 500));
 
-      // Success modal - works on web and native
-      if (Platform.OS === 'web') {
-        const message = `✅ ${generatedCards.length} cards saved successfully!\n\n${addToStudyBank ? '📚 Added to Study Bank - ready to review!' : '💾 Saved to Card Bank'}`;
-        window.alert(message);
-        // Reset navigation stack and go to Home
-        (navigation as any).reset({
-          index: 0,
-          routes: [{ name: 'HomeMain' }],
-        });
-      } else {
-        Alert.alert(
-          'Success',
-          `${generatedCards.length} cards saved successfully!${addToStudyBank ? ' Cards added to Study Bank.' : ''}`,
-          [{ 
-            text: 'OK', 
-            onPress: () => {
-              // Reset navigation stack and go to Home
-              (navigation as any).reset({
-                index: 0,
-                routes: [{ name: 'HomeMain' }],
-              });
-            }
-          }]
-        );
-      }
+      // Success alert - works on web and native
+      Alert.alert(
+        'Success! ✅',
+        `${generatedCards.length} cards saved successfully!\n\n${addToStudyBank ? '📚 Added to Study Bank - ready to review!' : '💾 Saved to Card Bank'}`,
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            // Reset navigation stack and go to Home
+            (navigation as any).reset({
+              index: 0,
+              routes: [{ name: 'HomeMain' }],
+            });
+          }
+        }]
+      );
     } catch (error: any) {
-      if (Platform.OS === 'web') {
-        window.alert(`❌ Save Error: ${error.message || 'Failed to save cards'}`);
-      } else {
-        Alert.alert('Save Error', error.message || 'Failed to save cards');
-      }
+      Alert.alert('Save Error ❌', error.message || 'Failed to save cards');
     } finally {
       setIsSaving(false);
     }

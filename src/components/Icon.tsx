@@ -46,6 +46,7 @@ const emojiMap: Record<string, string> = {
   // Profile & Settings
   'person': '👤',
   'color-palette-outline': '🎨',
+  'notifications': '🔔',
   'notifications-outline': '🔔',
   'help-circle-outline': '❓',
   'key-outline': '🔑',
