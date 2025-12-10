@@ -26,6 +26,7 @@ interface DiscoveredTopic {
   parent_topic_id?: string;
   parent_name?: string;
   grandparent_name?: string;
+  great_grandparent_name?: string;
   card_count: number;
   cards_mastered: number;
   is_newly_discovered?: boolean;
@@ -91,42 +92,58 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       if (error) {
         console.error('Error from RPC:', error);
         // Fallback to simple query if RPC not available
+        // Fallback: Simple query if RPC fails
         const { data: fallbackTopics, error: fallbackError } = await supabase
           .from('flashcards')
-          .select(`
-            topic_id,
-            topic:curriculum_topics!inner(
-              id,
-              topic_name,
-              topic_level,
-              parent_topic_id,
-              parent:curriculum_topics(topic_name)
-            )
-          `)
+          .select('topic_id, subject_name')
           .eq('user_id', user?.id);
         
         if (!fallbackError && fallbackTopics) {
-          // Transform fallback data
-          const uniqueTopics = new Map();
-          fallbackTopics.forEach(item => {
-            const t = item.topic;
-            if (!uniqueTopics.has(t.id)) {
-              uniqueTopics.set(t.id, {
-                topic_id: t.id,
-                topic_name: t.topic_name,
-                topic_level: t.topic_level,
-                parent_topic_id: t.parent_topic_id,
-                parent_name: t.parent?.topic_name || null,
-                grandparent_name: null,
-                card_count: 0,
-                cards_mastered: 0,
-              });
-            }
-            uniqueTopics.get(t.id).card_count++;
-          });
+          // Get unique topic IDs
+          const topicIds = [...new Set(fallbackTopics.map(f => f.topic_id))];
           
-          const transformedTopics = Array.from(uniqueTopics.values());
-          setDiscoveredTopics(transformedTopics as any);
+          // Fetch full topic details with hierarchy
+          const { data: topicDetails, error: detailsError } = await supabase
+            .from('curriculum_topics')
+            .select(`
+              id,
+              topic_name,
+              display_name,
+              topic_level,
+              parent_topic_id,
+              parent:curriculum_topics!parent_topic_id(
+                topic_name,
+                display_name,
+                parent:curriculum_topics!parent_topic_id(
+                  topic_name,
+                  display_name,
+                  parent:curriculum_topics!parent_topic_id(topic_name, display_name)
+                )
+              )
+            `)
+            .in('id', topicIds);
+          
+          if (!detailsError && topicDetails) {
+            // Count cards per topic
+            const cardCounts = new Map();
+            fallbackTopics.forEach(f => {
+              cardCounts.set(f.topic_id, (cardCounts.get(f.topic_id) || 0) + 1);
+            });
+            
+            // Transform to match expected format
+            const transformedTopics = topicDetails.map(t => ({
+              topic_id: t.id,
+              topic_name: t.display_name || t.topic_name,
+              topic_level: t.topic_level,
+              parent_topic_id: t.parent_topic_id,
+              parent_name: t.parent?.display_name || t.parent?.topic_name || null,
+              grandparent_name: t.parent?.parent?.display_name || t.parent?.parent?.topic_name || null,
+              great_grandparent_name: t.parent?.parent?.parent?.display_name || t.parent?.parent?.parent?.topic_name || null,
+              card_count: cardCounts.get(t.id) || 0,
+              cards_mastered: 0,
+            }));
+            
+            setDiscoveredTopics(transformedTopics as any);
           
           // Calculate stats
           const totalCards = transformedTopics.reduce((sum, t) => sum + (t.card_count || 0), 0);
@@ -194,38 +211,49 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     const groups: { [key: string]: TopicGroup } = {};
 
     topics.forEach((topic) => {
-      // Build hierarchy: Level 0 parent > Level 1 section > Level 2+ topics
-      // Level 0 (root parent): grandparent_name (e.g., "Physical Chemistry")
-      // Level 1 (section): parent_name (e.g., "Atomic Structure")
-      // Level 2+: topic itself (e.g., "Fundamental Particles")
+      // Build hierarchy with proper Level 0 parent:
+      // Level 0: great_grandparent_name (e.g., "Physical Chemistry")
+      // Level 1: grandparent_name (e.g., "Atomic Structure")
+      // Level 2: parent_name (e.g., "Fundamental Particles")
+      // Level 3+: topic itself (the cards)
       
-      let level0Parent: string; // The root parent (always shown as collapsible section)
-      let level1Section: string | undefined; // The sub-section (optional)
+      let level0Parent: string; // The root parent (collapsible section header)
+      let level1Section: string | undefined; // Sub-section (optional second level)
       
-      if (topic.topic_level >= 3 && topic.grandparent_name) {
-        // Level 3+ topic: Show grandparent as Level 0, parent as Level 1
-        level0Parent = topic.grandparent_name;
-        level1Section = topic.parent_name;
-      } else if (topic.topic_level === 2 && topic.parent_name) {
-        // Level 2 topic: Show parent as Level 0, no Level 1 section
-        level0Parent = topic.parent_name;
-        level1Section = undefined;
-      } else if (topic.topic_level === 1 && topic.grandparent_name) {
-        // Level 1 topic with grandparent: Use grandparent as Level 0
-        level0Parent = topic.grandparent_name;
+      if (topic.topic_level >= 3) {
+        // Level 3+ topics: Use great-grandparent as Level 0
+        if (topic.great_grandparent_name) {
+          level0Parent = topic.great_grandparent_name; // e.g., "Physical Chemistry"
+          level1Section = topic.grandparent_name;      // e.g., "Atomic Structure"
+        } else if (topic.grandparent_name) {
+          // No great-grandparent, use grandparent as Level 0
+          level0Parent = topic.grandparent_name;
+          level1Section = topic.parent_name;
+        } else {
+          // Fallback
+          level0Parent = topic.parent_name || topic.topic_name || 'Other Topics';
+          level1Section = undefined;
+        }
+      } else if (topic.topic_level === 2) {
+        // Level 2 topics: Use grandparent as Level 0
+        level0Parent = topic.grandparent_name || topic.parent_name || topic.topic_name;
+        level1Section = topic.grandparent_name ? topic.parent_name : undefined;
+      } else if (topic.topic_level === 1) {
+        // Level 1 topics: Use parent as Level 0
+        level0Parent = topic.parent_name || topic.topic_name;
         level1Section = undefined;
       } else {
-        // Fallback: Use topic name or parent
-        level0Parent = topic.parent_name || topic.topic_name || 'Other Topics';
-        level1Section = topic.parent_name ? undefined : undefined;
+        // Fallback for orphan topics
+        level0Parent = topic.topic_name || 'Other Topics';
+        level1Section = undefined;
       }
       
       const groupKey = level1Section ? `${level0Parent}::${level1Section}` : level0Parent;
 
       if (!groups[groupKey]) {
         groups[groupKey] = {
-          level1: level0Parent,      // Level 0 parent name
-          level2: level1Section,     // Level 1 section name (optional)
+          level1: level0Parent,      // Level 0 parent name (e.g., "Physical Chemistry")
+          level2: level1Section,     // Level 1 section name (e.g., "Atomic Structure")
           topics: [],
         };
       }
