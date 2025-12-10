@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
   Alert,
   SafeAreaView,
+  Modal,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -50,10 +52,36 @@ export default function ManageTopicScreen() {
   const [loading, setLoading] = useState(true);
   const [priority, setPriority] = useState<number | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [cardsDue, setCardsDue] = useState(0);
+  const [showPriorityInfo, setShowPriorityInfo] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadTopicData();
   }, []);
+
+  // Pulse animation for notification dot
+  useEffect(() => {
+    if (cardsDue > 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.3,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+    return () => {
+      pulseAnim.stopAnimation();
+    };
+  }, [cardsDue]);
 
   const loadTopicData = async () => {
     try {
@@ -69,6 +97,19 @@ export default function ManageTopicScreen() {
 
       if (cardsError) throw cardsError;
       setCards(flashcards || []);
+
+      // Calculate cards due for this topic
+      if (flashcards) {
+        const dueCount = flashcards.filter(card => {
+          // Box 1 cards are always due
+          if (card.box_number === 1) return true;
+          
+          // Check if card is due for review based on last_studied
+          // This would require last_studied field - for now just count Box 1
+          return false;
+        }).length;
+        setCardsDue(dueCount);
+      }
 
       // Fetch current priority
       const { data: priorityData, error: priorityError } = await supabase
@@ -227,97 +268,148 @@ export default function ManageTopicScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Study Options */}
+        {/* Daily Study Button */}
         {cards.length > 0 && (
-          <View style={styles.studyOptions}>
+          <View style={styles.topSection}>
             <TouchableOpacity
-              style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1' }]}
-              onPress={() => navigation.navigate('StudyModal', {
-                topicName,
-                subjectName,
-                subjectColor,
-                topicId,
-              })}
+              style={[
+                styles.dailyStudyButton,
+                { backgroundColor: cardsDue > 0 ? (subjectColor || '#6366F1') : colors.border },
+              ]}
+              onPress={() => {
+                if (cardsDue > 0) {
+                  navigation.navigate('StudyModal', {
+                    topicName,
+                    subjectName,
+                    subjectColor,
+                    topicId,
+                  });
+                }
+              }}
+              disabled={cardsDue === 0}
             >
-              <Icon name="play-circle" size={24} color="#fff" />
-              <Text style={styles.studyButtonText}>Study (Leitner)</Text>
+              <View style={styles.dailyStudyContent}>
+                <Icon name="play-circle" size={28} color="#fff" />
+                <Text style={styles.dailyStudyText}>
+                  {cardsDue > 0 ? 'Complete Daily Study' : 'All done for today'}
+                </Text>
+                {cardsDue > 0 && (
+                  <View style={styles.notificationDot}>
+                    <Animated.View 
+                      style={[
+                        styles.notificationPulse,
+                        {
+                          transform: [{ scale: pulseAnim }],
+                        },
+                      ]} 
+                    />
+                    <Text style={styles.notificationText}>{cardsDue}</Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Compact Info Bar */}
-        <View style={[styles.infoBar, { backgroundColor: colors.surface }]}>
-          {/* Priority Selector - Compact */}
-          <View style={styles.infoSection}>
-            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Priority</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.priorityScroll}>
-              {PRIORITY_LEVELS.map(level => (
-                <TouchableOpacity
-                  key={level.value}
-                  style={[
-                    styles.priorityChip,
-                    { borderColor: level.color },
-                    priority === level.value && { backgroundColor: level.color },
-                  ]}
-                  onPress={() => handlePriorityChange(level.value)}
-                >
-                  <Text style={styles.priorityChipEmoji}>{level.emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Card Stats - Compact */}
-          <View style={styles.statsRow}>
-            <View style={styles.statChip}>
-              <Text style={[styles.statNumber, { color: subjectColor }]}>{cards.length}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total</Text>
-            </View>
-            {Object.entries(cardsByType).slice(0, 3).map(([type, count]) => (
-              <View key={type} style={styles.statChip}>
-                <Text style={[styles.statNumber, { color: subjectColor }]}>{count}</Text>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
-                  {type === 'multiple_choice' ? 'MC' : 
-                   type === 'short_answer' ? 'SA' :
-                   type === 'essay' ? 'Essay' : type.slice(0, 3).toUpperCase()}
-                </Text>
-              </View>
+        {/* Priority Selector Button */}
+        <View style={[styles.priorityButton, { backgroundColor: colors.surface, borderColor: '#F59E0B' }]}>
+          <View style={styles.priorityRow}>
+            {PRIORITY_LEVELS.map(level => (
+              <TouchableOpacity
+                key={level.value}
+                style={[
+                  styles.priorityChip,
+                  { borderColor: level.color },
+                  priority === level.value && { backgroundColor: level.color },
+                ]}
+                onPress={() => handlePriorityChange(level.value)}
+              >
+                <Text style={styles.priorityChipEmoji}>{level.emoji}</Text>
+              </TouchableOpacity>
             ))}
+            <TouchableOpacity
+              style={styles.infoIconButton}
+              onPress={() => setShowPriorityInfo(true)}
+            >
+              <Icon name="information-circle" size={24} color={colors.text} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Add More Cards - Compact */}
-        <View style={[styles.addCardsBar, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.addCardsLabel, { color: colors.text }]}>➕ Add Cards</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.addCardsScroll}>
+        {/* Card Type Stats Button */}
+        <View style={[styles.cardStatsButton, { backgroundColor: colors.surface }]}>
+          <View style={styles.cardStatsRow}>
+            <View style={styles.cardStatItem}>
+              <Text style={[styles.cardStatNumber, { color: subjectColor }]}>{cards.length}</Text>
+              <Text style={[styles.cardStatLabel, { color: colors.textSecondary }]}>Total</Text>
+            </View>
+            <View style={styles.cardStatDivider} />
+            <View style={styles.cardStatItem}>
+              <Text style={[styles.cardStatNumber, { color: subjectColor }]}>
+                {cardsByType['multiple_choice'] || 0}
+              </Text>
+              <Text style={[styles.cardStatLabel, { color: colors.textSecondary }]}>MC</Text>
+            </View>
+            <View style={styles.cardStatDivider} />
+            <View style={styles.cardStatItem}>
+              <Text style={[styles.cardStatNumber, { color: subjectColor }]}>
+                {cardsByType['short_answer'] || 0}
+              </Text>
+              <Text style={[styles.cardStatLabel, { color: colors.textSecondary }]}>SA</Text>
+            </View>
+            <View style={styles.cardStatDivider} />
+            <View style={styles.cardStatItem}>
+              <Text style={[styles.cardStatNumber, { color: subjectColor }]}>
+                {cardsByType['essay'] || 0}
+              </Text>
+              <Text style={[styles.cardStatLabel, { color: colors.textSecondary }]}>ES</Text>
+            </View>
+            <View style={styles.cardStatDivider} />
+            <View style={styles.cardStatItem}>
+              <Text style={[styles.cardStatNumber, { color: subjectColor }]}>
+                {cardsByType['acronym'] || 0}
+              </Text>
+              <Text style={[styles.cardStatLabel, { color: colors.textSecondary }]}>AC</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Add More Cards Section */}
+        <View style={styles.addCardsSection}>
+          <Text style={[styles.addCardsTitle, { color: colors.text }]}>➕ Add Cards</Text>
+          <View style={styles.addCardsGrid}>
             <TouchableOpacity
-              style={[styles.addCardChip, { borderColor: subjectColor }]}
+              style={[styles.addCardButton, { borderColor: subjectColor }]}
               onPress={() => handleAddMoreCards('multiple_choice')}
             >
-              <Text style={[styles.addCardChipText, { color: subjectColor }]}>MC</Text>
+              <Text style={[styles.addCardButtonText, { color: subjectColor }]}>
+                Multiple{'\n'}Choice
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.addCardChip, { borderColor: subjectColor }]}
+              style={[styles.addCardButton, { borderColor: subjectColor }]}
               onPress={() => handleAddMoreCards('short_answer')}
             >
-              <Text style={[styles.addCardChipText, { color: subjectColor }]}>SA</Text>
+              <Text style={[styles.addCardButtonText, { color: subjectColor }]}>
+                Short{'\n'}Answer
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.addCardChip, { borderColor: subjectColor }]}
+              style={[styles.addCardButton, { borderColor: subjectColor }]}
               onPress={() => handleAddMoreCards('essay')}
             >
-              <Text style={[styles.addCardChipText, { color: subjectColor }]}>Essay</Text>
+              <Text style={[styles.addCardButtonText, { color: subjectColor }]}>Essay</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.addCardChip, { borderColor: subjectColor }]}
+              style={[styles.addCardButton, { borderColor: subjectColor }]}
               onPress={() => handleAddMoreCards('acronym')}
             >
-              <Text style={[styles.addCardChipText, { color: subjectColor }]}>Acronym</Text>
+              <Text style={[styles.addCardButtonText, { color: subjectColor }]}>Acronym</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </View>
         </View>
 
         {/* Card Accordion List */}
@@ -394,24 +486,45 @@ export default function ManageTopicScreen() {
           })}
         </View>
 
-        {/* Danger Zone */}
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: '#EF4444' }]}>⚠️ Danger Zone</Text>
-          
-          <TouchableOpacity
-            style={[styles.dangerButton, { borderColor: '#EF4444' }]}
-            onPress={handleRegenerateCards}
-          >
-            <Icon name="swap-horizontal" size={20} color="#EF4444" />
-            <Text style={[styles.dangerButtonText, { color: '#EF4444' }]}>
-              Regenerate All Cards
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Bottom Padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Priority Info Modal */}
+      <Modal
+        visible={showPriorityInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPriorityInfo(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPriorityInfo(false)}
+        >
+          <View style={[styles.infoModal, { backgroundColor: colors.surface }]}>
+            <View style={styles.infoModalHeader}>
+              <Icon name="information-circle" size={32} color="#F59E0B" />
+              <Text style={[styles.infoModalTitle, { color: colors.text }]}>
+                Why Prioritize?
+              </Text>
+            </View>
+            <Text style={[styles.infoModalText, { color: colors.textSecondary }]}>
+              Prioritize topics you find most challenging to optimize your study schedule. 
+              Focus on high-priority topics when you have the most energy and concentration.
+            </Text>
+            <Text style={[styles.infoModalText, { color: colors.textSecondary }]}>
+              Use the priority levels to organize your revision and ensure you spend time on what matters most for your exams.
+            </Text>
+            <TouchableOpacity
+              style={[styles.infoModalButton, { backgroundColor: subjectColor }]}
+              onPress={() => setShowPriorityInfo(false)}
+            >
+              <Text style={styles.infoModalButtonText}>Got It</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -445,26 +558,118 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  studyOptions: {
+  topSection: {
     margin: 16,
+    marginBottom: 12,
   },
-  studyButton: {
+  dailyStudyButton: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  dailyStudyContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 18,
-    borderRadius: 16,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  studyButtonText: {
-    fontSize: 15,
+  dailyStudyText: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+  },
+  notificationDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  notificationPulse: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FF3B30',
+    opacity: 0.3,
+  },
+  notificationText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  priorityButton: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    gap: 12,
+  },
+  priorityChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  priorityChipEmoji: {
+    fontSize: 24,
+  },
+  infoIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  cardStatsButton: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.2)',
+  },
+  cardStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+  },
+  cardStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  cardStatNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  cardStatLabel: {
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  cardStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   section: {
     margin: 16,
@@ -476,83 +681,74 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
-  infoBar: {
+  addCardsSection: {
     marginHorizontal: 16,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.2)',
+    marginBottom: 16,
   },
-  infoSection: {
+  addCardsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     marginBottom: 12,
   },
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  priorityScroll: {
+  addCardsGrid: {
     flexDirection: 'row',
+    gap: 10,
   },
-  priorityChip: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  addCardButton: {
+    flex: 1,
+    minHeight: 60,
+    borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-  },
-  priorityChipEmoji: {
-    fontSize: 18,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  statChip: {
-    alignItems: 'center',
+    paddingVertical: 12,
     paddingHorizontal: 8,
   },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  statLabel: {
-    fontSize: 9,
-    marginTop: 2,
-  },
-  addCardsBar: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.2)',
-  },
-  addCardsLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  addCardsScroll: {
-    flexDirection: 'row',
-  },
-  addCardChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    marginRight: 8,
-  },
-  addCardChipText: {
+  addCardButtonText: {
     fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoModal: {
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  infoModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  infoModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  infoModalText: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  infoModalButton: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  infoModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
   cardAccordion: {
@@ -625,19 +821,6 @@ const styles = StyleSheet.create({
   },
   expandedCardContainer: {
     minHeight: 300,
-  },
-  dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    gap: 8,
-  },
-  dangerButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 

@@ -476,13 +476,22 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={styles.actionText}>Scan Image</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('TopicHub')}
+            style={[
+              styles.actionCard,
+              userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0 && styles.actionCardDisabled
+            ]}
+            onPress={() => {
+              const totalCards = userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
+              if (totalCards > 0) {
+                navigation.navigate('ManageAllCards');
+              }
+            }}
+            disabled={userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0}
           >
             <View style={styles.actionIconContainer}>
-              <Icon name="flag" size={24} color="#FF9500" />
+              <Icon name="settings-outline" size={24} color="#FF9500" />
             </View>
-            <Text style={styles.actionText}>Priorities</Text>
+            <Text style={styles.actionText}>Manage Cards</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -758,6 +767,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     minWidth: 90,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  actionCardDisabled: {
+    opacity: 0.4,
   },
   actionText: {
     marginTop: 8,
