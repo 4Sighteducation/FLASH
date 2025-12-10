@@ -1183,16 +1183,19 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 100, // Space for bottom navigation
+    paddingBottom: 80, // Space for bottom navigation
+    paddingTop: 10,
   },
   swipeableArea: {
     flex: 1,
     justifyContent: 'center',
+    maxHeight: '60%', // Constrain to 60% of available space
   },
   cardContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
+    maxHeight: 450, // Max height for cards
   },
   bottomSection: {
     backgroundColor: 'white',
