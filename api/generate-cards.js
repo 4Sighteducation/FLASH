@@ -270,11 +270,17 @@ CONTENT GUIDANCE:
       
       if (functionArgs.cards && Array.isArray(functionArgs.cards) && functionArgs.cards.length > 0) {
         console.log('🎴 Processing', functionArgs.cards.length, 'cards...');
+        console.log('📋 First card raw data:', JSON.stringify(functionArgs.cards[0]));
+        
         // Process and return the cards
-        const processedCards = functionArgs.cards.map(card => {
+        const processedCards = functionArgs.cards.map((card, index) => {
+          console.log(`\n🔍 Processing card ${index + 1}:`, JSON.stringify(card));
+          
           const processedCard = {
             question: card.question || 'No question generated'
           };
+          
+          console.log(`   Question extracted: ${processedCard.question.substring(0, 50)}...`);
 
           switch (questionType) {
             case 'multiple_choice':
@@ -298,9 +304,14 @@ CONTENT GUIDANCE:
               break;
             case 'short_answer':
             case 'essay':
-              processedCard.keyPoints = card.keyPoints || [];
-              processedCard.detailedAnswer = card.detailedAnswer || '';
-              processedCard.answer = processedCard.keyPoints.join('\n• ');
+              // Handle different possible field names from AI
+              processedCard.keyPoints = card.keyPoints || card.key_points || card.keypoints || [];
+              processedCard.detailedAnswer = card.detailedAnswer || card.detailed_answer || card.detailedanswer || '';
+              processedCard.answer = (processedCard.keyPoints.length > 0) 
+                ? processedCard.keyPoints.join('\n• ') 
+                : 'Answer not generated';
+              
+              console.log(`   Essay/SA - keyPoints: ${processedCard.keyPoints.length}, detailedAnswer: ${processedCard.detailedAnswer.length} chars`);
               break;
             case 'acronym':
               processedCard.acronym = card.acronym || '';
