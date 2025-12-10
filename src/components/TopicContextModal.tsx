@@ -15,6 +15,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import { abbreviateTopicName } from '../utils/topicNameUtils';
+import RevealContextTutorial from './RevealContextTutorial';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IS_MOBILE = screenWidth < 768;
@@ -70,12 +71,59 @@ export default function TopicContextModal({
   const [context, setContext] = useState<TopicContext | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set([topicId]));
   const [generating, setGenerating] = useState<string | null>(null); // Topic being generated
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showHelpButton, setShowHelpButton] = useState(false);
 
   useEffect(() => {
     if (visible && topicId) {
       fetchContext();
+      checkTutorialStatus();
     }
   }, [visible, topicId]);
+
+  const checkTutorialStatus = async () => {
+    try {
+      // Check if user has seen tutorial before
+      const { data, error } = await supabase
+        .from('users')
+        .select('has_seen_reveal_context_tutorial')
+        .eq('id', user?.id)
+        .single();
+
+      if (!error && data) {
+        const hasSeenTutorial = data.has_seen_reveal_context_tutorial || false;
+        setShowHelpButton(hasSeenTutorial); // Show help button if they've seen it
+        
+        if (!hasSeenTutorial) {
+          // First time - show tutorial after context loads
+          setShowTutorial(true);
+        }
+      }
+    } catch (error) {
+      console.log('Tutorial status check failed (non-critical):', error);
+      // If check fails, don't show tutorial to avoid annoying users
+      setShowHelpButton(true);
+    }
+  };
+
+  const handleTutorialComplete = async () => {
+    setShowTutorial(false);
+    setShowHelpButton(true);
+    
+    // Mark tutorial as seen
+    try {
+      await supabase
+        .from('users')
+        .update({ has_seen_reveal_context_tutorial: true })
+        .eq('id', user?.id);
+    } catch (error) {
+      console.log('Could not save tutorial status (non-critical):', error);
+    }
+  };
+
+  const handleShowTutorialAgain = () => {
+    setShowTutorial(true);
+  };
 
   const fetchContext = async () => {
     try {
@@ -275,6 +323,11 @@ export default function TopicContextModal({
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Icon name="close" size={28} color="#fff" />
           </TouchableOpacity>
+          {showHelpButton && (
+            <TouchableOpacity onPress={handleShowTutorialAgain} style={styles.helpButton}>
+              <Icon name="help-circle-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>🗺️ Curriculum Map</Text>
             <Text style={styles.headerSubtitle}>{abbreviateTopicName(topicName)}</Text>
@@ -387,6 +440,13 @@ export default function TopicContextModal({
           </View>
         )}
       </View>
+
+      {/* Tutorial */}
+      <RevealContextTutorial
+        visible={showTutorial}
+        onComplete={handleTutorialComplete}
+        subjectColor={subjectColor}
+      />
     </Modal>
   );
 }
@@ -406,6 +466,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: IS_MOBILE ? 12 : 16,
     right: 20,
+    padding: 8,
+    zIndex: 10,
+  },
+  helpButton: {
+    position: 'absolute',
+    top: IS_MOBILE ? 12 : 16,
+    right: 70,
     padding: 8,
     zIndex: 10,
   },
