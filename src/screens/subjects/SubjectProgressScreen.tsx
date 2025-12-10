@@ -800,6 +800,26 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             </TouchableOpacity>
             
             <TouchableOpacity
+              style={[styles.optionButton, styles.optionSecondary]}
+              onPress={() => {
+                setShowTopicOptions(null);
+                navigation.navigate('ManageTopic', {
+                  topicId: showTopicOptions?.topic_id,
+                  topicName: showTopicOptions?.topic_name,
+                  subjectName,
+                  subjectColor: safeSubjectColor,
+                  examBoard,
+                  examType,
+                });
+              }}
+            >
+              <Icon name="settings-outline" size={24} color={safeSubjectColor} />
+              <Text style={[styles.optionButtonTextSecondary, { color: safeSubjectColor }]}>
+                Manage & Prioritize
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
               style={styles.optionCancel}
               onPress={() => setShowTopicOptions(null)}
             >
