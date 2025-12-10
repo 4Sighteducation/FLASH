@@ -36,8 +36,10 @@ interface DiscoveredTopic {
 }
 
 interface TopicGroup {
-  level1: string;
-  level2?: string;
+  level0: string;           // Exam paper (great_grandparent)
+  level1: string;           // Main section (grandparent)
+  level2?: string;          // Sub-section (parent)
+  level3?: string;          // Topic header (for Level 4+ grouping)
   topics: DiscoveredTopic[];
 }
 
@@ -66,6 +68,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const [groupedTopics, setGroupedTopics] = useState<TopicGroup[]>([]);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [completionPercentage, setCompletionPercentage] = useState(0);
+  
+  // Multi-level collapse state (for 4-tier hierarchy)
+  const [collapsedL0, setCollapsedL0] = useState<Set<string>>(new Set());
+  const [collapsedL1, setCollapsedL1] = useState<Set<string>>(new Set());
+  const [collapsedL2, setCollapsedL2] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState({
     totalCards: 0,
     topicsDiscovered: 0,
@@ -211,49 +218,32 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     const groups: { [key: string]: TopicGroup } = {};
 
     topics.forEach((topic) => {
-      // Build hierarchy with proper Level 0 parent:
-      // Level 0: great_grandparent_name (e.g., "Physical Chemistry")
-      // Level 1: grandparent_name (e.g., "Atomic Structure")
-      // Level 2: parent_name (e.g., "Fundamental Particles")
-      // Level 3+: topic itself (the cards)
+      // Four-tier progressive discovery hierarchy:
+      // Level 0: Exam Paper (great_grandparent) - e.g., "Paper 1: Factors affecting..."
+      // Level 1: Main Section (grandparent) - e.g., "Applied anatomy and physiology"
+      // Level 2: Sub-section (parent) - e.g., "Musculo-skeletal system"
+      // Level 3: Topic Header (for Level 4+) - e.g., "Levers"
+      // Level 4-5: Card Topics - e.g., "1st class lever"
       
-      let level0Parent: string; // The root parent (collapsible section header)
-      let level1Section: string | undefined; // Sub-section (optional second level)
+      const level0 = topic.great_grandparent_name || topic.grandparent_name || topic.parent_name || topic.topic_name || 'Other Topics';
+      const level1 = topic.great_grandparent_name ? topic.grandparent_name : (topic.grandparent_name ? topic.parent_name : null);
+      const level2 = topic.great_grandparent_name && topic.grandparent_name ? topic.parent_name : null;
       
-      if (topic.topic_level >= 3) {
-        // Level 3+ topics: Use great-grandparent as Level 0
-        if (topic.great_grandparent_name) {
-          level0Parent = topic.great_grandparent_name; // e.g., "Physical Chemistry"
-          level1Section = topic.grandparent_name;      // e.g., "Atomic Structure"
-        } else if (topic.grandparent_name) {
-          // No great-grandparent, use grandparent as Level 0
-          level0Parent = topic.grandparent_name;
-          level1Section = topic.parent_name;
-        } else {
-          // Fallback
-          level0Parent = topic.parent_name || topic.topic_name || 'Other Topics';
-          level1Section = undefined;
-        }
-      } else if (topic.topic_level === 2) {
-        // Level 2 topics: Use grandparent as Level 0
-        level0Parent = topic.grandparent_name || topic.parent_name || topic.topic_name;
-        level1Section = topic.grandparent_name ? topic.parent_name : undefined;
-      } else if (topic.topic_level === 1) {
-        // Level 1 topics: Use parent as Level 0
-        level0Parent = topic.parent_name || topic.topic_name;
-        level1Section = undefined;
-      } else {
-        // Fallback for orphan topics
-        level0Parent = topic.topic_name || 'Other Topics';
-        level1Section = undefined;
-      }
+      // For Level 4+ topics, use parent name as Level 3 grouping header
+      const level3 = topic.topic_level >= 4 ? topic.parent_name : null;
       
-      const groupKey = level1Section ? `${level0Parent}::${level1Section}` : level0Parent;
+      // Create composite key for unique grouping
+      let groupKey = level0;
+      if (level1) groupKey += `||${level1}`;
+      if (level2) groupKey += `||${level2}`;
+      if (level3) groupKey += `||${level3}`;
 
       if (!groups[groupKey]) {
         groups[groupKey] = {
-          level1: level0Parent,      // Level 0 parent name (e.g., "Physical Chemistry")
-          level2: level1Section,     // Level 1 section name (e.g., "Atomic Structure")
+          level0: level0,
+          level1: level1 || '',
+          level2: level2 || undefined,
+          level3: level3 || undefined,
           topics: [],
         };
       }
@@ -261,9 +251,15 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       groups[groupKey].topics.push(topic);
     });
 
-    // Sort groups by Level 0 parent name
+    // Sort hierarchically: Level 0 > Level 1 > Level 2 > Level 3
     const groupArray = Object.values(groups);
-    groupArray.sort((a, b) => a.level1.localeCompare(b.level1));
+    groupArray.sort((a, b) => {
+      if (a.level0 !== b.level0) return a.level0.localeCompare(b.level0);
+      if (a.level1 !== b.level1) return a.level1.localeCompare(b.level1);
+      if ((a.level2 || '') !== (b.level2 || '')) return (a.level2 || '').localeCompare(b.level2 || '');
+      if ((a.level3 || '') !== (b.level3 || '')) return (a.level3 || '').localeCompare(b.level3 || '');
+      return 0;
+    });
 
     return groupArray;
   };
@@ -276,6 +272,97 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       newExpanded.add(level1);
     }
     setExpandedSections(newExpanded);
+  };
+
+  // Toggle functions for each hierarchy level
+  const toggleLevel0 = (sectionName: string) => {
+    const newCollapsed = new Set(collapsedL0);
+    if (newCollapsed.has(sectionName)) {
+      newCollapsed.delete(sectionName);
+    } else {
+      newCollapsed.add(sectionName);
+    }
+    setCollapsedL0(newCollapsed);
+  };
+
+  const toggleLevel1 = (sectionName: string) => {
+    const newCollapsed = new Set(collapsedL1);
+    if (newCollapsed.has(sectionName)) {
+      newCollapsed.delete(sectionName);
+    } else {
+      newCollapsed.add(sectionName);
+    }
+    setCollapsedL1(newCollapsed);
+  };
+
+  const toggleLevel2 = (sectionName: string) => {
+    const newCollapsed = new Set(collapsedL2);
+    if (newCollapsed.has(sectionName)) {
+      newCollapsed.delete(sectionName);
+    } else {
+      newCollapsed.add(sectionName);
+    }
+    setCollapsedL2(newCollapsed);
+  };
+
+  // Organize flat groups into hierarchical structure for rendering
+  const organizeHierarchy = (groups: TopicGroup[]) => {
+    const hierarchy: { [level0: string]: { [level1: string]: { [level2: string]: TopicGroup[] } } } = {};
+
+    groups.forEach(group => {
+      if (!hierarchy[group.level0]) hierarchy[group.level0] = {};
+      if (!hierarchy[group.level0][group.level1]) hierarchy[group.level0][group.level1] = {};
+      if (!hierarchy[group.level0][group.level1][group.level2 || 'direct']) {
+        hierarchy[group.level0][group.level1][group.level2 || 'direct'] = [];
+      }
+      hierarchy[group.level0][group.level1][group.level2 || 'direct'].push(group);
+    });
+
+    return hierarchy;
+  };
+
+  // Render individual topic card
+  const renderTopicCard = (topic: DiscoveredTopic, baseColor: string, group: TopicGroup) => {
+    const topicIds = group.topics.map(t => t.topic_id);
+    const topicShade = getTopicShade(topic.topic_id, baseColor, topicIds);
+
+    return (
+      <TouchableOpacity
+        key={topic.topic_id}
+        style={styles.topicCard}
+        onPress={() => handleTopicPress(topic)}
+      >
+        <View style={styles.topicCardLeft}>
+          <View style={[styles.levelIndicator, { backgroundColor: topicShade }]}>
+            <Text style={styles.levelText}>L{topic.topic_level}</Text>
+          </View>
+          <View style={styles.topicInfo}>
+            <Text style={styles.topicName} numberOfLines={2}>
+              {abbreviateTopicName(topic.topic_name)}
+            </Text>
+            <View style={styles.topicMeta}>
+              <Text style={styles.topicMetaText}>
+                {topic.card_count} cards
+              </Text>
+              {topic.cards_mastered > 0 && (
+                <>
+                  <Text style={styles.topicMetaDivider}>•</Text>
+                  <Text style={styles.topicMetaTextMastered}>
+                    {topic.cards_mastered} mastered
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+        {topic.is_newly_discovered && (
+          <View style={styles.newBadge}>
+            <Text style={styles.newBadgeText}>NEW</Text>
+          </View>
+        )}
+        <Icon name="chevron-forward" size={20} color="#999" />
+      </TouchableOpacity>
+    );
   };
 
   const handleTopicPress = (topic: DiscoveredTopic) => {
@@ -467,117 +554,154 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </View>
         ) : (
           <>
-            {/* Topic Tree */}
+            {/* Topic Tree - 4-Tier Progressive Discovery */}
             <View style={styles.topicsSection}>
               <Text style={styles.sectionTitle}>Your Discovered Topics</Text>
               
-              {groupedTopics.map((group, idx) => {
-                const isExpanded = expandedSections.has(group.level1);
-                const cardCount = group.topics.reduce((sum, t) => sum + (t.card_count || 0), 0);
+              {(() => {
+                const hierarchy = organizeHierarchy(groupedTopics);
+                
+                return Object.keys(hierarchy).sort().map((level0Name) => {
+                  const level0Collapsed = collapsedL0.has(level0Name);
+                  const level0CardCount = groupedTopics
+                    .filter(g => g.level0 === level0Name)
+                    .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
 
-                return (
-                  <View key={idx} style={styles.topicGroup}>
-                    {/* Level 1 Header */}
-                    <TouchableOpacity
-                      style={styles.groupHeader}
-                      onPress={() => toggleSection(group.level1)}
-                    >
-                      <View style={styles.groupHeaderLeft}>
-                        <Icon
-                          name={isExpanded ? "folder-open" : "folder"}
-                          size={24}
-                          color={safeSubjectColor}
-                        />
-                        <View style={styles.groupHeaderText}>
-                          <Text style={styles.groupTitle}>{group.level1}</Text>
-                          {group.level2 && (
-                            <Text style={styles.groupSubtitle}>{group.level2}</Text>
-                          )}
-                        </View>
-                      </View>
-                      <View style={styles.groupHeaderRight}>
-                        <View style={styles.cardCountBadge}>
-                          <Text style={styles.cardCountText}>{cardCount}</Text>
-                          <Icon name="albums" size={14} color={safeSubjectColor} />
-                        </View>
-                        <Icon
-                          name={isExpanded ? "chevron-up" : "chevron-down"}
-                          size={20}
-                          color="#666"
-                        />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Overview Cards Button - Create cards for Level 0 parent */}
-                    {isExpanded && (
+                  return (
+                    <View key={level0Name} style={styles.topicGroup}>
+                      {/* LEVEL 0: Exam Paper */}
                       <TouchableOpacity
-                        style={[styles.overviewButton, { borderColor: safeSubjectColor }]}
-                        onPress={() => handleCreateOverviewForParent(group)}
+                        style={[styles.groupHeader, styles.level0Header]}
+                        onPress={() => toggleLevel0(level0Name)}
                       >
-                        <Icon name="layers-outline" size={20} color={safeSubjectColor} />
-                        <View style={styles.overviewButtonContent}>
-                          <Text style={[styles.overviewButtonTitle, { color: safeSubjectColor }]}>
-                            💡 Create Overview Cards
-                          </Text>
-                          <Text style={styles.overviewButtonSubtitle}>
-                            Compare all {group.topics.length} topics in this section
+                        <View style={styles.groupHeaderLeft}>
+                          <Icon
+                            name={level0Collapsed ? "document-text" : "document-text-outline"}
+                            size={24}
+                            color={safeSubjectColor}
+                          />
+                          <Text style={[styles.groupTitle, styles.level0Title]}>
+                            {abbreviateTopicName(level0Name)}
                           </Text>
                         </View>
-                        <Icon name="arrow-forward" size={18} color={safeSubjectColor} />
+                        <View style={styles.groupHeaderRight}>
+                          <View style={styles.cardCountBadge}>
+                            <Text style={styles.cardCountText}>{level0CardCount}</Text>
+                          </View>
+                          <Icon
+                            name={level0Collapsed ? "chevron-down" : "chevron-up"}
+                            size={20}
+                            color="#666"
+                          />
+                        </View>
                       </TouchableOpacity>
-                    )}
 
-                    {/* Expanded Topics */}
-                    {isExpanded && (
-                      <View style={styles.topicsList}>
-                        {group.topics.map((topic) => {
-                          // Generate subtle shade variation for visual differentiation
-                          const topicIds = group.topics.map(t => t.topic_id);
-                          const topicShade = getTopicShade(topic.topic_id, safeSubjectColor, topicIds);
-                          
-                          return (
-                          <TouchableOpacity
-                            key={topic.id}
-                            style={styles.topicCard}
-                            onPress={() => handleTopicPress(topic)}
-                          >
-                            <View style={styles.topicCardLeft}>
-                              <View style={[styles.levelIndicator, { backgroundColor: topicShade }]}>
-                                <Text style={styles.levelText}>L{topic.topic_level}</Text>
+                      {/* LEVEL 0 CONTENT */}
+                      {!level0Collapsed && (
+                        <View style={styles.level0Content}>
+                          {Object.keys(hierarchy[level0Name]).sort().map((level1Name) => {
+                            if (!level1Name) return null;
+                            
+                            const level1Collapsed = collapsedL1.has(`${level0Name}||${level1Name}`);
+                            const level1CardCount = groupedTopics
+                              .filter(g => g.level0 === level0Name && g.level1 === level1Name)
+                              .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
+
+                            return (
+                              <View key={level1Name} style={styles.level1Section}>
+                                {/* LEVEL 1: Main Section */}
+                                <TouchableOpacity
+                                  style={[styles.groupHeader, styles.level1Header]}
+                                  onPress={() => toggleLevel1(`${level0Name}||${level1Name}`)}
+                                >
+                                  <View style={styles.groupHeaderLeft}>
+                                    <Icon
+                                      name={level1Collapsed ? "folder" : "folder-open"}
+                                      size={22}
+                                      color={safeSubjectColor}
+                                    />
+                                    <Text style={[styles.groupTitle, styles.level1Title]}>
+                                      {abbreviateTopicName(level1Name)}
+                                    </Text>
+                                  </View>
+                                  <View style={styles.groupHeaderRight}>
+                                    <View style={styles.cardCountBadge}>
+                                      <Text style={styles.cardCountText}>{level1CardCount}</Text>
+                                    </View>
+                                    <Icon
+                                      name={level1Collapsed ? "chevron-down" : "chevron-up"}
+                                      size={18}
+                                      color="#666"
+                                    />
+                                  </View>
+                                </TouchableOpacity>
+
+                                {/* LEVEL 1 CONTENT */}
+                                {!level1Collapsed && (
+                                  <View style={styles.level1Content}>
+                                    {Object.keys(hierarchy[level0Name][level1Name]).sort().map((level2Name) => {
+                                      const level2Groups = hierarchy[level0Name][level1Name][level2Name];
+                                      const level2Collapsed = collapsedL2.has(`${level0Name}||${level1Name}||${level2Name}`);
+                                      const level2CardCount = level2Groups.reduce((sum, g) => 
+                                        sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
+
+                                      // Skip "direct" if no Level 2 exists
+                                      if (level2Name === 'direct' && level2Groups[0]?.level2 === undefined) {
+                                        // Render topics directly without Level 2 wrapper
+                                        return level2Groups.map(group => 
+                                          group.topics.map(topic => renderTopicCard(topic, safeSubjectColor, group))
+                                        );
+                                      }
+
+                                      return (
+                                        <View key={level2Name} style={styles.level2Section}>
+                                          {/* LEVEL 2: Sub-section */}
+                                          <TouchableOpacity
+                                            style={[styles.groupHeader, styles.level2Header]}
+                                            onPress={() => toggleLevel2(`${level0Name}||${level1Name}||${level2Name}`)}
+                                          >
+                                            <View style={styles.groupHeaderLeft}>
+                                              <Icon
+                                                name={level2Collapsed ? "list" : "list-outline"}
+                                                size={20}
+                                                color={safeSubjectColor}
+                                              />
+                                              <Text style={[styles.groupTitle, styles.level2Title]}>
+                                                {abbreviateTopicName(level2Name)}
+                                              </Text>
+                                            </View>
+                                            <View style={styles.groupHeaderRight}>
+                                              <Text style={styles.cardCountText}>{level2CardCount}</Text>
+                                              <Icon
+                                                name={level2Collapsed ? "add" : "remove"}
+                                                size={16}
+                                                color="#666"
+                                              />
+                                            </View>
+                                          </TouchableOpacity>
+
+                                          {/* LEVEL 2 CONTENT */}
+                                          {!level2Collapsed && (
+                                            <View style={styles.level2Content}>
+                                              {level2Groups.map(group => 
+                                                group.topics.map(topic => renderTopicCard(topic, safeSubjectColor, group))
+                                              )}
+                                            </View>
+                                          )}
+                                        </View>
+                                      );
+                                    })}
+                                  </View>
+                                )}
                               </View>
-                              <View style={styles.topicInfo}>
-                                <Text style={styles.topicName} numberOfLines={2}>
-                                  {abbreviateTopicName(topic.topic_name)}
-                                </Text>
-                                <View style={styles.topicMeta}>
-                                  <Text style={styles.topicMetaText}>
-                                    {topic.card_count} cards
-                                  </Text>
-                                  {topic.cards_mastered > 0 && (
-                                    <>
-                                      <Text style={styles.topicMetaDivider}>•</Text>
-                                      <Text style={styles.topicMetaTextMastered}>
-                                        {topic.cards_mastered} mastered
-                                      </Text>
-                                    </>
-                                  )}
-                                </View>
-                              </View>
-                            </View>
-                            {topic.is_newly_discovered && (
-                              <View style={styles.newBadge}>
-                                <Text style={styles.newBadgeText}>NEW</Text>
-                              </View>
-                            )}
-                            <Icon name="chevron-forward" size={20} color="#999" />
-                          </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                });
+              })()}
             </View>
 
             {/* Discover More CTA */}
@@ -852,6 +976,53 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     justifyContent: 'space-between',
     padding: 16,
     backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+  },
+  level0Header: {
+    backgroundColor: theme === 'cyber' ? 'rgba(99, 102, 241, 0.15)' : '#f0f0ff',
+    borderLeftWidth: 4,
+    borderLeftColor: subjectColor || '#6366F1',
+    marginBottom: 4,
+  },
+  level0Title: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  level0Content: {
+    paddingLeft: 8,
+  },
+  level1Header: {
+    backgroundColor: theme === 'cyber' ? 'rgba(99, 102, 241, 0.08)' : '#f8f8ff',
+    paddingLeft: 20,
+    borderLeftWidth: 3,
+    borderLeftColor: subjectColor || '#6366F1',
+  },
+  level1Title: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  level1Content: {
+    paddingLeft: 16,
+  },
+  level1Section: {
+    marginBottom: 8,
+  },
+  level2Header: {
+    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    paddingLeft: 32,
+    paddingVertical: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: theme === 'cyber' ? 'rgba(0, 245, 255, 0.3)' : '#ddd',
+  },
+  level2Title: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme === 'cyber' ? colors.text : '#555',
+  },
+  level2Content: {
+    paddingLeft: 20,
+  },
+  level2Section: {
+    marginBottom: 4,
   },
   groupHeaderLeft: {
     flexDirection: 'row',
