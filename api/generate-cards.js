@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance } = req.body;
+    const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance, isOverview, childrenTopics } = req.body;
 
     // Validate required fields
     if (!subject || !topic || !examType || !examBoard || !questionType || !numCards) {
@@ -62,7 +62,32 @@ module.exports = async function handler(req, res) {
     // Build the prompt
     const complexityGuidance = examComplexityGuidance[examType] || examComplexityGuidance["GCSE"];
     
-    let prompt = `Generate ${numCards} high-quality flashcards for ${examBoard} ${examType} ${subject} on "${topic}".
+    let prompt;
+    
+    // Different prompts for overview vs specific cards
+    if (isOverview && childrenTopics && childrenTopics.length > 0) {
+      // OVERVIEW CARDS - Compare/contrast subtopics
+      prompt = `Generate ${numCards} OVERVIEW flashcards for ${examBoard} ${examType} ${subject} on the parent topic: "${topic}".
+
+This parent topic encompasses these subtopics: ${childrenTopics.join(', ')}.
+
+DIFFICULTY LEVEL: ${complexityGuidance}
+
+OVERVIEW CARD REQUIREMENTS:
+1. DO NOT ask specific detailed questions about individual subtopics (those exist in separate cards).
+2. FOCUS ON: Comparisons, relationships, connections, and the big picture.
+3. Generate questions that help students understand how the ${childrenTopics.length} subtopics relate to each other.
+4. Include questions like:
+   - "Compare and contrast [subtopic A] and [subtopic B]"
+   - "How does [subtopic] relate to [another subtopic]?"
+   - "What's the relationship between these ${childrenTopics.length} concepts?"
+   - "When would you use [subtopic A] vs [subtopic B]?"
+5. Help students see the strategic/big picture view of "${topic}".
+6. Ensure content is appropriate for ${examType} level students.
+`;
+    } else {
+      // SPECIFIC CARDS - Deep dive into topic
+      prompt = `Generate ${numCards} high-quality flashcards for ${examBoard} ${examType} ${subject} on "${topic}".
     
 DIFFICULTY LEVEL: ${complexityGuidance}
 
@@ -72,6 +97,7 @@ SPECIFIC INSTRUCTIONS:
 3. Ensure content is appropriate for ${examType} level students.
 4. Where possible use questions similar to those found in ${examType} exams for ${examBoard}
 `;
+    }
 
     // Add question type specific guidance
     switch (questionType) {

@@ -15,6 +15,7 @@ import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import TopicContextModal from '../../components/TopicContextModal';
 
 interface DiscoveredTopic {
   id: string;
@@ -64,6 +65,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     cardsMastered: 0,
   });
   const [showTopicOptions, setShowTopicOptions] = useState<DiscoveredTopic | null>(null);
+  const [showContextModal, setShowContextModal] = useState<DiscoveredTopic | null>(null);
 
   useEffect(() => {
     fetchDiscoveredTopics();
@@ -186,6 +188,38 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       examBoard,
       examType,
       initialSearch: showTopicOptions.full_path[showTopicOptions.full_path.length - 2] || showTopicOptions.topic_name, // Parent topic
+    });
+  };
+  
+  const handleRevealContext = () => {
+    if (!showTopicOptions) return;
+    // Show the context modal for revealing curriculum structure
+    setShowContextModal(showTopicOptions);
+    setShowTopicOptions(null);
+  };
+  
+  const handleCreateCardsFromContext = (topicId: string, topicName: string, isOverview: boolean, childrenTopics?: string[]) => {
+    // Navigate to AI Generator for card creation
+    navigation.navigate('AIGenerator', {
+      topicId,
+      topicName,
+      subjectId,
+      subjectName,
+      subjectColor: safeSubjectColor,
+      examBoard,
+      examType,
+      isOverviewCard: isOverview,
+      childrenTopics: childrenTopics || [],
+    });
+  };
+  
+  const handleStudyTopicFromContext = (topicId: string, topicName: string) => {
+    setShowContextModal(null);
+    navigation.navigate('StudyModal', {
+      topicName,
+      subjectName,
+      subjectColor: safeSubjectColor,
+      topicId,
     });
   };
 
@@ -408,11 +442,21 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             
             <TouchableOpacity
               style={[styles.optionButton, styles.optionSecondary]}
+              onPress={handleRevealContext}
+            >
+              <Icon name="git-network" size={24} color={safeSubjectColor} />
+              <Text style={[styles.optionButtonTextSecondary, { color: safeSubjectColor }]}>
+                Reveal Context
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.optionButton, styles.optionSecondary]}
               onPress={handleDiscoverRelated}
             >
               <Icon name="search" size={24} color={safeSubjectColor} />
               <Text style={[styles.optionButtonTextSecondary, { color: safeSubjectColor }]}>
-                Discover Related Topics
+                Add More Topics
               </Text>
             </TouchableOpacity>
             
@@ -425,6 +469,23 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </View>
         </TouchableOpacity>
       </Modal>
+      
+      {/* Topic Context Modal */}
+      {showContextModal && (
+        <TopicContextModal
+          visible={!!showContextModal}
+          topicId={showContextModal.topic_id}
+          topicName={showContextModal.topic_name}
+          subjectId={subjectId}
+          subjectName={subjectName}
+          subjectColor={safeSubjectColor}
+          examBoard={examBoard}
+          examType={examType}
+          onClose={() => setShowContextModal(null)}
+          onCreateCards={handleCreateCardsFromContext}
+          onStudyTopic={handleStudyTopicFromContext}
+        />
+      )}
     </SafeAreaView>
   );
 }

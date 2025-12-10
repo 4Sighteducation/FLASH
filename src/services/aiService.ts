@@ -8,6 +8,8 @@ export interface CardGenerationParams {
   questionType: 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
   numCards: number;
   contentGuidance?: string;
+  isOverview?: boolean;
+  childrenTopics?: string[];
 }
 
 export interface GeneratedCard {
@@ -92,7 +94,9 @@ export class AIService {
           examBoard: params.examBoard,
           questionType: params.questionType,
           numCards: params.numCards,
-          contentGuidance: params.contentGuidance
+          contentGuidance: params.contentGuidance,
+          isOverview: params.isOverview || false,
+          childrenTopics: params.childrenTopics || []
         })
       });
 
@@ -186,7 +190,8 @@ export class AIService {
       box_number: 1, // Note: it's box_number, not box_num in the schema
       is_ai_generated: true,
       in_study_bank: addToStudyBank,
-      added_to_study_bank_at: addToStudyBank ? new Date().toISOString() : null
+      added_to_study_bank_at: addToStudyBank ? new Date().toISOString() : null,
+      is_overview: params.isOverview || false // Mark as overview card
     }));
 
     console.log('Attempting to save flashcards:', flashcards.length, 'cards');
@@ -210,6 +215,29 @@ export class AIService {
     }
     
     console.log('✅ Successfully saved cards:', data?.length, 'cards');
+
+    // If overview cards, also save to topic_overview_cards table
+    if (params.isOverview && topicId && data && data.length > 0) {
+      console.log('📚 Saving overview cards metadata...');
+      const overviewCardRecords = data.map(card => ({
+        user_id: userId,
+        parent_topic_id: topicId,
+        card_id: card.id,
+        is_overview: true,
+        children_covered: params.childrenTopics || []
+      }));
+
+      const { error: overviewError } = await supabase
+        .from('topic_overview_cards')
+        .insert(overviewCardRecords);
+
+      if (overviewError) {
+        console.error('⚠️ Error saving overview metadata:', overviewError);
+        // Don't throw - cards are already saved, metadata is optional
+      } else {
+        console.log('✅ Overview metadata saved successfully');
+      }
+    }
 
     // If adding to study bank and topicId exists, update topic preference
     if (addToStudyBank && topicId) {

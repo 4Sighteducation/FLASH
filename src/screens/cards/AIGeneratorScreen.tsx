@@ -71,7 +71,7 @@ export default function AIGeneratorScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { subject, topic, topicId, examBoard, examType } = route.params as any;
+  const { subject, topic, topicId, examBoard, examType, isOverviewCard, childrenTopics } = route.params as any;
 
   const [selectedType, setSelectedType] = useState<CardType | null>(null);
   const [numCards, setNumCards] = useState('5');
@@ -95,6 +95,8 @@ export default function AIGeneratorScreen() {
         questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
         numCards: parseInt(numCards, 10),
         contentGuidance: additionalGuidance,
+        isOverview: isOverviewCard || false, // Pass overview flag
+        childrenTopics: childrenTopics || [], // Pass children topics for overview cards
       };
 
       console.log('🎨 Generating cards with full params:', {
@@ -105,6 +107,8 @@ export default function AIGeneratorScreen() {
         questionType: selectedType,
         numCards: parseInt(numCards, 10),
         topicId,
+        isOverview: isOverviewCard || false,
+        childrenTopics: childrenTopics || [],
       });
 
       const cards = await aiService.generateCards(params);
@@ -350,7 +354,16 @@ export default function AIGeneratorScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Card Generator</Text>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.headerTitle}>
+            {isOverviewCard ? '🏔️ Overview Cards' : 'AI Card Generator'}
+          </Text>
+          {isOverviewCard && childrenTopics && childrenTopics.length > 0 && (
+            <Text style={styles.overviewSubtitle}>
+              Comparing {childrenTopics.length} subtopics
+            </Text>
+          )}
+        </View>
         <View style={{ width: 24 }} />
       </View>
 
@@ -453,6 +466,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  overviewSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   topicInfo: {
     backgroundColor: 'white',
