@@ -14,6 +14,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import CardSlideshowModal from '../../components/CardSlideshowModal';
 
 // Priority levels - using "Revision Urgency" set
 const PRIORITY_LEVELS = [
@@ -44,6 +45,7 @@ export default function ManageTopicScreen() {
   const [cards, setCards] = useState<FlashcardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [priority, setPriority] = useState<number | null>(null);
+  const [showSlideshow, setShowSlideshow] = useState(false);
 
   useEffect(() => {
     loadTopicData();
@@ -211,22 +213,32 @@ export default function ManageTopicScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Study Button */}
+        {/* Study Options */}
         {cards.length > 0 && (
-          <TouchableOpacity
-            style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1' }]}
-            onPress={() => navigation.navigate('StudyModal', {
-              topicName,
-              subjectName,
-              subjectColor,
-              topicId,
-            })}
-          >
-            <Icon name="play-circle" size={24} color="#fff" />
-            <Text style={styles.studyButtonText}>
-              Study These Cards ({cards.length})
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.studyOptions}>
+            <TouchableOpacity
+              style={[styles.studyButton, { backgroundColor: subjectColor || '#6366F1', flex: 1 }]}
+              onPress={() => navigation.navigate('StudyModal', {
+                topicName,
+                subjectName,
+                subjectColor,
+                topicId,
+              })}
+            >
+              <Icon name="play-circle" size={24} color="#fff" />
+              <Text style={styles.studyButtonText}>Study (Leitner)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.browseButton, { borderColor: subjectColor, flex: 1 }]}
+              onPress={() => setShowSlideshow(true)}
+            >
+              <Icon name="book" size={24} color={subjectColor} />
+              <Text style={[styles.browseButtonText, { color: subjectColor }]}>
+                Browse & Flip
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Priority Rating */}
@@ -381,6 +393,16 @@ export default function ManageTopicScreen() {
         {/* Bottom Padding */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Browse Cards Modal */}
+      <CardSlideshowModal
+        isVisible={showSlideshow}
+        onClose={() => setShowSlideshow(false)}
+        cards={cards}
+        topicName={topicName}
+        subjectName={subjectName}
+        subjectColor={subjectColor}
+      />
     </SafeAreaView>
   );
 }
@@ -414,11 +436,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  studyOptions: {
+    flexDirection: 'row',
+    gap: 12,
+    margin: 16,
+  },
   studyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: 16,
     padding: 18,
     borderRadius: 16,
     gap: 12,
@@ -429,9 +455,23 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   studyButtonText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
+  },
+  browseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 2,
+    gap: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+  },
+  browseButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
   section: {
     margin: 16,
