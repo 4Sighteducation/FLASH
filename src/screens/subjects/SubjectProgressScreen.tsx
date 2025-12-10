@@ -202,7 +202,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     // Navigate to AI Generator for card creation
     navigation.navigate('AIGenerator', {
       topicId,
-      topicName,
+      topic: topicName, // AIGenerator expects 'topic' not 'topicName'
+      subject: subjectName, // AIGenerator expects 'subject' not 'subjectName'
       subjectId,
       subjectName,
       subjectColor: safeSubjectColor,
