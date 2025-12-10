@@ -471,19 +471,26 @@ export default function TopicContextModal({
               </>
             )}
 
-            {/* Explore Broader */}
-            {context.grandparent && (
+            {/* Explore Broader - Show parent's siblings */}
+            {context.parent && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={[styles.exploreButton, { backgroundColor: colors.surface }]}
                   onPress={() => {
-                    // TODO: Show parent's siblings (uncles/aunts)
+                    // Close modal and navigate to discovery with parent context
+                    onClose();
+                    if (onDiscoverMore) {
+                      setTimeout(() => onDiscoverMore(), 300);
+                    }
                   }}
                 >
                   <Icon name="git-network" size={24} color={colors.primary} />
                   <Text style={styles.exploreText}>
                     Explore Related Sections
+                  </Text>
+                  <Text style={[styles.exploreHint, { color: colors.textSecondary }]}>
+                    Find more topics in {abbreviateTopicName(context.parent.name)}
                   </Text>
                   <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
@@ -786,18 +793,21 @@ const styles = StyleSheet.create({
     color: '#9CA3B8',
   },
   exploreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginHorizontal: 20,
     padding: 16,
     borderRadius: 12,
-    gap: 12,
+    gap: 4,
   },
   exploreText: {
-    flex: 1,
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  exploreHint: {
+    fontSize: 12,
+    marginBottom: 8,
   },
   divider: {
     height: 1,

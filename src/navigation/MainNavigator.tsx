@@ -12,6 +12,7 @@ import AIGeneratorScreen from '../screens/cards/AIGeneratorScreen';
 import FlashcardsScreen from '../screens/cards/FlashcardsScreen';
 import StudyModal from '../screens/cards/StudyModal';
 import CardCreationChoice from '../screens/cards/CardCreationChoice';
+import ManageTopicScreen from '../screens/cards/ManageTopicScreen';
 import APISettingsScreen from '../screens/settings/APISettingsScreen';
 import TopicEditModal from '../components/TopicEditModal';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
@@ -120,6 +121,13 @@ function HomeStack() {
           headerShown: false,
           presentation: 'fullScreenModal',
           animation: 'slide_from_bottom'
+        }}
+      />
+      <Stack.Screen 
+        name="ManageTopic" 
+        component={ManageTopicScreen}
+        options={{ 
+          headerShown: false,
         }}
       />
       <Stack.Screen 

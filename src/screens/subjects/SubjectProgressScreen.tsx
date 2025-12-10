@@ -600,22 +600,6 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                       {/* LEVEL 0 CONTENT */}
                       {!level0Collapsed && (
                         <View style={styles.level0Content}>
-                          {/* Level 0 Overview Button */}
-                          <TouchableOpacity
-                            style={[styles.overviewButton, { borderColor: safeSubjectColor, marginLeft: 12 }]}
-                            onPress={() => handleCreateOverviewForParent({ level0: level0Name, level1: '', level2: undefined, level3: undefined, topics: groupedTopics.filter(g => g.level0 === level0Name).flatMap(g => g.topics) })}
-                          >
-                            <Icon name="layers-outline" size={18} color={safeSubjectColor} />
-                            <View style={styles.overviewButtonContent}>
-                              <Text style={[styles.overviewButtonTitle, { color: safeSubjectColor }]}>
-                                💡 Create Paper Overview
-                              </Text>
-                              <Text style={styles.overviewButtonSubtitle}>
-                                Compare all sections in this paper
-                              </Text>
-                            </View>
-                          </TouchableOpacity>
-
                           {Object.keys(hierarchy[level0Name]).sort().map((level1Name) => {
                             if (!level1Name) return null;
                             
@@ -656,22 +640,6 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                 {/* LEVEL 1 CONTENT */}
                                 {!level1Collapsed && (
                                   <View style={styles.level1Content}>
-                                    {/* Level 1 Overview Button */}
-                                    <TouchableOpacity
-                                      style={[styles.overviewButton, { borderColor: safeSubjectColor, marginLeft: 8, marginBottom: 12 }]}
-                                      onPress={() => handleCreateOverviewForParent({ level0: level0Name, level1: level1Name, level2: undefined, level3: undefined, topics: groupedTopics.filter(g => g.level0 === level0Name && g.level1 === level1Name).flatMap(g => g.topics) })}
-                                    >
-                                      <Icon name="layers-outline" size={16} color={safeSubjectColor} />
-                                      <View style={styles.overviewButtonContent}>
-                                        <Text style={[styles.overviewButtonTitle, { color: safeSubjectColor, fontSize: 13 }]}>
-                                          💡 Section Overview
-                                        </Text>
-                                        <Text style={[styles.overviewButtonSubtitle, { fontSize: 11 }]}>
-                                          Compare topics in this section
-                                        </Text>
-                                      </View>
-                                    </TouchableOpacity>
-
                                     {Object.keys(hierarchy[level0Name][level1Name]).sort().map((level2Name) => {
                                       const level2Groups = hierarchy[level0Name][level1Name][level2Name];
                                       const level2Collapsed = collapsedL2.has(`${level0Name}||${level1Name}||${level2Name}`);
