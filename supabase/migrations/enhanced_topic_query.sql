@@ -35,11 +35,11 @@ BEGIN
   )
   SELECT 
     t.id as topic_id,
-    t.topic_name,
+    COALESCE(t.display_name, t.topic_name) as topic_name,
     t.topic_level,
     t.parent_topic_id,
-    parent.topic_name as parent_name,
-    grandparent.topic_name as grandparent_name,
+    COALESCE(parent.display_name, parent.topic_name) as parent_name,
+    COALESCE(grandparent.display_name, grandparent.topic_name) as grandparent_name,
     COALESCE(utc.card_count, 0)::BIGINT as card_count,
     COALESCE(utc.cards_mastered, 0)::BIGINT as cards_mastered,
     utc.last_studied
@@ -49,7 +49,7 @@ BEGIN
   LEFT JOIN curriculum_topics parent ON parent.id = t.parent_topic_id
   LEFT JOIN curriculum_topics grandparent ON grandparent.id = parent.parent_topic_id
   WHERE ebs.subject_name = p_subject_name
-  ORDER BY t.topic_level, parent.topic_name NULLS FIRST, t.topic_name;
+  ORDER BY t.topic_level, COALESCE(parent.display_name, parent.topic_name) NULLS FIRST, COALESCE(t.display_name, t.topic_name);
 END;
 $$ LANGUAGE plpgsql;
 

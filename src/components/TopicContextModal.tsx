@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
 import { abbreviateTopicName } from '../utils/topicNameUtils';
 import RevealContextTutorial from './RevealContextTutorial';
+import { TopicNameEnhancementService } from '../services/topicNameEnhancement';
 
 const { width: screenWidth } = Dimensions.get('window');
 const IS_MOBILE = screenWidth < 768;
@@ -142,12 +143,45 @@ export default function TopicContextModal({
         if (data.parent) {
           setExpandedSections(new Set([topicId, data.parent.id]));
         }
+
+        // Auto-enhance poor topic names in background
+        enhancePoorNamesInContext(data);
       }
     } catch (error) {
       console.error('Error fetching topic context:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const enhancePoorNamesInContext = async (contextData: TopicContext) => {
+    // Collect all topics that might need enhancement
+    const topicsToCheck: any[] = [
+      contextData.current_topic,
+      ...(contextData.siblings || []),
+      ...(contextData.children || []),
+    ].filter(t => t && TopicNameEnhancementService.needsEnhancement(t.name));
+
+    if (topicsToCheck.length === 0) return;
+
+    console.log(`🔄 Enhancing ${topicsToCheck.length} poor topic names...`);
+
+    // Enhance each topic in background (don't block UI)
+    topicsToCheck.forEach(async (topic) => {
+      const enhancedName = await TopicNameEnhancementService.enhanceTopicName({
+        topicId: topic.id,
+        topicName: topic.name,
+        subjectName,
+        parentName: contextData.parent?.name,
+        grandparentName: contextData.grandparent?.name,
+        siblings: contextData.siblings?.map(s => s.name) || [],
+      });
+
+      // Refresh context after enhancement completes
+      if (enhancedName !== topic.name) {
+        setTimeout(() => fetchContext(), 500);
+      }
+    });
   };
 
   const toggleSection = (sectionId: string) => {

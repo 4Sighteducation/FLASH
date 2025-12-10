@@ -29,36 +29,39 @@ BEGIN
     SELECT 
       ct.id,
       ct.topic_name,
+      ct.display_name,
       ct.topic_level,
       ct.parent_topic_id,
       COUNT(f.id) as card_count
     FROM curriculum_topics ct
     LEFT JOIN flashcards f ON f.topic_id = ct.id AND f.user_id = p_user_id
     WHERE ct.id = p_topic_id
-    GROUP BY ct.id, ct.topic_name, ct.topic_level, ct.parent_topic_id
+    GROUP BY ct.id, ct.topic_name, ct.display_name, ct.topic_level, ct.parent_topic_id
   ),
   siblings_data AS (
     SELECT 
       sib.id,
       sib.topic_name,
+      sib.display_name,
       sib.topic_level,
       COUNT(f.id) as card_count
     FROM curriculum_topics sib
     LEFT JOIN flashcards f ON f.topic_id = sib.id AND f.user_id = p_user_id
     WHERE sib.parent_topic_id = v_parent_id
       AND sib.id != p_topic_id
-    GROUP BY sib.id, sib.topic_name, sib.topic_level
+    GROUP BY sib.id, sib.topic_name, sib.display_name, sib.topic_level
   ),
   children_data AS (
     SELECT 
       child.id,
       child.topic_name,
+      child.display_name,
       child.topic_level,
       COUNT(f.id) as card_count
     FROM curriculum_topics child
     LEFT JOIN flashcards f ON f.topic_id = child.id AND f.user_id = p_user_id
     WHERE child.parent_topic_id = p_topic_id
-    GROUP BY child.id, child.topic_name, child.topic_level
+    GROUP BY child.id, child.topic_name, child.display_name, child.topic_level
   ),
   parent_data AS (
     SELECT 
@@ -86,7 +89,9 @@ BEGIN
     'current_topic', (
       SELECT json_build_object(
         'id', id,
-        'name', topic_name,
+        'name', COALESCE(display_name, topic_name),
+        'topic_name', topic_name,
+        'display_name', display_name,
         'level', topic_level,
         'parent_id', parent_topic_id,
         'card_count', card_count
@@ -96,21 +101,25 @@ BEGIN
     'siblings', (
       SELECT COALESCE(json_agg(json_build_object(
         'id', id,
-        'name', topic_name,
+        'name', COALESCE(display_name, topic_name),
+        'topic_name', topic_name,
+        'display_name', display_name,
         'level', topic_level,
         'card_count', card_count,
         'has_cards', card_count > 0
-      ) ORDER BY topic_name), '[]'::json)
+      ) ORDER BY COALESCE(display_name, topic_name)), '[]'::json)
       FROM siblings_data
     ),
     'children', (
       SELECT COALESCE(json_agg(json_build_object(
         'id', id,
-        'name', topic_name,
+        'name', COALESCE(display_name, topic_name),
+        'topic_name', topic_name,
+        'display_name', display_name,
         'level', topic_level,
         'card_count', card_count,
         'has_cards', card_count > 0
-      ) ORDER BY topic_name), '[]'::json)
+      ) ORDER BY COALESCE(display_name, topic_name)), '[]'::json)
       FROM children_data
     ),
     'parent', (
