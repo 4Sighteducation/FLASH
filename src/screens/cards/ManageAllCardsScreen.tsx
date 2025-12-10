@@ -151,15 +151,37 @@ export default function ManageAllCardsScreen() {
           userSubjects?.map(us => [us.subject?.subject_name, us.color]) || []
         );
 
+        // Build hierarchy info map from topicDetails
+        const topicHierarchyMap = new Map();
+        topicDetails?.forEach(topic => {
+          topicHierarchyMap.set(topic.id, {
+            topic_id: topic.id,
+            topic_name: topic.display_name || topic.topic_name,
+            topic_level: topic.topic_level,
+            parent_name: topic.parent?.display_name || topic.parent?.topic_name,
+            grandparent_name: topic.parent?.parent?.display_name || topic.parent?.parent?.topic_name,
+            great_grandparent_name: topic.parent?.parent?.parent?.display_name || topic.parent?.parent?.parent?.topic_name,
+          });
+        });
+
         // Enrich cards with hierarchy and priority info
         const enrichedCards: CardWithTopic[] = flashcards.map(card => {
-          const topicData = Array.isArray(card.curriculum_topics) ? card.curriculum_topics[0] : card.curriculum_topics;
-          const topicInfo = topicsWithHierarchy?.find(t => t.topic_id === card.topic_id);
+          const topicInfo = topicHierarchyMap.get(card.topic_id);
           
           return {
-            ...card,
-            topic_name: topicInfo?.topic_name || topicData?.display_name || topicData?.topic_name || 'Unknown Topic',
-            topic_level: topicInfo?.topic_level || topicData?.topic_level || 3,
+            id: card.id,
+            question: card.question,
+            answer: card.answer,
+            card_type: card.card_type,
+            box_number: card.box_number,
+            options: card.options,
+            correct_answer: card.correct_answer,
+            key_points: card.key_points,
+            detailed_answer: card.detailed_answer,
+            topic_id: card.topic_id,
+            subject_name: card.subject_name,
+            topic_name: topicInfo?.topic_name || 'Unknown Topic',
+            topic_level: topicInfo?.topic_level || 3,
             parent_name: topicInfo?.parent_name,
             grandparent_name: topicInfo?.grandparent_name,
             great_grandparent_name: topicInfo?.great_grandparent_name,
