@@ -469,37 +469,59 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
     // Get card position for swoosh animation
     if (cardRef.current) {
-      cardRef.current.measure((x, y, width, height, pageX, pageY) => {
-        setSwooshData({
-          fromPosition: { x: pageX + width / 2, y: pageY + height / 2 },
-          toBox: newBoxNumber,
+      try {
+        cardRef.current.measure((x, y, width, height, pageX, pageY) => {
+          if (pageX !== undefined && pageY !== undefined) {
+            setSwooshData({
+              fromPosition: { x: pageX + width / 2, y: pageY + height / 2 },
+              toBox: newBoxNumber,
+            });
+            setShowSwoosh(true);
+          }
         });
-        setShowSwoosh(true);
-      });
+      } catch (error) {
+        console.log('⚠️ Measure failed, skipping swoosh animation');
+        // Skip animation if measurement fails
+      }
     }
 
     // Use centralized Leitner system for next review date
     const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
 
-    // Update database
-    await supabase
-      .from('flashcards')
-      .update({
-        box_number: newBoxNumber,
-        next_review_date: nextReviewDate.toISOString(),
-      })
-      .eq('id', cardId);
+    // Update database with proper error handling
+    try {
+      const { error: updateError } = await supabase
+        .from('flashcards')
+        .update({
+          box_number: newBoxNumber,
+          next_review_date: nextReviewDate.toISOString(),
+        })
+        .eq('id', cardId);
 
-    // Record the review
-    await supabase
-      .from('card_reviews')
-      .insert({
-        flashcard_id: cardId,
-        user_id: user?.id,
-        was_correct: correct,
-        quality: correct ? 5 : 1,
-        reviewed_at: new Date().toISOString(),
-      });
+      if (updateError) {
+        console.error('❌ Error updating flashcard:', updateError);
+        // Continue anyway - don't block the UI
+      }
+
+      // Record the review
+      const { error: reviewError } = await supabase
+        .from('card_reviews')
+        .insert({
+          flashcard_id: cardId,
+          user_id: user?.id,
+          was_correct: correct,
+          quality: correct ? 5 : 1,
+          reviewed_at: new Date().toISOString(),
+        });
+
+      if (reviewError) {
+        console.error('❌ Error recording review:', reviewError);
+        // Continue anyway - don't block the UI
+      }
+    } catch (error) {
+      console.error('❌ Database operation failed:', error);
+      // Continue anyway - update local state and don't block UI
+    }
 
     // Update local state - use functional update to avoid stale state
     setFlashcards(prevCards => {

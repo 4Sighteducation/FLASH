@@ -105,9 +105,12 @@ SPECIFIC INSTRUCTIONS:
         prompt += `
 CONTENT GUIDANCE:
 - Create challenging yet fair multiple choice questions
-- Provide exactly 4 options labeled a), b), c), d)
+- Provide exactly 4 COMPLETE options (NOT just single letters!)
+- Each option must be a full phrase or sentence (e.g., "Deontology", not just "D")
+- Label options as a), b), c), d)
 - Distribute the correct answer randomly among the four positions
 - All four options should be plausible and related to ${topic}
+- DO NOT include placeholder options like "E" or single letters
 - Provide detailed explanations that would help a student understand the concept
 `;
         break;
@@ -247,9 +250,19 @@ CONTENT GUIDANCE:
 
           switch (questionType) {
             case 'multiple_choice':
-              processedCard.options = card.options || [];
+              // Filter out invalid options (single letters, empty strings, etc.)
+              const rawOptions = card.options || [];
+              processedCard.options = rawOptions.filter(opt => {
+                const trimmed = opt.trim();
+                // Keep options that are:
+                // - More than 2 characters (exclude "E", "a)", etc.)
+                // - OR start with a letter followed by ) (like "a) Something")
+                return trimmed.length > 2 || /^[a-d]\)/.test(trimmed.toLowerCase());
+              });
+              
               processedCard.correctAnswer = card.correctAnswer || '';
               processedCard.detailedAnswer = card.detailedAnswer || '';
+              
               // Ensure we have exactly 4 options
               while (processedCard.options.length < 4) {
                 processedCard.options.push(`Option ${processedCard.options.length + 1}`);
