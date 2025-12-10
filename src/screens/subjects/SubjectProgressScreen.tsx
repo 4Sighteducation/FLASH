@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -312,6 +313,45 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     });
   };
 
+  const handleCreateOverviewForParent = async (group: TopicGroup) => {
+    // Create overview cards for the Level 0 parent topic
+    // Get all child topic names for context
+    const childrenNames = group.topics.map(t => t.topic_name);
+    
+    // Find the parent topic ID - use first topic's parent_topic_id
+    const firstTopic = group.topics[0];
+    if (!firstTopic || !firstTopic.parent_topic_id) {
+      Alert.alert('Error', 'Could not find parent topic information');
+      return;
+    }
+
+    // Fetch the parent topic details
+    const { data: parentTopic, error } = await supabase
+      .from('curriculum_topics')
+      .select('id, topic_name, topic_level')
+      .eq('id', firstTopic.parent_topic_id)
+      .single();
+
+    if (error || !parentTopic) {
+      Alert.alert('Error', 'Could not load parent topic details');
+      return;
+    }
+
+    // Navigate to AI Generator with overview flag
+    navigation.navigate('AIGenerator', {
+      topicId: parentTopic.id,
+      topic: parentTopic.topic_name,
+      subject: subjectName,
+      subjectId,
+      subjectName,
+      subjectColor: safeSubjectColor,
+      examBoard,
+      examType,
+      isOverviewCard: true,
+      childrenTopics: childrenNames,
+    });
+  };
+
   const handleDiscoverMore = () => {
     navigation.navigate('SmartTopicDiscovery', {
       subjectId,
@@ -440,17 +480,41 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                       </View>
                     </TouchableOpacity>
 
+                    {/* Overview Cards Button - Create cards for Level 0 parent */}
+                    {isExpanded && (
+                      <TouchableOpacity
+                        style={[styles.overviewButton, { borderColor: safeSubjectColor }]}
+                        onPress={() => handleCreateOverviewForParent(group)}
+                      >
+                        <Icon name="layers-outline" size={20} color={safeSubjectColor} />
+                        <View style={styles.overviewButtonContent}>
+                          <Text style={[styles.overviewButtonTitle, { color: safeSubjectColor }]}>
+                            💡 Create Overview Cards
+                          </Text>
+                          <Text style={styles.overviewButtonSubtitle}>
+                            Compare all {group.topics.length} topics in this section
+                          </Text>
+                        </View>
+                        <Icon name="arrow-forward" size={18} color={safeSubjectColor} />
+                      </TouchableOpacity>
+                    )}
+
                     {/* Expanded Topics */}
                     {isExpanded && (
                       <View style={styles.topicsList}>
-                        {group.topics.map((topic) => (
+                        {group.topics.map((topic) => {
+                          // Generate subtle shade variation for visual differentiation
+                          const topicIds = group.topics.map(t => t.topic_id);
+                          const topicShade = getTopicShade(topic.topic_id, safeSubjectColor, topicIds);
+                          
+                          return (
                           <TouchableOpacity
                             key={topic.id}
                             style={styles.topicCard}
                             onPress={() => handleTopicPress(topic)}
                           >
                             <View style={styles.topicCardLeft}>
-                              <View style={[styles.levelIndicator, { backgroundColor: safeSubjectColor }]}>
+                              <View style={[styles.levelIndicator, { backgroundColor: topicShade }]}>
                                 <Text style={styles.levelText}>L{topic.topic_level}</Text>
                               </View>
                               <View style={styles.topicInfo}>
@@ -479,7 +543,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                             )}
                             <Icon name="chevron-forward" size={20} color="#999" />
                           </TouchableOpacity>
-                        ))}
+                          );
+                        })}
                       </View>
                     )}
                   </View>
@@ -586,6 +651,24 @@ const adjustColor = (color: string | null | undefined, amount: number): string =
   const g = Math.max(0, Math.min(255, parseInt(hex.substr(2, 2), 16) + amount));
   const b = Math.max(0, Math.min(255, parseInt(hex.substr(4, 2), 16) + amount));
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
+// Generate subtle shade variation for topics with similar names
+// Uses topic_id hash to ensure consistency but differentiation
+const getTopicShade = (topicId: string, baseColor: string, allTopicIds: string[]): string => {
+  // Hash the topic ID to get a consistent number
+  const hash = topicId.split('').reduce((acc, char) => {
+    return ((acc << 5) - acc) + char.charCodeAt(0);
+  }, 0);
+  
+  // Get index in the list for relative variation
+  const index = allTopicIds.indexOf(topicId);
+  const totalTopics = allTopicIds.length;
+  
+  // Calculate subtle variation (±20 per topic, max ±40)
+  const variation = ((index % 3) - 1) * 20; // -20, 0, or +20
+  
+  return adjustColor(baseColor, variation);
 };
 
 const createStyles = (colors: any, theme: string, subjectColor: string) => StyleSheet.create({
@@ -928,6 +1011,31 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   },
   optionCancelText: {
     fontSize: 15,
+    color: theme === 'cyber' ? colors.textSecondary : '#666',
+  },
+  overviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    backgroundColor: theme === 'cyber' ? 'rgba(0, 245, 255, 0.05)' : 'rgba(99, 102, 241, 0.05)',
+    gap: 12,
+  },
+  overviewButtonContent: {
+    flex: 1,
+  },
+  overviewButtonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  overviewButtonSubtitle: {
+    fontSize: 12,
     color: theme === 'cyber' ? colors.textSecondary : '#666',
   },
 });
