@@ -709,7 +709,78 @@ This is a **world-class feature** that no other flashcard app has. The progressi
   - Built futuristic progress UI
   - Added cyber-themed styling
 
-**Commits:** (pending)
+**Commits:** 
+- e47df44 - Initial Session 2 features
+- 22ac6ca - Mobile compatibility fixes
+- b01a901 - Complete card management system
+
+### **Phase 7: Card Management System (2 hours)**
+
+**Major Feature: ManageAllCardsScreen**
+1. **New Macro Management Page:**
+   - View ALL cards across ALL subjects in one unified interface
+   - 4-tier hierarchy: Subject → Paper → Section → Topic
+   - Inline card accordions (no separate modals)
+   - Cards are flippable and reviewable in-place
+   - Delete cards from any level
+   - "Return home to generate cards" CTA at bottom
+
+2. **Daily Study Button (Cross-Topic):**
+   - Checks all boxes across all topics
+   - Shows total cards due with pulsing notification
+   - Disabled when no cards due ("All done for today")
+   - Navigates to unified study session
+
+3. **Complete Hierarchy Integration:**
+   - Built hierarchy from flashcards + curriculum_topics
+   - Fetches user subject colors for theming
+   - Integrates priority data throughout
+   - Maintains consistent 4-tier structure
+   - Auto-expands first subject by default
+
+**ManageTopicScreen Enhancements:**
+1. **Compact Layout:**
+   - Reduced vertical space by 50%
+   - Priority: Full grid → Horizontal chips with info button
+   - Card stats: Large display → Compact inline row (Total | MC | SA | ES | AC)
+   - Add Cards: Full list → Equal-sized grid with 2-line text
+   - Removed Danger Zone entirely
+
+2. **Daily Study (Topic-Specific):**
+   - Only checks cards in THIS topic
+   - Pulsing red notification dot
+   - Smooth scale animation (1.0 → 1.3 → 1.0)
+   - "Complete Daily Study" or "All done for today"
+
+3. **Priority Info Modal:**
+   - "Why Prioritize?" explanation popup
+   - Info icon (ℹ️) button next to priority chips
+   - Educational content about priority strategy
+   - Matches cyber theme styling
+
+4. **Pulsing Notifications:**
+   - Implemented Animated.loop with scale transform
+   - Red notification dot pulses continuously
+   - Shows on both ManageTopic and ManageAllCards
+   - Consistent "FLASH" brand aesthetic
+
+**Navigation Updates:**
+1. Changed "Priorities" → "Manage Cards" on HomeScreen
+2. Button greyed/disabled when user has 0 cards
+3. Added ManageAllCardsScreen route to navigator
+4. Proper navigation flow maintained
+
+**Files Created:**
+- `src/screens/cards/ManageAllCardsScreen.tsx` (complete new feature)
+
+**Files Modified:**
+- `src/screens/cards/ManageTopicScreen.tsx` (major redesign)
+- `src/navigation/MainNavigator.tsx` (new route)
+- `src/screens/main/HomeScreen.tsx` (button update)
+- `src/components/Icon.tsx` (notifications mapping)
+- `src/screens/cards/AIGeneratorScreen.tsx` (alert fixes)
+
+**Commits:** e47df44, 22ac6ca, b01a901
 
 ---
 
@@ -725,14 +796,22 @@ This is a **world-class feature** that no other flashcard app has. The progressi
 7. ✅ Verified detailed answer modals working
 8. ✅ Fixed Essay card generation API (JSON parsing)
 9. ✅ Built futuristic animated progress tracker
+10. ✅ Created ManageAllCardsScreen (macro card management)
+11. ✅ Implemented pulsing notification animations
+12. ✅ Compact ManageTopicScreen layout (50% space reduction)
+13. ✅ Priority info modal with educational content
+14. ✅ Fixed all mobile alert compatibility issues
 
 ### **User Experience Improvements:**
-- **Card Management:** From clunky modal to elegant inline accordion
+- **Card Management:** From clunky modal to elegant inline accordion + new macro page
 - **Navigation:** From 4 clicks back to instant home
-- **Priority Visibility:** From hidden to prominently displayed
+- **Priority Visibility:** From hidden to prominently displayed with info modal
 - **Priority Filtering:** From non-existent to fully functional with persistence
 - **Generation Feedback:** From static spinner to animated cyber-themed progress tracker
 - **Essay Cards:** From broken to fully functional with robust error handling
+- **Notifications:** From static to pulsing animated dots
+- **Layout Efficiency:** 50% reduction in vertical space on ManageTopicScreen
+- **Cross-Topic Management:** New unified view of all cards in one place
 
 ---
 
@@ -758,13 +837,14 @@ This is a **world-class feature** that no other flashcard app has. The progressi
 
 ## 📊 **SESSION 2 METRICS:**
 
-- **Duration:** 4+ hours
-- **Commits:** 0 (batched for end)
-- **Lines Changed:** ~1200
-- **Files Modified:** 6
-- **Issues Fixed:** 8
-- **Features Built:** 9
-- **Todos Completed:** 8
+- **Duration:** 6+ hours
+- **Commits:** 3 (e47df44, 22ac6ca, b01a901)
+- **Lines Changed:** ~2500+
+- **Files Modified:** 9
+- **Files Created:** 1 (ManageAllCardsScreen)
+- **Issues Fixed:** 12
+- **Features Built:** 14
+- **Todos Completed:** 18
 
 ---
 
