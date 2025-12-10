@@ -30,6 +30,7 @@ const emojiMap: Record<string, string> = {
   'chevron-forward': '›',
   'chevron-back': '‹',
   'chevron-down': '▾',
+  'chevron-up': '▴',
   'arrow-back': '←',
   'arrow-forward': '→',
   'close': '✕',
@@ -72,10 +73,18 @@ const emojiMap: Record<string, string> = {
   
   // Organization  
   'list-outline': '📋',
+  'list': '📋',
   'git-branch': '🌳',
   'layers-outline': '📑',
+  'layers': '📑',
   'search': '🔍',
   'swap-horizontal': '🔄',
+  'folder': '📁',
+  'folder-open': '📂',
+  'document-text': '📄',
+  'document-text-outline': '📄',
+  'git-network': '🌐',
+  'telescope-outline': '🔭',
 };
 
 interface IconProps {
