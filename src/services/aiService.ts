@@ -194,27 +194,110 @@ export class AIService {
       is_overview: params.isOverview || false // Mark as overview card
     }));
 
+    // Validate and sanitize card data before saving
+    flashcards.forEach((card, index) => {
+      // Check for excessively long fields (database limits)
+      if (card.detailed_answer && card.detailed_answer.length > 5000) {
+        console.warn(`⚠️ Card ${index + 1} detailed_answer truncated (${card.detailed_answer.length} → 5000 chars)`);
+        card.detailed_answer = card.detailed_answer.substring(0, 5000) + '...';
+      }
+      if (card.question && card.question.length > 2000) {
+        console.warn(`⚠️ Card ${index + 1} question truncated (${card.question.length} → 2000 chars)`);
+        card.question = card.question.substring(0, 2000) + '...';
+      }
+      if (card.answer && card.answer.length > 3000) {
+        console.warn(`⚠️ Card ${index + 1} answer truncated (${card.answer.length} → 3000 chars)`);
+        card.answer = card.answer.substring(0, 3000) + '...';
+      }
+    });
+
     console.log('Attempting to save flashcards:', flashcards.length, 'cards');
     console.log('First card data:', flashcards[0]);
     
     console.log('🔄 Calling Supabase insert...');
-    const { data, error } = await supabase
-      .from('flashcards')
-      .insert(flashcards)
-      .select();
     
-    console.log('📡 Supabase insert completed!', { 
-      hasData: !!data, 
-      hasError: !!error,
-      dataLength: data?.length 
-    });
+    // Try batch insert first
+    try {
+      const insertPromise = supabase
+        .from('flashcards')
+        .insert(flashcards)
+        .select();
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database save timeout after 30 seconds')), 30000)
+      );
+      
+      const { data, error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+      
+      console.log('📡 Supabase insert completed!', { 
+        hasData: !!data, 
+        hasError: !!error,
+        dataLength: data?.length 
+      });
 
-    if (error) {
-      console.error('❌ Error saving flashcards:', error);
-      throw error;
+      if (error) {
+        console.error('❌ Batch insert error:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        
+        // Try inserting one by one
+        console.log('🔄 Attempting one-by-one insert...');
+        const savedCards = [];
+        for (let i = 0; i < flashcards.length; i++) {
+          try {
+            console.log(`💾 Saving card ${i + 1}/${flashcards.length}...`);
+            const { data: singleData, error: singleError } = await supabase
+              .from('flashcards')
+              .insert([flashcards[i]])
+              .select()
+              .single();
+            
+            if (singleError) {
+              console.error(`❌ Card ${i + 1} failed:`, singleError);
+            } else {
+              savedCards.push(singleData);
+              console.log(`✅ Card ${i + 1} saved`);
+            }
+          } catch (singleErr) {
+            console.error(`❌ Exception saving card ${i + 1}:`, singleErr);
+          }
+        }
+        
+        if (savedCards.length === 0) {
+          throw new Error('Failed to save any cards to database');
+        }
+        
+        console.log(`✅ Saved ${savedCards.length}/${flashcards.length} cards via one-by-one`);
+        
+        // Continue with overview cards if applicable
+        if (params.isOverview && topicId && savedCards.length > 0) {
+          console.log('📚 Saving overview cards metadata...');
+          const overviewCardRecords = savedCards.map(card => ({
+            user_id: userId,
+            parent_topic_id: topicId,
+            card_id: card.id,
+            is_overview: true,
+            children_covered: params.childrenTopics || []
+          }));
+
+          const { error: overviewError } = await supabase
+            .from('topic_overview_cards')
+            .insert(overviewCardRecords);
+
+          if (overviewError) {
+            console.error('⚠️ Error saving overview metadata:', overviewError);
+          } else {
+            console.log('✅ Overview metadata saved successfully');
+          }
+        }
+        
+        return; // Exit successfully with partial save
+      }
+      
+      console.log('✅ Successfully saved cards:', data?.length, 'cards');
+    } catch (saveError: any) {
+      console.error('❌ Critical save error:', saveError);
+      throw new Error(`Failed to save cards: ${saveError.message}`);
     }
-    
-    console.log('✅ Successfully saved cards:', data?.length, 'cards');
 
     // If overview cards, also save to topic_overview_cards table
     if (params.isOverview && topicId && data && data.length > 0) {

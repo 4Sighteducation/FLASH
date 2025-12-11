@@ -171,6 +171,31 @@ export default function AIGeneratorScreen() {
 
       const cards = await aiService.generateCards(params);
       
+      // Validate cards were generated properly
+      const validCards = cards.filter(card => 
+        card.question && 
+        card.question !== 'No question generated' &&
+        card.question.length > 10
+      );
+      
+      if (validCards.length === 0) {
+        // All cards failed
+        Alert.alert(
+          'Oops! 😅',
+          `Sorry, we couldn't create any flashcards that time. This occasionally happens with AI.\n\nPlease try:\n• Generating fewer cards (try 3 instead of ${numCards})\n• A different card type\n• Simplifying the topic name`,
+          [{ text: 'Try Again', onPress: () => setCurrentStep('options') }]
+        );
+        setIsGenerating(false);
+        return;
+      } else if (validCards.length < cards.length) {
+        // Some cards failed
+        Alert.alert(
+          'Partial Success',
+          `Created ${validCards.length} out of ${cards.length} cards. Some failed to generate properly.`,
+          [{ text: 'OK' }]
+        );
+      }
+      
       // Complete animation
       setGenerationProgress(100);
       setGenerationStatus('Complete! ✨');
@@ -183,7 +208,7 @@ export default function AIGeneratorScreen() {
       // Small delay to show completion
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      setGeneratedCards(cards);
+      setGeneratedCards(validCards);
       setCurrentStep('preview');
     } catch (error: any) {
       Alert.alert('Generation Error', error.message || 'Failed to generate cards');
