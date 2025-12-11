@@ -125,16 +125,10 @@ CONTENT GUIDANCE:
       case 'essay':
         prompt += `
 CONTENT GUIDANCE:
-- Questions should match typical ${examType} essay question styles (e.g., "Evaluate...", "To what extent...", "Assess...")
-- Each card MUST include:
-  * question: The essay question
-  * keyPoints: Array of 4-6 main arguments/essay structure points
-  * detailedAnswer: Comprehensive essay guidance with examples
+- Questions should match typical ${examType} essay question styles
 - KeyPoints should reflect main arguments and essay structure needed for top marks
 - Include ${examType}-appropriate evaluation and analysis guidance
 - DetailedAnswer should provide elaborate explanation suitable for deeper understanding
-
-IMPORTANT: Return ALL ${numCards} cards in the JSON response.
 `;
         break;
       case 'acronym':
@@ -216,71 +210,50 @@ CONTENT GUIDANCE:
         break;
     }
 
-    // Call OpenAI API
+    // Call OpenAI API - REVERT TO ORIGINAL WORKING METHOD
     const systemMessage = `You are an expert ${examType} ${subject} educator. Create precise, high-quality flashcards that match ${examBoard} standards.`;
     
-    // Update prompt to request JSON format explicitly
-    const jsonPrompt = prompt + `\n\nReturn the response in the following JSON format:\n${JSON.stringify({cards: [cardSchema]}, null, 2)}`;
-    
-    console.log('🤖 Calling OpenAI with model:', questionType === 'essay' ? 'gpt-4o-mini' : 'gpt-3.5-turbo');
-    
     const completion = await openai.chat.completions.create({
-      model: questionType === 'essay' ? 'gpt-4o-mini' : 'gpt-3.5-turbo',  // Faster and more reliable
+      model: questionType === 'essay' ? 'gpt-4-turbo' : 'gpt-3.5-turbo',
       messages: [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: jsonPrompt }
+        { role: 'user', content: prompt }
       ],
-      response_format: { type: "json_object" },  // Force JSON mode
-      temperature: 0.7,
-      max_tokens: questionType === 'essay' ? 3500 : Math.min(3000, numCards * 250)
-    });
-    
-    console.log('✅ OpenAI response received, parsing...');
-
-    // Parse the response
-    if (completion.choices?.[0]?.message?.content) {
-      let functionArgs;
-      try {
-        const responseContent = completion.choices[0].message.content;
-        console.log('📄 Raw response length:', responseContent.length);
-        console.log('📄 First 500 chars:', responseContent.substring(0, 500));
-        
-        // Try parsing the JSON
-        functionArgs = JSON.parse(responseContent);
-        console.log('✅ JSON parsed successfully');
-        console.log('📊 Cards found:', functionArgs.cards?.length || 0);
-      } catch (parseError) {
-        console.error('❌ JSON parsing error:', parseError.message);
-        console.error('Raw content:', completion.choices[0].message.content);
-        
-        // Try to fix common JSON issues
-        try {
-          let fixedContent = completion.choices[0].message.content;
-          // Remove markdown code blocks if present
-          fixedContent = fixedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-          // Trim whitespace
-          fixedContent = fixedContent.trim();
-          functionArgs = JSON.parse(fixedContent);
-          console.log('✅ Fixed JSON successfully');
-        } catch (fixError) {
-          console.error('❌ Could not fix JSON:', fixError.message);
-          throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+      functions: [{
+        name: 'generateFlashcards',
+        description: `Generate ${numCards} flashcards`,
+        parameters: {
+          type: "object",
+          properties: {
+            cards: {
+              type: "array",
+              items: cardSchema
+            }
+          },
+          required: ["cards"]
         }
+      }],
+      function_call: { name: 'generateFlashcards' },
+      temperature: 0.7,
+      max_tokens: questionType === 'essay' ? 4000 : Math.min(3000, numCards * 250)
+    });
+
+    // Parse the response - ORIGINAL METHOD
+    let functionArgs;
+    if (completion.choices?.[0]?.message?.function_call) {
+      try {
+        functionArgs = JSON.parse(completion.choices[0].message.function_call.arguments);
+      } catch (parseError) {
+        console.error('JSON parsing error:', parseError.message);
+        throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
       }
-      
-      if (functionArgs.cards && Array.isArray(functionArgs.cards) && functionArgs.cards.length > 0) {
-        console.log('🎴 Processing', functionArgs.cards.length, 'cards...');
-        console.log('📋 First card raw data:', JSON.stringify(functionArgs.cards[0]));
-        
+
+      if (functionArgs && functionArgs.cards && Array.isArray(functionArgs.cards)) {
         // Process and return the cards
-        const processedCards = functionArgs.cards.map((card, index) => {
-          console.log(`\n🔍 Processing card ${index + 1}:`, JSON.stringify(card));
-          
+        const processedCards = functionArgs.cards.map(card => {
           const processedCard = {
             question: card.question || 'No question generated'
           };
-          
-          console.log(`   Question extracted: ${processedCard.question.substring(0, 50)}...`);
 
           switch (questionType) {
             case 'multiple_choice':
@@ -304,14 +277,9 @@ CONTENT GUIDANCE:
               break;
             case 'short_answer':
             case 'essay':
-              // Handle different possible field names from AI
-              processedCard.keyPoints = card.keyPoints || card.key_points || card.keypoints || [];
-              processedCard.detailedAnswer = card.detailedAnswer || card.detailed_answer || card.detailedanswer || '';
-              processedCard.answer = (processedCard.keyPoints.length > 0) 
-                ? processedCard.keyPoints.join('\n• ') 
-                : 'Answer not generated';
-              
-              console.log(`   Essay/SA - keyPoints: ${processedCard.keyPoints.length}, detailedAnswer: ${processedCard.detailedAnswer.length} chars`);
+              processedCard.keyPoints = card.keyPoints || [];
+              processedCard.detailedAnswer = card.detailedAnswer || '';
+              processedCard.answer = processedCard.keyPoints.join('\n• ');
               break;
             case 'acronym':
               processedCard.acronym = card.acronym || '';
@@ -323,21 +291,14 @@ CONTENT GUIDANCE:
           return processedCard;
         });
 
-        console.log('✅ Returning', processedCards.length, 'processed cards');
         return res.status(200).json({ 
           success: true,
           cards: processedCards 
         });
-      } else {
-        console.error('❌ No cards found in response or empty array');
-        console.error('functionArgs:', JSON.stringify(functionArgs));
       }
-    } else {
-      console.error('❌ No content in completion response');
-      console.error('completion:', JSON.stringify(completion));
     }
 
-    throw new Error('Invalid response format from AI - no cards generated');
+    throw new Error('Invalid response format from AI');
   } catch (error) {
     console.error('Error generating cards:', error);
     return res.status(500).json({ 
