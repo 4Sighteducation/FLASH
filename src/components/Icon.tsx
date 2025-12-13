@@ -35,6 +35,8 @@ const emojiMap: Record<string, string> = {
   'arrow-forward': '→',
   'close': '✕',
   'close-circle': '⊗',
+  'home': '🏠',
+  'home-outline': '🏠',
   
   // Status
   'checkmark': '✓',
