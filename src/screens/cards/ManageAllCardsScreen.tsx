@@ -80,6 +80,7 @@ export default function ManageAllCardsScreen() {
 
       for (const userSubject of userSubjects) {
         const subjectName = userSubject.subject.subject_name;
+        const subjectId = userSubject.subject_id;
         const examBoard = userSubject.exam_board || 'Unknown';
         
         // Get all cards for this subject
@@ -101,8 +102,8 @@ export default function ManageAllCardsScreen() {
         // Get FULL curriculum for this subject (up to level 4)
         const { data: allTopics, error: topicsError } = await supabase
           .from('curriculum_topics')
-          .select('id, topic_name, display_name, topic_level, parent_topic_id, subject_name')
-          .eq('subject_name', subjectName)
+          .select('id, topic_name, display_name, topic_level, parent_topic_id')
+          .eq('exam_board_subject_id', subjectId)
           .lte('topic_level', 4)  // Only up to level 4
           .order('topic_level', { ascending: true });
 
