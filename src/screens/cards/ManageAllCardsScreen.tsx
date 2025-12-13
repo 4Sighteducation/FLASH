@@ -16,6 +16,14 @@ import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Priority levels
+const PRIORITY_LEVELS = [
+  { value: 1, label: "I've Got This", emoji: '😎', color: '#10B981' },
+  { value: 2, label: 'Worth a Look', emoji: '👀', color: '#3B82F6' },
+  { value: 3, label: 'Revision Mode', emoji: '📚', color: '#F59E0B' },
+  { value: 4, label: 'Exam Alert', emoji: '🚨', color: '#EF4444' },
+];
+
 interface TopicNode {
   id: string;
   name: string;
@@ -24,11 +32,13 @@ interface TopicNode {
   cardCount: number;
   children: TopicNode[];
   parentId: string | null;
+  priority: number | null;
 }
 
 interface SubjectData {
   subjectName: string;
   subjectColor: string;
+  subjectId: string;
   examBoard: string;
   examType: string;
   rootTopics: TopicNode[];
@@ -43,6 +53,7 @@ export default function ManageAllCardsScreen() {
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadFullCurriculumWithCards();
@@ -114,6 +125,16 @@ export default function ManageAllCardsScreen() {
 
         if (!allTopics || allTopics.length === 0) continue;
 
+        // Get priorities for all topics
+        const topicIds = allTopics.map(t => t.id);
+        const { data: priorities } = await supabase
+          .from('user_topic_priorities')
+          .select('topic_id, priority')
+          .eq('user_id', user?.id)
+          .in('topic_id', topicIds);
+
+        const priorityMap = new Map(priorities?.map(p => [p.topic_id, p.priority]) || []);
+
         // Build topic map
         const topicMap = new Map<string, TopicNode>();
         const topicsWithCardsSet = new Set(topicIdsWithCards);
@@ -131,6 +152,7 @@ export default function ManageAllCardsScreen() {
             cardCount,
             children: [],
             parentId: topic.parent_topic_id,
+            priority: priorityMap.get(topic.id) || null,
           });
         });
 
@@ -176,12 +198,18 @@ export default function ManageAllCardsScreen() {
 
         subjectsData.push({
           subjectName,
+          subjectId,
           subjectColor: userSubject.color || '#6366F1',
           examBoard: examBoard,
-          examType: 'A-Level', // Default for now, can be enhanced later
+          examType: 'A-Level',
           rootTopics,
           totalCards,
         });
+
+        // Auto-expand first subject
+        if (subjectsData.length === 1) {
+          setExpandedSubjects(new Set([subjectName]));
+        }
       }
 
       setSubjects(subjectsData);
@@ -204,76 +232,186 @@ export default function ManageAllCardsScreen() {
     setExpandedNodes(newSet);
   };
 
+  const toggleSubject = (subjectName: string) => {
+    const newSet = new Set(expandedSubjects);
+    if (newSet.has(subjectName)) {
+      newSet.delete(subjectName);
+    } else {
+      newSet.add(subjectName);
+    }
+    setExpandedSubjects(newSet);
+  };
+
+  const setPriority = async (topicId: string, priority: number, subject: SubjectData) => {
+    try {
+      const { error } = await supabase
+        .from('user_topic_priorities')
+        .upsert({
+          user_id: user?.id,
+          topic_id: topicId,
+          priority: priority,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      const updateNodePriority = (nodes: TopicNode[]): TopicNode[] => {
+        return nodes.map(node => {
+          if (node.id === topicId) {
+            return { ...node, priority };
+          }
+          if (node.children.length > 0) {
+            return { ...node, children: updateNodePriority(node.children) };
+          }
+          return node;
+        });
+      };
+
+      setSubjects(prevSubjects =>
+        prevSubjects.map(s =>
+          s.subjectName === subject.subjectName
+            ? { ...s, rootTopics: updateNodePriority(s.rootTopics) }
+            : s
+        )
+      );
+    } catch (error) {
+      console.error('Error setting priority:', error);
+      Alert.alert('Error', 'Failed to set priority');
+    }
+  };
+
+  const handleAddCards = (node: TopicNode, subject: SubjectData) => {
+    navigation.navigate('AIGenerator' as never, {
+      topicId: node.id,
+      topicName: node.name,
+      subjectName: subject.subjectName,
+      subjectColor: subject.subjectColor,
+      examBoard: subject.examBoard,
+      examType: subject.examType,
+    } as never);
+  };
+
   const renderTopicNode = (node: TopicNode, subject: SubjectData, depth: number = 0): React.ReactNode => {
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children.length > 0;
+    const priorityInfo = PRIORITY_LEVELS.find(p => p.value === node.priority);
     
-    // Filter children: only show un-greyed children when expanded
-    const visibleChildren = node.children.filter(child => child.hasCards);
-
     // Indentation based on depth
-    const indentSize = depth * 20;
+    const indentSize = depth * 24;
 
     // Icon based on level
     const getIcon = () => {
-      if (node.level === 0) return '📄';  // Paper
-      if (node.level === 1) return '📂';  // Section
-      if (node.level === 2) return '📁';  // Subsection
-      if (node.level === 3) return '📋';  // Topic
-      return '📌';  // Subtopic
+      if (node.level === 0) return '📄';
+      if (node.level === 1) return '📂';
+      if (node.level === 2) return '📁';
+      if (node.level === 3) return '📋';
+      return '📌';
+    };
+
+    const getIconColor = () => {
+      if (node.level === 0) return subject.subjectColor;
+      if (node.level === 1) return adjustColor(subject.subjectColor, 20);
+      if (node.level === 2) return adjustColor(subject.subjectColor, 40);
+      return '#6B7280';
     };
 
     return (
-      <View key={node.id}>
-        <TouchableOpacity
-          style={[
-            styles.topicRow,
-            { marginLeft: indentSize },
-            !node.hasCards && styles.topicRowGreyed,
-          ]}
-          onPress={() => {
-            if (hasChildren && visibleChildren.length > 0) {
-              toggleNode(node.id);
-            } else if (node.cardCount > 0) {
-              // Navigate to ManageTopicScreen
-              navigation.navigate('ManageTopic' as never, {
-                topicId: node.id,
-                topicName: node.name,
-                subjectName: subject.subjectName,
-                subjectColor: subject.subjectColor,
-                examBoard: subject.examBoard,
-                examType: subject.examType,
-              } as never);
-            }
-          }}
-          disabled={!node.hasCards}
-        >
-          <View style={styles.topicLeft}>
-            {hasChildren && visibleChildren.length > 0 && (
-              <Text style={styles.chevron}>
-                {isExpanded ? '▾' : '›'}
-              </Text>
+      <View key={node.id} style={styles.topicNodeContainer}>
+        <View style={[styles.topicRow, { marginLeft: indentSize }]}>
+          {/* Left side - Expand/Icon/Name */}
+          <TouchableOpacity
+            style={styles.topicLeft}
+            onPress={() => hasChildren && toggleNode(node.id)}
+            disabled={!hasChildren}
+          >
+            {hasChildren ? (
+              <Text style={styles.chevron}>{isExpanded ? '▾' : '›'}</Text>
+            ) : (
+              <View style={styles.chevronSpacer} />
             )}
-            <Text style={styles.topicIcon}>{getIcon()}</Text>
-            <Text style={[
-              styles.topicName,
-              !node.hasCards && styles.topicNameGreyed,
-              node.level === 0 && styles.topicNameL0,
-              node.level === 1 && styles.topicNameL1,
-            ]}>
-              {node.name}
-            </Text>
-          </View>
-          {node.cardCount > 0 && (
-            <View style={[styles.cardBadge, { backgroundColor: subject.subjectColor }]}>
-              <Text style={styles.cardBadgeText}>{node.cardCount}</Text>
+            <View style={[styles.iconCircle, { borderColor: getIconColor() }]}>
+              <Text style={styles.topicIcon}>{getIcon()}</Text>
             </View>
-          )}
-        </TouchableOpacity>
+            <View style={styles.topicInfo}>
+              <Text
+                style={[
+                  styles.topicName,
+                  node.level === 0 && styles.topicNameL0,
+                  node.level === 1 && styles.topicNameL1,
+                  !node.hasCards && styles.topicNameGreyed,
+                ]}
+                numberOfLines={2}
+              >
+                {node.name}
+              </Text>
+              {node.level === 0 && (
+                <View style={styles.levelBadge}>
+                  <Text style={styles.levelBadgeText}>Paper</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
 
-        {/* Render children only if expanded */}
-        {isExpanded && visibleChildren.map(child => 
-          renderTopicNode(child, subject, depth + 1)
+          {/* Right side - Priority/Cards/Actions */}
+          <View style={styles.topicRight}>
+            {/* Priority selector */}
+            {!priorityInfo ? (
+              <View style={styles.prioritySelector}>
+                {PRIORITY_LEVELS.map(level => (
+                  <TouchableOpacity
+                    key={level.value}
+                    style={[styles.priorityButton, { borderColor: level.color }]}
+                    onPress={() => setPriority(node.id, level.value, subject)}
+                  >
+                    <Text style={styles.priorityEmoji}>{level.emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.priorityBadge, { backgroundColor: priorityInfo.color }]}
+                onPress={() => setPriority(node.id, 0, subject)}
+              >
+                <Text style={styles.priorityBadgeEmoji}>{priorityInfo.emoji}</Text>
+                <Text style={styles.priorityBadgeText}>{priorityInfo.label}</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Card count or Add button */}
+            {node.cardCount > 0 ? (
+              <TouchableOpacity
+                style={[styles.cardBadge, { backgroundColor: subject.subjectColor }]}
+                onPress={() => {
+                  navigation.navigate('ManageTopic' as never, {
+                    topicId: node.id,
+                    topicName: node.name,
+                    subjectName: subject.subjectName,
+                    subjectColor: subject.subjectColor,
+                    examBoard: subject.examBoard,
+                    examType: subject.examType,
+                  } as never);
+                }}
+              >
+                <Text style={styles.cardBadgeText}>{node.cardCount}</Text>
+                <Icon name="chevron-forward" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => handleAddCards(node, subject)}
+              >
+                <Icon name="add-circle" size={20} color={subject.subjectColor} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Render ALL children when expanded (not just ones with cards) */}
+        {isExpanded && hasChildren && (
+          <View>
+            {node.children.map(child => renderTopicNode(child, subject, depth + 1))}
+          </View>
         )}
       </View>
     );
@@ -297,16 +435,19 @@ export default function ManageAllCardsScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Icon name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Cards</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Manage All Cards</Text>
         </View>
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No cards found. Create some flashcards to get started!
+          <Text style={styles.emptyIcon}>📚</Text>
+          <Text style={[styles.emptyText, { color: colors.text }]}>No cards found</Text>
+          <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+            Create some flashcards to get started!
           </Text>
           <TouchableOpacity
             style={[styles.createButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('CardSubjectSelector' as never)}
           >
+            <Icon name="add-circle" size={20} color="#FFFFFF" />
             <Text style={styles.createButtonText}>Create Cards</Text>
           </TouchableOpacity>
         </View>
@@ -321,45 +462,70 @@ export default function ManageAllCardsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Manage All Cards</Text>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Manage All Cards</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            Full Curriculum Overview
+          </Text>
+        </View>
       </View>
 
       <ScrollView style={styles.scrollView}>
-        {subjects.map((subject, index) => (
-          <View key={index} style={styles.subjectSection}>
-            {/* Subject Header */}
-            <LinearGradient
-              colors={[subject.subjectColor, adjustColor(subject.subjectColor, -20)]}
-              style={styles.subjectHeader}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.subjectName}>{subject.subjectName}</Text>
-              <View style={styles.subjectBadge}>
-                <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
-              </View>
-            </LinearGradient>
+        {/* Info Banner */}
+        <View style={[styles.infoBanner, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: colors.primary }]}>
+          <Icon name="information-circle" size={20} color={colors.primary} />
+          <Text style={[styles.infoBannerText, { color: colors.text }]}>
+            Set priorities on any topic to plan your study. Topics with cards are highlighted.
+          </Text>
+        </View>
 
-            {/* Topic Tree */}
-            <View style={[styles.topicTree, { backgroundColor: colors.surface }]}>
-              {subject.rootTopics.map(rootTopic => 
-                renderTopicNode(rootTopic, subject, 0)
+        {/* Subjects */}
+        {subjects.map((subject, index) => {
+          const isExpanded = expandedSubjects.has(subject.subjectName);
+          
+          return (
+            <View key={index} style={styles.subjectSection}>
+              {/* Subject Header */}
+              <TouchableOpacity onPress={() => toggleSubject(subject.subjectName)}>
+                <LinearGradient
+                  colors={[subject.subjectColor, adjustColor(subject.subjectColor, -20)]}
+                  style={styles.subjectHeader}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.subjectHeaderLeft}>
+                    <Text style={styles.chevronLarge}>{isExpanded ? '▾' : '›'}</Text>
+                    <View>
+                      <Text style={styles.subjectName}>{subject.subjectName}</Text>
+                      <Text style={styles.subjectMeta}>{subject.examBoard}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.subjectBadge}>
+                    <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Topic Tree */}
+              {isExpanded && (
+                <View style={[styles.topicTree, { backgroundColor: colors.surface }]}>
+                  {subject.rootTopics.map(rootTopic => 
+                    renderTopicNode(rootTopic, subject, 0)
+                  )}
+                </View>
               )}
             </View>
-          </View>
-        ))}
+          );
+        })}
 
-        {/* Footer CTA */}
+        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-            Return home to generate more cards
-          </Text>
           <TouchableOpacity
             style={[styles.homeButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('HomeMain' as never)}
           >
             <Icon name="home" size={20} color="#FFFFFF" />
-            <Text style={styles.homeButtonText}>Go Home</Text>
+            <Text style={styles.homeButtonText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -394,21 +560,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    borderBottomWidth: 1,
+    borderBottomWidth: 2,
     borderBottomColor: 'rgba(0, 245, 255, 0.2)',
   },
   backButton: {
     marginRight: 12,
   },
+  headerCenter: {
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
   },
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 2,
+  },
   scrollView: {
     flex: 1,
   },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   subjectSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   subjectHeader: {
     flexDirection: 'row',
@@ -418,14 +606,35 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  subjectHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  chevronLarge: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   subjectName: {
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  subjectMeta: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
   subjectBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -433,13 +642,19 @@ const styles = StyleSheet.create({
   subjectBadgeText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   topicTree: {
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  topicNodeContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   topicRow: {
     flexDirection: 'row',
@@ -447,62 +662,137 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  topicRowGreyed: {
-    opacity: 0.4,
   },
   topicLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 12,
   },
   chevron: {
-    fontSize: 16,
+    fontSize: 18,
     marginRight: 8,
-    width: 16,
+    width: 20,
     color: '#666',
+    fontWeight: '700',
+  },
+  chevronSpacer: {
+    width: 28,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   topicIcon: {
     fontSize: 18,
-    marginRight: 8,
+  },
+  topicInfo: {
+    flex: 1,
   },
   topicName: {
     fontSize: 15,
     color: '#1F2937',
-    flex: 1,
+    fontWeight: '500',
   },
   topicNameGreyed: {
     color: '#9CA3AF',
+    fontWeight: '400',
   },
   topicNameL0: {
     fontWeight: '700',
     fontSize: 16,
+    color: '#111827',
   },
   topicNameL1: {
     fontWeight: '600',
+    fontSize: 15,
   },
-  cardBadge: {
+  levelBadge: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  levelBadgeText: {
+    fontSize: 11,
+    color: '#6366F1',
+    fontWeight: '600',
+  },
+  topicRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  prioritySelector: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  priorityButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  priorityEmoji: {
+    fontSize: 14,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
   },
-  cardBadgeText: {
+  priorityBadgeEmoji: {
+    fontSize: 14,
+  },
+  priorityBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  cardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  cardBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
   },
   footer: {
     alignItems: 'center',
     paddingVertical: 32,
     paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: 'center',
   },
   homeButton: {
     flexDirection: 'row',
@@ -511,6 +801,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 24,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   homeButtonText: {
     color: '#FFFFFF',
@@ -523,15 +818,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 32,
   },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
   emptyText: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  emptySubtext: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
   },
   createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
+    gap: 8,
   },
   createButtonText: {
     color: '#FFFFFF',
