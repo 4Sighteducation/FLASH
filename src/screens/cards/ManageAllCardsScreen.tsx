@@ -58,15 +58,17 @@ export default function ManageAllCardsScreen() {
         .select(`
           subject_id,
           color,
+          exam_board,
           subject:exam_board_subjects!subject_id(
-            subject_name,
-            exam_board,
-            qualification_type
+            subject_name
           )
         `)
         .eq('user_id', user?.id);
 
-      if (subjectsError) throw subjectsError;
+      if (subjectsError) {
+        console.error('Error fetching user subjects:', subjectsError);
+        throw subjectsError;
+      }
 
       if (!userSubjects || userSubjects.length === 0) {
         setLoading(false);
@@ -78,6 +80,7 @@ export default function ManageAllCardsScreen() {
 
       for (const userSubject of userSubjects) {
         const subjectName = userSubject.subject.subject_name;
+        const examBoard = userSubject.exam_board || 'Unknown';
         
         // Get all cards for this subject
         const { data: cards, error: cardsError } = await supabase
@@ -173,8 +176,8 @@ export default function ManageAllCardsScreen() {
         subjectsData.push({
           subjectName,
           subjectColor: userSubject.color || '#6366F1',
-          examBoard: userSubject.subject.exam_board,
-          examType: userSubject.subject.qualification_type,
+          examBoard: examBoard,
+          examType: 'A-Level', // Default for now, can be enhanced later
           rootTopics,
           totalCards,
         });
