@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Audio } from 'expo-av';
 
 export interface AudioPermissionStatus {
