@@ -59,22 +59,22 @@ export class AIService {
   private apiUrl: string;
 
   constructor() {
-    // Use your backend API instead of OpenAI directly
-    // For React Native/Expo, we'll use the __DEV__ global variable
-    // In development, this will be http://localhost:3000/api/generate-cards
-    // In production, this will be https://your-app.vercel.app/api/generate-cards
+    // Always use production API for mobile devices
+    // Localhost doesn't work on phones - they can't reach your computer
+    // For web development, use localhost. For mobile, use production.
     
-    // For local development, you might need to use your computer's IP instead of localhost
-    // e.g., http://192.168.1.100:3000/api/generate-cards
+    const Platform = require('react-native').Platform;
     const isDev = __DEV__ ?? false;
     
-    // Use same domain as web app for API calls
-    // This ensures API functions are deployed with the main app
-    this.apiUrl = isDev
-      ? 'http://localhost:3000/api/generate-cards'  // Local testing
-      : 'https://www.fl4sh.cards/api/generate-cards';  // Production
+    // Use production API for mobile devices (even in dev mode)
+    // Use localhost only for web development
+    if (Platform.OS === 'web' && isDev) {
+      this.apiUrl = 'http://localhost:3000/api/generate-cards';  // Web dev only
+    } else {
+      this.apiUrl = 'https://www.fl4sh.cards/api/generate-cards';  // Mobile + production
+    }
     
-    console.log('🔑 [AIService] Using API URL:', this.apiUrl);
+    console.log('🔑 [AIService] Platform:', Platform.OS, 'Dev:', isDev, 'Using API URL:', this.apiUrl);
   }
 
   async generateCards(params: CardGenerationParams): Promise<GeneratedCard[]> {
