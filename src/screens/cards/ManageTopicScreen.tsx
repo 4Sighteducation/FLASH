@@ -1003,8 +1003,12 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   expandedCardContainer: {
-    height: Platform.OS === 'ios' ? 380 : 360,
-    overflow: 'hidden',
+    height: 350,
+    maxHeight: 350,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
   },
   numberPickerModal: {
     borderRadius: 20,

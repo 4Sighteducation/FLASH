@@ -522,8 +522,10 @@ export default function FlashcardCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: Math.min(screenWidth - 24, 650),
-    height: IS_MOBILE ? Math.min(screenHeight * 0.65, 520) : 500,
+    width: IS_MOBILE ? Math.min(screenWidth - 32, 340) : Math.min(screenWidth - 24, 650),
+    height: IS_MOBILE ? Math.min(screenHeight * 0.50, 420) : 500,
+    maxWidth: '95%',
+    maxHeight: '90%',
     marginVertical: 8,
     alignSelf: 'center',
   },
