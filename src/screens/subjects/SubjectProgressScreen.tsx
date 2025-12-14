@@ -61,10 +61,10 @@ interface SubjectProgressScreenProps {
 
 // Priority levels configuration
 const PRIORITY_LEVELS = [
-  { value: 1, label: "I've Got This", emoji: '😎', color: '#10B981' },
-  { value: 2, label: 'Worth a Look', emoji: '👀', color: '#3B82F6' },
-  { value: 3, label: 'Revision Mode', emoji: '📚', color: '#F59E0B' },
-  { value: 4, label: 'Exam Alert', emoji: '🚨', color: '#EF4444' },
+  { value: 1, label: "Low Priority", number: '1', color: '#10B981' }, // Green
+  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B' }, // Orange
+  { value: 3, label: 'High Priority', number: '3', color: '#FF006E' }, // Pink
+  { value: 4, label: 'Urgent', number: '4', color: '#EF4444' }, // Red
 ];
 
 const getPriorityInfo = (priority: number | null | undefined) => {
@@ -638,48 +638,47 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </View>
         ) : (
           <>
-            {/* Priority Filter Buttons */}
+            {/* Priority Filter Buttons - Compact Number System */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterTitle}>Filter by Priority:</Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterButtons}
-              >
+              <Text style={styles.filterTitle}>FILTER BY PRIORITY</Text>
+              <View style={styles.filterButtonsRow}>
                 <TouchableOpacity
                   style={[
-                    styles.filterButton,
-                    priorityFilter === null && styles.filterButtonActive
+                    styles.filterNumberButton,
+                    priorityFilter === null && styles.filterNumberButtonActive
                   ]}
                   onPress={() => setPriorityFilter(null)}
                 >
                   <Text style={[
-                    styles.filterButtonText,
-                    priorityFilter === null && styles.filterButtonTextActive
+                    styles.filterNumberText,
+                    priorityFilter === null && styles.filterNumberTextActive
                   ]}>
-                    All Topics
+                    ALL
                   </Text>
                 </TouchableOpacity>
                 {PRIORITY_LEVELS.map(level => (
                   <TouchableOpacity
                     key={level.value}
                     style={[
-                      styles.filterButton,
+                      styles.filterNumberButton,
                       { borderColor: level.color },
-                      priorityFilter === level.value && [styles.filterButtonActive, { backgroundColor: level.color }]
+                      priorityFilter === level.value && [
+                        styles.filterNumberButtonActive, 
+                        { backgroundColor: level.color, borderColor: level.color }
+                      ]
                     ]}
                     onPress={() => setPriorityFilter(level.value)}
                   >
-                    <Text style={styles.filterButtonEmoji}>{level.emoji}</Text>
                     <Text style={[
-                      styles.filterButtonText,
-                      priorityFilter === level.value && styles.filterButtonTextActive
+                      styles.filterNumberText,
+                      { color: level.color },
+                      priorityFilter === level.value && styles.filterNumberTextActive
                     ]}>
-                      {level.label}
+                      {level.number}
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
 
             {/* Topic Tree - 4-Tier Progressive Discovery */}
@@ -1116,36 +1115,51 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     color: theme === 'cyber' ? colors.text : '#333',
     marginBottom: 8,
   },
-  filterButtons: {
+  filterButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
+    gap: 10,
+    justifyContent: 'center',
   },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+  filterNumberButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
-    borderColor: theme === 'cyber' ? colors.border : '#e0e0e0',
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
-    gap: 6,
+    borderColor: theme === 'cyber' ? colors.border : '#D1D5DB',
+    backgroundColor: theme === 'cyber' ? colors.surface : '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      web: {
+        borderWidth: 2,
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      }
+    }),
   },
-  filterButtonActive: {
-    borderColor: subjectColor || '#6366F1',
-    backgroundColor: subjectColor || '#6366F1',
+  filterNumberButtonActive: {
+    ...Platform.select({
+      web: {
+        borderWidth: 3,
+      },
+      default: {
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+      }
+    }),
   },
-  filterButtonEmoji: {
-    fontSize: 14,
+  filterNumberText: {
+    fontSize: 20,
+    fontWeight: '700',
   },
-  filterButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
-  },
-  filterButtonTextActive: {
-    color: '#fff',
+  filterNumberTextActive: {
+    color: '#FFFFFF',
   },
   topicsSection: {
     padding: 16,

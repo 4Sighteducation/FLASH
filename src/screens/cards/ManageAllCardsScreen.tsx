@@ -20,10 +20,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 // Priority levels
 const PRIORITY_LEVELS = [
-  { value: 1, label: "I've Got This", emoji: '😎', color: '#10B981' },
-  { value: 2, label: 'Worth a Look', emoji: '👀', color: '#3B82F6' },
-  { value: 3, label: 'Revision Mode', emoji: '📚', color: '#F59E0B' },
-  { value: 4, label: 'Exam Alert', emoji: '🚨', color: '#EF4444' },
+  { value: 1, label: "Low Priority", number: '1', color: '#10B981' }, // Green
+  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B' }, // Orange
+  { value: 3, label: 'High Priority', number: '3', color: '#FF006E' }, // Pink
+  { value: 4, label: 'Urgent', number: '4', color: '#EF4444' }, // Red
 ];
 
 interface TopicNode {
@@ -373,11 +373,13 @@ export default function ManageAllCardsScreen() {
             <TouchableOpacity
               style={[
                 styles.priorityPickerButton,
-                priorityInfo && { backgroundColor: priorityInfo.color }
+                priorityInfo && { backgroundColor: priorityInfo.color, borderColor: priorityInfo.color }
               ]}
               onPress={() => setShowPriorityPicker({ topicId: node.id, subject })}
             >
-              <Text style={styles.priorityEmoji}>{priorityInfo?.emoji || '⭐'}</Text>
+              <Text style={[styles.priorityNumber, priorityInfo && styles.priorityNumberActive]}>
+                {priorityInfo?.number || '○'}
+              </Text>
             </TouchableOpacity>
 
             {/* Card count or Add button */}
@@ -485,14 +487,16 @@ export default function ManageAllCardsScreen() {
                 <Text style={[styles.priorityModalTitle, { color: colors.text }]}>Set Priority</Text>
                 <View style={styles.priorityOptions}>
                   {PRIORITY_LEVELS.map(level => (
-                    <TouchableOpacity
-                      key={level.value}
-                      style={[styles.priorityOption, { backgroundColor: level.color }]}
-                      onPress={() => setPriority(showPriorityPicker.topicId, level.value, showPriorityPicker.subject)}
-                    >
-                      <Text style={styles.priorityOptionEmoji}>{level.emoji}</Text>
-                      <Text style={styles.priorityOptionText}>{level.label}</Text>
-                    </TouchableOpacity>
+                  <TouchableOpacity
+                    key={level.value}
+                    style={[styles.priorityOption, { backgroundColor: level.color }]}
+                    onPress={() => setPriority(showPriorityPicker.topicId, level.value, showPriorityPicker.subject)}
+                  >
+                    <View style={styles.priorityNumberCircle}>
+                      <Text style={styles.priorityOptionNumber}>{level.number}</Text>
+                    </View>
+                    <Text style={styles.priorityOptionText}>{level.label}</Text>
+                  </TouchableOpacity>
                   ))}
                   <TouchableOpacity
                     style={styles.priorityOptionClear}
@@ -802,8 +806,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(99, 102, 241, 0.3)',
   },
-  priorityEmoji: {
-    fontSize: 16,
+  priorityNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  priorityNumberActive: {
+    color: '#FFFFFF',
+  },
+  priorityNumberCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priorityOptionNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   cardBadge: {
     flexDirection: 'row',

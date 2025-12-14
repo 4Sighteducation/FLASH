@@ -21,10 +21,10 @@ import FlashcardCard from '../../components/FlashcardCard';
 
 // Priority levels - using "Revision Urgency" set
 const PRIORITY_LEVELS = [
-  { value: 1, label: "I've Got This", emoji: '😎', color: '#10B981', description: 'Light review only' },
-  { value: 2, label: 'Worth a Look', emoji: '👀', color: '#3B82F6', description: 'Needs a refresh' },
-  { value: 3, label: 'Revision Mode', emoji: '📚', color: '#F59E0B', description: 'Proper work needed' },
-  { value: 4, label: 'Exam Alert', emoji: '🚨', color: '#EF4444', description: 'Priority #1!' },
+  { value: 1, label: "Low Priority", number: '1', color: '#10B981', description: 'Light review only' }, // Green
+  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B', description: 'Needs attention' }, // Orange
+  { value: 3, label: 'High Priority', number: '3', color: '#FF006E', description: 'Serious focus needed' }, // Pink
+  { value: 4, label: 'Urgent', number: '4', color: '#EF4444', description: 'Top priority!' }, // Red
 ];
 
 interface FlashcardItem {
@@ -262,9 +262,11 @@ export default function ManageTopicScreen() {
           <Icon name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Topic</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
-            {abbreviateTopicName(topicName)}
+          <Text style={[styles.headerTopicName, { color: colors.text }]} numberOfLines={2}>
+            {topicName}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+            {subjectName}
           </Text>
         </View>
       </View>
@@ -327,7 +329,12 @@ export default function ManageTopicScreen() {
                 onPress={() => handlePriorityChange(level.value)}
                 onLongPress={() => setSelectedPriorityInfo(level)}
               >
-                <Text style={styles.priorityChipEmoji}>{level.emoji}</Text>
+                <Text style={[
+                  styles.priorityChipNumber,
+                  priority === level.value && styles.priorityChipNumberActive
+                ]}>
+                  {level.number}
+                </Text>
               </TouchableOpacity>
             ))}
             <TouchableOpacity
@@ -589,8 +596,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
+  headerTopicName: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+  },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
   },
   content: {
@@ -667,8 +679,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  priorityChipEmoji: {
-    fontSize: 24,
+  priorityChipNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  priorityChipNumberActive: {
+    color: '#FFFFFF',
   },
   infoIconButton: {
     width: 48,

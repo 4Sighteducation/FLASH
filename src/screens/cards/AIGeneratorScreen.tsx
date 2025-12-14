@@ -389,6 +389,8 @@ export default function AIGeneratorScreen() {
           onChangeText={setNumCards}
           keyboardType="number-pad"
           maxLength={2}
+          returnKeyType="done"
+          blurOnSubmit={true}
         />
       </View>
 
