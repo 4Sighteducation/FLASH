@@ -916,8 +916,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   expandedCardContainer: {
-    minHeight: 300,
-    maxHeight: Platform.OS === 'ios' ? 450 : 400,
+    height: Platform.OS === 'ios' ? 380 : 360,
+    overflow: 'hidden',
   },
 });
 

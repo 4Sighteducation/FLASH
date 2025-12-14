@@ -229,40 +229,9 @@ export default function AIGeneratorScreen() {
       return;
     }
 
-    console.log('✅ Showing save dialog...');
-    
-    // WEB FIX: Alert.alert doesn't work on web, use confirm instead
-    if (Platform.OS === 'web') {
-      const addToStudyBank = window.confirm(
-        'Save these cards?\n\nClick OK to add to Study Bank (for immediate review)\nClick Cancel to add to Card Bank only'
-      );
-      console.log('User selected via web confirm:', addToStudyBank ? 'Study Bank' : 'Card Bank Only');
-      saveCards(addToStudyBank);
-    } else {
-      // Native: Use Alert.alert
-      Alert.alert(
-        'Add to Study Bank?',
-        'These cards will be added to your Card Bank. Do you also want to add them to your Study Bank for immediate review?',
-        [
-          {
-            text: 'No, Card Bank Only',
-            onPress: () => {
-              console.log('User selected: Card Bank Only');
-              saveCards(false);
-            },
-            style: 'cancel'
-          },
-          {
-            text: 'Yes, Add to Study Bank Too',
-            onPress: () => {
-              console.log('User selected: Study Bank Too');
-              saveCards(true);
-            },
-            style: 'default'
-          }
-        ]
-      );
-    }
+    console.log('✅ Auto-saving to study bank...');
+    // Auto-save to study bank (removed popup)
+    saveCards(true);
   };
 
   const saveCards = async (addToStudyBank: boolean) => {
