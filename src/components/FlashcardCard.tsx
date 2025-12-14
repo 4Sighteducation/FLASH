@@ -42,34 +42,43 @@ interface FlashcardCardProps {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// Mobile-first responsive sizing - GOOD BALANCE
+// Mobile-first responsive sizing
 const IS_MOBILE = screenWidth < 768;
-const CARD_MAX_WIDTH = IS_MOBILE ? 380 : 700; // Good size for mobile
-const CARD_WIDTH = Math.min(screenWidth - 32, CARD_MAX_WIDTH);
-const CARD_HEIGHT = IS_MOBILE ? Math.min(screenHeight * 0.60, 500) : 500; // 60% of screen or 500px max
+
+// Width: Keep cards nicely sized for mobile (not too wide, not too narrow)
+const CARD_MAX_WIDTH = IS_MOBILE ? 350 : 600;
+const CARD_WIDTH = Math.min(screenWidth - 40, CARD_MAX_WIDTH);
+
+// Height: Calculate available space properly
+// Screen - Leitner boxes (~120px) - Navigation (~100px) - Header (~60px) - Safe spacing (~40px)
+// This gives us ~520px available on an 844px phone
+const AVAILABLE_HEIGHT = screenHeight - 320; // Reserve 320px for UI chrome
+const CARD_HEIGHT = IS_MOBILE 
+  ? Math.min(AVAILABLE_HEIGHT * 0.95, 550) // Use 95% of available space, max 550px
+  : 500;
 
 // Helper function to calculate dynamic font size based on text length
 const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 14): number => {
   const length = text.length;
-  if (length < 50) return baseSize;
-  if (length < 100) return Math.max(baseSize - 2, minSize);
-  if (length < 150) return Math.max(baseSize - 4, minSize);
-  if (length < 200) return Math.max(baseSize - 6, minSize);
+  if (length < 60) return baseSize;
+  if (length < 120) return Math.max(baseSize - 1, minSize);
+  if (length < 180) return Math.max(baseSize - 2, minSize);
+  if (length < 250) return Math.max(baseSize - 3, minSize);
   return minSize;
 };
 
 // Helper function to calculate font size for multiple choice options
-const getOptionsFontSize = (options: string[], baseSize: number = 16): number => {
+const getOptionsFontSize = (options: string[], baseSize: number = 14): number => {
   const totalLength = options.join('').length;
   const longestOption = Math.max(...options.map(opt => opt.length));
   
   // If any option is very long, reduce font size
-  if (longestOption > 100) return 12;
-  if (longestOption > 80) return 13;
-  if (longestOption > 60) return 14;
+  if (longestOption > 120) return 12;
+  if (longestOption > 90) return 13;
+  if (longestOption > 60) return 13;
+  if (totalLength > 400) return 12;
   if (totalLength > 300) return 13;
-  if (totalLength > 200) return 14;
-  if (totalLength > 150) return 15;
+  if (totalLength > 200) return 13;
   
   return baseSize;
 };
@@ -188,10 +197,10 @@ export default function FlashcardCard({
     return {};
   };
 
-  const questionFontSize = getDynamicFontSize(card.question, 22, 16);
+  const questionFontSize = getDynamicFontSize(card.question, IS_MOBILE ? 18 : 22, 15);
   const optionFontSize = card.options 
-    ? getOptionsFontSize(card.options) 
-    : 16;
+    ? getOptionsFontSize(card.options, IS_MOBILE ? 14 : 16) 
+    : 14;
 
   const handleUserAnswer = (correct: boolean) => {
     setUserAnswerCorrect(correct);
@@ -524,8 +533,6 @@ const styles = StyleSheet.create({
   container: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    maxWidth: '95%',
-    maxHeight: IS_MOBILE ? '75%' : '90%',
     marginVertical: 8,
     alignSelf: 'center',
   },
@@ -561,11 +568,11 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    padding: IS_MOBILE ? 16 : 20,
+    padding: IS_MOBILE ? 14 : 20,
   },
   cardContentContainer: {
     flexGrow: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   cardContentWithConfirmation: {
     paddingBottom: 20,
@@ -579,30 +586,32 @@ const styles = StyleSheet.create({
   question: {
     fontWeight: '700',
     color: '#FFFFFF', // White text on dark background
-    marginBottom: 24,
-    lineHeight: IS_MOBILE ? 28 : 32,
-    fontSize: IS_MOBILE ? 20 : 24,
+    marginBottom: 16,
+    lineHeight: IS_MOBILE ? 24 : 32,
+    fontSize: IS_MOBILE ? 18 : 24,
   },
   optionsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    maxHeight: '60%',
+    marginTop: 8,
+    marginBottom: 12,
   },
   compactOptionsContainer: {
-    justifyContent: 'flex-start',
+    marginTop: 4,
+    marginBottom: 8,
   },
   optionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)', // Translucent on dark
-    padding: IS_MOBILE ? 14 : 16,
-    borderRadius: 14,
-    marginBottom: IS_MOBILE ? 10 : 12,
+    padding: IS_MOBILE ? 12 : 16,
+    borderRadius: 12,
+    marginBottom: IS_MOBILE ? 8 : 12,
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.2)',
-    minHeight: IS_MOBILE ? 56 : 64,
+    minHeight: IS_MOBILE ? 50 : 64,
+    justifyContent: 'center',
   },
   compactOptionButton: {
-    padding: 8,
+    padding: 10,
     marginBottom: 6,
+    minHeight: 44,
   },
   selectedOption: {
     borderColor: '#6366F1',
@@ -617,8 +626,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     color: '#FFFFFF', // White text
-    lineHeight: IS_MOBILE ? 20 : 24,
-    fontSize: IS_MOBILE ? 15 : 17,
+    lineHeight: IS_MOBILE ? 19 : 24,
+    fontSize: IS_MOBILE ? 14 : 17,
   },
   selectedOptionText: {
     fontWeight: '600',
@@ -627,8 +636,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 'auto',
-    paddingTop: 20,
+    marginTop: 16,
+    paddingTop: 8,
   },
   flipHintText: {
     fontSize: 14,
@@ -744,8 +753,9 @@ const styles = StyleSheet.create({
   },
   voiceAnswerSection: {
     alignItems: 'center',
-    marginTop: 20,
-    gap: 12,
+    marginTop: 16,
+    marginBottom: 12,
+    gap: 10,
   },
   voicePromptText: {
     fontSize: 14,

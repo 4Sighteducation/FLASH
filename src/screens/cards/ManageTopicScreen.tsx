@@ -1003,12 +1003,11 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   expandedCardContainer: {
-    height: 350,
-    maxHeight: 350,
+    height: 420,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible',
+    overflow: 'hidden', // CRITICAL: Clip content to container
   },
   numberPickerModal: {
     borderRadius: 20,

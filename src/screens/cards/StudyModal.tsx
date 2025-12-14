@@ -1189,14 +1189,12 @@ const styles = StyleSheet.create({
   swipeableArea: {
     flex: 1,
     justifyContent: 'center',
-    maxHeight: '60%', // Constrain to 60% of available space
+    alignItems: 'center',
   },
   cardContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
-    flex: 1, // Take available space
-    maxHeight: screenHeight * 0.65, // 65% of screen
   },
   bottomSection: {
     backgroundColor: 'white',
