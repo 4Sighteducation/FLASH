@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Modal,
   Animated,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -898,8 +899,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   expandedCardContainer: {
-    height: 350,
-    maxHeight: 350,
+    minHeight: 300,
+    maxHeight: Platform.OS === 'ios' ? 450 : 400,
   },
 });
 

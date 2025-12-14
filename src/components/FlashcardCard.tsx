@@ -44,9 +44,9 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Mobile-first responsive sizing
 const IS_MOBILE = screenWidth < 768;
-const CARD_MAX_WIDTH = IS_MOBILE ? 600 : 700; // Wider on desktop
-const CARD_WIDTH = Math.min(screenWidth - 24, CARD_MAX_WIDTH);
-const CARD_HEIGHT = IS_MOBILE ? Math.min(screenHeight * 0.65, 520) : 500;
+const CARD_MAX_WIDTH = IS_MOBILE ? Math.min(screenWidth - 32, 380) : 700; // Smaller on mobile
+const CARD_WIDTH = Math.min(screenWidth - 32, CARD_MAX_WIDTH);
+const CARD_HEIGHT = IS_MOBILE ? Math.min(screenHeight * 0.55, 480) : 500; // Shorter on mobile
 
 // Helper function to calculate dynamic font size based on text length
 const getDynamicFontSize = (text: string, baseSize: number, minSize: number = 14): number => {
