@@ -23,7 +23,7 @@ import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface StudyModalProps {
   navigation: any;
