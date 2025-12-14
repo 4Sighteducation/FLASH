@@ -10,6 +10,7 @@ import {
   Modal,
   Animated,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -170,15 +171,69 @@ export default function ManageTopicScreen() {
     }
   };
 
+  const [showNumberPicker, setShowNumberPicker] = useState<{type: string, label: string} | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handleAddMoreCards = (cardType: string) => {
-    navigation.navigate('AIGenerator', {
-      topicId,
-      topic: topicName,
-      subject: subjectName,
-      examBoard,
-      examType,
-      existingCardType: cardType,
-    });
+    const labels = {
+      'multiple_choice': 'Multiple Choice',
+      'short_answer': 'Short Answer',
+      'essay': 'Essay',
+      'acronym': 'Acronym'
+    };
+    setShowNumberPicker({ type: cardType, label: labels[cardType as keyof typeof labels] });
+  };
+
+  const generateCards = async (numCards: number) => {
+    setShowNumberPicker(null);
+    setIsGenerating(true);
+    
+    try {
+      const aiService = (await import('../../services/aiService')).AIService;
+      const service = new aiService();
+      
+      const cards = await service.generateCards({
+        subject: subjectName,
+        topic: topicName,
+        examType,
+        examBoard,
+        questionType: showNumberPicker!.type as any,
+        numCards,
+      });
+
+      // Save cards directly
+      const flashcardData = cards.map(card => ({
+        user_id: user?.id,
+        subject_name: subjectName,
+        topic: topicName,
+        topic_id: topicId,
+        card_type: showNumberPicker!.type,
+        question: card.question,
+        answer: card.answer,
+        options: card.options,
+        correct_answer: card.correctAnswer,
+        key_points: card.keyPoints,
+        detailed_answer: card.detailedAnswer,
+        box_number: 1,
+        in_study_bank: true,
+        next_review_date: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase
+        .from('flashcards')
+        .insert(flashcardData);
+
+      if (error) throw error;
+
+      Alert.alert('Success!', `${cards.length} cards generated and added!`);
+      loadTopicData(); // Refresh
+    } catch (error) {
+      console.error('Error generating cards:', error);
+      Alert.alert('Error', 'Failed to generate cards');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDeleteCard = async (cardId: string) => {
@@ -256,6 +311,41 @@ export default function ManageTopicScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Number Picker Modal */}
+      {showNumberPicker && (
+        <Modal transparent visible={true} animationType="fade" onRequestClose={() => setShowNumberPicker(null)}>
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowNumberPicker(null)}
+          >
+            <View style={[styles.numberPickerModal, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.numberPickerTitle, { color: colors.text }]}>
+                How many {showNumberPicker.label} cards?
+              </Text>
+              <View style={styles.numberOptions}>
+                {[1, 2, 3, 4, 5].map(num => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[styles.numberOption, { backgroundColor: subjectColor }]}
+                    onPress={() => generateCards(num)}
+                    disabled={isGenerating}
+                  >
+                    <Text style={styles.numberOptionText}>{num}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {isGenerating && (
+                <View style={styles.generatingIndicator}>
+                  <ActivityIndicator color={subjectColor} />
+                  <Text style={[styles.generatingText, { color: colors.text }]}>Generating...</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -481,10 +571,7 @@ export default function ManageTopicScreen() {
                   <View style={styles.cardAccordionContent}>
                     <View style={styles.expandedCardContainer}>
                       <FlashcardCard
-                        card={{
-                          ...card,
-                          topic: topicName,
-                        }}
+                        card={card as any}
                         color={subjectColor || '#6366F1'}
                         showDeleteButton={false}
                       />
@@ -549,7 +636,7 @@ export default function ManageTopicScreen() {
           onPress={() => setSelectedPriorityInfo(null)}
         >
           <View style={[styles.priorityInfoModal, { backgroundColor: colors.surface, borderColor: selectedPriorityInfo?.color }]}>
-            <Text style={styles.priorityInfoEmoji}>{selectedPriorityInfo?.emoji}</Text>
+            <Text style={styles.priorityInfoEmoji}>{selectedPriorityInfo?.number}</Text>
             <Text style={[styles.priorityInfoTitle, { color: colors.text }]}>
               {selectedPriorityInfo?.label}
             </Text>
@@ -918,6 +1005,45 @@ const styles = StyleSheet.create({
   expandedCardContainer: {
     height: Platform.OS === 'ios' ? 380 : 360,
     overflow: 'hidden',
+  },
+  numberPickerModal: {
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  numberPickerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  numberOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 12,
+  },
+  numberOption: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numberOptionText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  generatingIndicator: {
+    marginTop: 24,
+    alignItems: 'center',
+    gap: 12,
+  },
+  generatingText: {
+    fontSize: 14,
   },
 });
 
