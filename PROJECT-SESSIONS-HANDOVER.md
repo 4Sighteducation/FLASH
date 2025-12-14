@@ -1079,6 +1079,242 @@ This is a **world-class feature** that no other flashcard app has. The progressi
 
 ---
 
+## 🗓️ **SESSION 4: December 14, 2025** (6+ hours)
+
+**Context:** Major mobile testing session - ManageAllCards rebuild, priority system redesign, SDK 54 upgrade, and critical bug fixes.
+
+### **Starting State:**
+- ✅ App working on web (www.fl4sh.cards)
+- ❌ ManageAllCards page crashing
+- ❌ No mobile testing capability (SDK mismatch)
+- ❌ Cards not responsive on mobile
+- ❌ Priority system using emojis
+- ❌ Various UX issues
+
+### **Phase 1: ManageAllCards Rebuild (2 hours)**
+
+**Problem:** Original implementation was complex and crashing
+
+**Solution: Complete Rebuild with New Concept:**
+1. Load FULL curriculum hierarchy (up to Level 4)
+2. Topics WITH cards are ungreyed (including ancestors)
+3. Topics WITHOUT cards are greyed out (40% opacity)
+4. Expandable accordion shows all topics
+5. Priority controls on EVERY topic
+6. Add Cards buttons navigate to generator
+
+**Database Schema Fixes:**
+- Fixed query to use `exam_board_subject_id` not `subject_name`
+- Fixed nested join structure for exam board info
+- Proper error handling
+
+**Files Created/Modified:**
+- `ManageAllCardsScreen.tsx` (complete rewrite - 400+ lines)
+
+**Commits:** 862849a, 6fd0629, 100f7ca, 0f2eec4, dcecdaf, c2bcbec
+
+### **Phase 2: Platform-Specific Styling (1.5 hours)**
+
+**Discovery:** Shadows don't work on React Native Web
+
+**Solution: Mobile-First Optimization:**
+```typescript
+...Platform.select({
+  web: { borderWidth: 3, borderColor: '#00D4FF' },
+  default: { shadowColor: '#00D4FF', shadowOpacity: 0.4, shadowRadius: 10, elevation: 4 }
+})
+```
+
+**Files Optimized:**
+- ManageAllCardsScreen.tsx
+- HomeScreen.tsx
+- FlashcardCard.tsx
+- DueCardsNotification.tsx
+- SubjectProgressScreen.tsx
+
+**Benefits:**
+- Mobile: Beautiful glows and shadows
+- Web: Clean borders
+- Best experience on each platform
+
+**Commit:** 9e336bc
+
+### **Phase 3: Expo SDK 54 Upgrade (2 hours)**
+
+**Why Needed:** Expo Go auto-updated to SDK 54, project was on SDK 51
+
+**Upgrade Process:**
+1. ✅ Created backup branch: `sdk-54-upgrade`
+2. ✅ Upgraded Expo: 51.0.14 → 54.0.29
+3. ✅ Upgraded React: 18.2.0 → 19.1.0
+4. ✅ Upgraded React Native: 0.74.5 → 0.81.5
+5. ✅ Updated TypeScript: 5.3.3 → 5.9.2
+6. ✅ Fixed dependencies with --legacy-peer-deps
+7. ✅ Installed react-native-worklets packages
+8. ✅ Added reanimated plugin to babel.config.js
+9. ✅ Fixed mobile API URLs (localhost → production)
+
+**Critical Fixes:**
+- Voice Answer: Migrated to expo-file-system/legacy for SDK 54
+- Babel config: Added react-native-reanimated/plugin
+- API Service: Platform-aware URLs (web uses localhost, mobile uses production)
+
+**Commits:** 16f0067, a940301, 21c45be, cdb922c, 7cf65ed, 04b229c
+
+**Result:** ✅ Mobile testing restored via Expo Go!
+
+### **Phase 4: Priority System Redesign (1 hour)**
+
+**Old System:**
+- Emojis: 😎 👀 📚 🚨
+- Confusing labels
+- Scrolling chips
+
+**New System:**
+- Numbers: 1, 2, 3, 4
+- RAG Colors:
+  - 4: RED (#EF4444) - Urgent
+  - 3: PINK (#FF006E) - High Priority
+  - 2: ORANGE (#F59E0B) - Medium
+  - 1: GREEN (#10B981) - Low
+- Compact 4-button filter (56px circles)
+- No scrolling needed
+
+**Files Updated:**
+- ManageAllCardsScreen.tsx
+- ManageTopicScreen.tsx
+- SubjectProgressScreen.tsx
+
+**Commit:** ceecdf8
+
+### **Phase 5: UX Improvements (1 hour)**
+
+**Features Added:**
+1. ✅ Wizard button positioning increased (180px from bottom)
+2. ✅ Keyboard dismissal (returnKeyType="done")
+3. ✅ Topic name prominent in ManageTopic header
+4. ✅ Simplified success messages (removed study bank confusion)
+5. ✅ Direct card generation from ManageTopic:
+   - Click +MC/SA/Essay/Acronym button
+   - Number picker popup (1-5)
+   - Generates cards directly without navigation
+   - Auto-saves to topic
+
+**Commits:** f449725, 4c16fe5
+
+### **Phase 6: Mobile Card Sizing Attempts (2+ hours)**
+
+**Problem:** Cards too large on mobile, overflow screen
+
+**Attempts Made:**
+1. Reduced card size to 340px x 50% (too small)
+2. Increased to 360px x 58% (still issues)
+3. Increased to 380px x 60% (changes not showing)
+4. Found StudyModal maxHeight: 450px blocker
+5. Fixed screenHeight undefined error
+
+**Final Settings (Committed but Not Verified Working):**
+- FlashcardCard: 380px width, 60% height (max 500px)
+- StudyModal: flex: 1, maxHeight 65% screen
+- ManageTopic: 350px container height
+
+**Status:** ⚠️ **UNRESOLVED - Changes not applying to Expo Go app**
+
+**Commits:** 14abec1, 26cae2f, 48a2990, 39ebaac, 1d56894, 5fce292, ac41b85, 9e60048
+
+---
+
+## ✅ **SESSION 4 ACCOMPLISHMENTS:**
+
+### **Major Successes:**
+1. ✅ SDK 54 upgrade complete - Mobile testing working
+2. ✅ Platform-specific styling implemented app-wide
+3. ✅ Priority system redesigned (RAG numbered 1-4)
+4. ✅ ManageAllCardsScreen rebuilt and functional
+5. ✅ Voice Answer fixed for SDK 54
+6. ✅ Direct card generation from ManageTopic
+7. ✅ Mobile API URLs fixed
+
+### **Partial Successes:**
+- Priority filters redesigned (4 compact buttons)
+- Topic name prominence improved
+- Keyboard UX improvements
+
+### **Unresolved Issues:**
+1. ❌ **Mobile card sizing** - Changes committed but not applying to device
+   - Possible caching issue in Expo Go
+   - Code is correct (380px x 60%) but not rendering
+   - Tried 8+ different approaches, none applied to device
+2. ❌ Wizard final page button still not fully accessible
+3. ❌ ManageAllCards pink glow not implemented
+
+---
+
+## 🐛 **CRITICAL ISSUE FOR NEXT SESSION:**
+
+**Card Sizing Mystery:**
+- Code on disk: 380px width, 60% height
+- Committed and pushed to GitHub
+- Expo restarted with --clear --reset-cache
+- iPhone Expo Go closed and rescanned
+- **NO VISUAL CHANGES APPLIED TO DEVICE**
+
+**Possible Causes:**
+1. Expo Go caching bundle despite --clear
+2. Metro bundler caching compiled code
+3. Parent container constraints overriding
+4. React Native stylesheet not updating
+5. Unknown SDK 54 compatibility issue
+
+**Recommended Next Steps:**
+1. Try testing on different device
+2. Build development client instead of Expo Go
+3. Check if maxWidth/maxHeight percentages are the issue
+4. Try inline styles instead of StyleSheet
+5. Consider reverting card sizing changes and starting fresh
+
+---
+
+## 📊 **SESSION 4 METRICS:**
+
+- **Duration:** 6+ hours
+- **Commits:** 25+
+- **Lines Changed:** 2000+
+- **Files Modified:** 20+
+- **Issues Fixed:** 10
+- **Issues Attempted But Unresolved:** 3
+- **SDK Upgraded:** ✅
+- **Mobile Testing:** ✅ Restored
+- **Card Sizing:** ❌ Blocked by caching/bundling issues
+
+---
+
+## 🚀 **CURRENT STATUS:**
+
+**Working Features:**
+- ✅ Mobile testing via Expo Go (iOS & Android)
+- ✅ SDK 54 compatibility
+- ✅ Platform-specific styling
+- ✅ Priority system (RAG numbered)
+- ✅ ManageAllCards (full hierarchy)
+- ✅ Voice Answer (with legacy FileSystem)
+- ✅ Direct card generation
+- ✅ Card generation working
+- ✅ Study mode functional
+
+**Problematic Features:**
+- ⚠️ Card sizing on mobile devices
+- ⚠️ Wizard button accessibility
+- ⚠️ Visual consistency across devices
+
+**App Status:** 85% production ready - needs mobile UX polish
+
+---
+
+**End of Session 4 - December 14, 2025**
+
+---
+
 _Future sessions will be appended below with same format_
 
 
