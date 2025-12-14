@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from './Icon';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -133,11 +133,19 @@ const styles = StyleSheet.create({
   gradient: {
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    ...Platform.select({
+      web: {
+        borderWidth: 2,
+        borderColor: 'rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+      }
+    }),
   },
   dismissButton: {
     position: 'absolute',

@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -648,27 +649,45 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   subjectCard: {
     borderRadius: 20,
     marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
+    ...Platform.select({
+      web: {
+        // Web: Enhanced border glow
+        borderWidth: 2,
+        borderColor: 'rgba(0, 245, 255, 0.5)',
+      },
+      default: {
+        // Mobile: Proper shadow glow
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
+      }
+    }),
   },
   subjectCardGrid: {
     borderRadius: 20,
     marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
     overflow: 'hidden',
     width: '48%',
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
+    ...Platform.select({
+      web: {
+        borderWidth: 2,
+        borderColor: 'rgba(0, 245, 255, 0.5)',
+      },
+      default: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
+      }
+    }),
   },
   subjectGradient: {
     padding: 20,
@@ -759,14 +778,22 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
     minWidth: 90,
     borderWidth: 1,
     borderColor: colors.border,
+    ...Platform.select({
+      web: {
+        borderWidth: 2,
+        borderColor: colors.border,
+      },
+      default: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 6,
+      }
+    }),
   },
   actionCardDisabled: {
     opacity: 0.4,

@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Modal,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -639,11 +640,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+      }
+    }),
   },
   subjectHeaderLeft: {
     flexDirection: 'row',
@@ -696,17 +705,31 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
   },
-  topicRowWithCards: {
-    backgroundColor: 'rgba(0, 212, 255, 0.08)',
-    borderLeftWidth: 4,
-    borderLeftColor: '#00D4FF',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(0, 212, 255, 0.3)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 212, 255, 0.2)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 212, 255, 0.2)',
-  },
+  topicRowWithCards: Platform.select({
+    web: {
+      // Web: Use borders for glow effect
+      backgroundColor: 'rgba(0, 212, 255, 0.08)',
+      borderLeftWidth: 4,
+      borderLeftColor: '#00D4FF',
+      borderRightWidth: 1,
+      borderRightColor: 'rgba(0, 212, 255, 0.3)',
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(0, 212, 255, 0.2)',
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(0, 212, 255, 0.2)',
+    },
+    default: {
+      // Mobile: Use shadows for proper glow
+      backgroundColor: 'rgba(0, 245, 255, 0.05)',
+      borderLeftWidth: 3,
+      borderLeftColor: '#00D4FF',
+      shadowColor: '#00D4FF',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 10,
+      elevation: 4,
+    }
+  }),
   topicLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -789,12 +812,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 14,
     gap: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
     minWidth: 44,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
+      }
+    }),
   },
   cardBadgeText: {
     color: '#FFFFFF',
@@ -821,11 +852,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 24,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+      }
+    }),
   },
   homeButtonText: {
     color: '#FFFFFF',

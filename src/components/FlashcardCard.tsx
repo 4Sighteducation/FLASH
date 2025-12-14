@@ -8,6 +8,7 @@ import {
   Dimensions,
   ScrollView,
   TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -533,12 +534,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0f1e', // Dark theme background
     borderRadius: 20,
     borderWidth: 3,
-    shadowColor: '#00F5FF', // Neon glow
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 12,
     backfaceVisibility: 'hidden',
+    ...Platform.select({
+      web: {
+        // Web: Use enhanced border
+        borderWidth: 3,
+        borderColor: '#00F5FF',
+      },
+      default: {
+        // Mobile: Beautiful neon glow
+        shadowColor: '#00F5FF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        elevation: 12,
+      }
+    }),
   },
   cardActive: {
     zIndex: 10,
@@ -699,11 +710,19 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+      }
+    }),
   },
   speakPrompt: {
     flexDirection: 'row',
@@ -738,11 +757,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     gap: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      }
+    }),
   },
   voiceButtonText: {
     fontSize: 16,
@@ -773,11 +800,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 25,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        borderWidth: 1,
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      }
+    }),
   },
   yesButton: {
     backgroundColor: '#10B981',
