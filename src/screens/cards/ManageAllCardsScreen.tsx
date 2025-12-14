@@ -297,28 +297,26 @@ export default function ManageAllCardsScreen() {
     const hasChildren = node.children.length > 0;
     const priorityInfo = PRIORITY_LEVELS.find(p => p.value === node.priority);
     
-    // Indentation based on depth
-    const indentSize = depth * 24;
+    // Indentation based on depth (smaller for mobile)
+    const indentSize = depth * 16;
 
-    // Icon based on level
+    // Icon based on level (smaller for mobile)
     const getIcon = () => {
       if (node.level === 0) return '📄';
       if (node.level === 1) return '📂';
       if (node.level === 2) return '📁';
-      if (node.level === 3) return '📋';
       return '📌';
-    };
-
-    const getIconColor = () => {
-      if (node.level === 0) return subject.subjectColor;
-      if (node.level === 1) return adjustColor(subject.subjectColor, 20);
-      if (node.level === 2) return adjustColor(subject.subjectColor, 40);
-      return '#6B7280';
     };
 
     return (
       <View key={node.id} style={styles.topicNodeContainer}>
-        <View style={[styles.topicRow, { marginLeft: indentSize }]}>
+        <View 
+          style={[
+            styles.topicRow, 
+            { marginLeft: indentSize },
+            node.hasCards && styles.topicRowWithCards,
+          ]}
+        >
           {/* Left side - Expand/Icon/Name */}
           <TouchableOpacity
             style={styles.topicLeft}
@@ -326,27 +324,25 @@ export default function ManageAllCardsScreen() {
             disabled={!hasChildren}
           >
             {hasChildren ? (
-              <Text style={styles.chevron}>{isExpanded ? '▾' : '›'}</Text>
+              <Text style={[styles.chevron, node.hasCards && styles.chevronBright]}>{isExpanded ? '▾' : '›'}</Text>
             ) : (
               <View style={styles.chevronSpacer} />
             )}
-            <View style={[styles.iconCircle, { borderColor: getIconColor() }]}>
-              <Text style={styles.topicIcon}>{getIcon()}</Text>
-            </View>
+            <Text style={styles.topicIcon}>{getIcon()}</Text>
             <View style={styles.topicInfo}>
               <Text
                 style={[
                   styles.topicName,
                   node.level === 0 && styles.topicNameL0,
                   node.level === 1 && styles.topicNameL1,
-                  !node.hasCards && styles.topicNameGreyed,
+                  node.hasCards && styles.topicNameWithCards,
                 ]}
                 numberOfLines={2}
               >
                 {node.name}
               </Text>
               {node.level === 0 && (
-                <View style={styles.levelBadge}>
+                <View style={[styles.levelBadge, node.hasCards && styles.levelBadgeActive]}>
                   <Text style={styles.levelBadgeText}>Paper</Text>
                 </View>
               )}
@@ -355,7 +351,7 @@ export default function ManageAllCardsScreen() {
 
           {/* Right side - Priority/Cards/Actions */}
           <View style={styles.topicRight}>
-            {/* Priority selector */}
+            {/* Priority - show emoji only to save space */}
             {!priorityInfo ? (
               <View style={styles.prioritySelector}>
                 {PRIORITY_LEVELS.map(level => (
@@ -370,11 +366,10 @@ export default function ManageAllCardsScreen() {
               </View>
             ) : (
               <TouchableOpacity
-                style={[styles.priorityBadge, { backgroundColor: priorityInfo.color }]}
+                style={[styles.priorityBadgeCompact, { backgroundColor: priorityInfo.color }]}
                 onPress={() => setPriority(node.id, 0, subject)}
               >
-                <Text style={styles.priorityBadgeEmoji}>{priorityInfo.emoji}</Text>
-                <Text style={styles.priorityBadgeText}>{priorityInfo.label}</Text>
+                <Text style={styles.priorityEmoji}>{priorityInfo.emoji}</Text>
               </TouchableOpacity>
             )}
 
@@ -660,69 +655,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  topicRowWithCards: {
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#00D4FF',
+    shadowColor: '#00D4FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
   },
   topicLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
   chevron: {
-    fontSize: 18,
-    marginRight: 8,
-    width: 20,
+    fontSize: 16,
+    marginRight: 6,
+    width: 16,
     color: '#666',
     fontWeight: '700',
   },
-  chevronSpacer: {
-    width: 28,
+  chevronBright: {
+    color: '#00D4FF',
   },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  chevronSpacer: {
+    width: 22,
   },
   topicIcon: {
-    fontSize: 18,
+    fontSize: 16,
+    marginRight: 8,
   },
   topicInfo: {
     flex: 1,
   },
   topicName: {
-    fontSize: 15,
-    color: '#1F2937',
+    fontSize: 14,
+    color: '#6B7280',
     fontWeight: '500',
   },
-  topicNameGreyed: {
-    color: '#9CA3AF',
-    fontWeight: '400',
+  topicNameWithCards: {
+    color: '#111827',
+    fontWeight: '700',
   },
   topicNameL0: {
-    fontWeight: '700',
-    fontSize: 16,
-    color: '#111827',
+    fontSize: 15,
   },
   topicNameL1: {
-    fontWeight: '600',
-    fontSize: 15,
+    fontSize: 14,
   },
   levelBadge: {
     backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 6,
-    marginTop: 4,
+    borderRadius: 4,
+    marginTop: 3,
     alignSelf: 'flex-start',
   },
+  levelBadgeActive: {
+    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+  },
   levelBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6366F1',
     fontWeight: '600',
   },
@@ -733,58 +732,50 @@ const styles = StyleSheet.create({
   },
   prioritySelector: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
   },
   priorityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
   priorityEmoji: {
-    fontSize: 14,
+    fontSize: 13,
   },
-  priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  priorityBadgeCompact: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    gap: 6,
-  },
-  priorityBadgeEmoji: {
-    fontSize: 14,
-  },
-  priorityBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    borderRadius: 14,
+    gap: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
+    minWidth: 44,
   },
   cardBadgeText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(99, 102, 241, 0.1)',
