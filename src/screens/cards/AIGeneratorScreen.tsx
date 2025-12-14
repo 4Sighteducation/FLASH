@@ -281,10 +281,10 @@ export default function AIGeneratorScreen() {
       // Small delay to ensure database updates are processed
       await new Promise<void>(resolve => setTimeout(resolve, 500));
 
-      // Success alert - works on web and native
+      // Success alert - simple and clear
       Alert.alert(
         'Success! ✅',
-        `${generatedCards.length} cards saved successfully!\n\n${addToStudyBank ? '📚 Added to Study Bank - ready to review!' : '💾 Saved to Card Bank'}`,
+        `${generatedCards.length} cards saved and ready to study!`,
         [{ 
           text: 'OK', 
           onPress: () => {

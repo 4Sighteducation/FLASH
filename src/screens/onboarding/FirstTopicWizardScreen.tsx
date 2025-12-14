@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 140 : 120,
+    bottom: Platform.OS === 'ios' ? 180 : 140,
     left: 20,
     right: 20,
     borderRadius: 12,
