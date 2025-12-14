@@ -1194,8 +1194,9 @@ const styles = StyleSheet.create({
   cardContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    maxHeight: 450, // Max height for cards
+    paddingHorizontal: 8,
+    flex: 1, // Take available space
+    maxHeight: screenHeight * 0.65, // 65% of screen
   },
   bottomSection: {
     backgroundColor: 'white',
