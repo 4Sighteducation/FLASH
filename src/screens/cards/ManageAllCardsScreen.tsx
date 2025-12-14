@@ -8,6 +8,7 @@ import {
   Alert,
   SafeAreaView,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -242,18 +243,32 @@ export default function ManageAllCardsScreen() {
     setExpandedSubjects(newSet);
   };
 
-  const setPriority = async (topicId: string, priority: number, subject: SubjectData) => {
-    try {
-      const { error } = await supabase
-        .from('user_topic_priorities')
-        .upsert({
-          user_id: user?.id,
-          topic_id: topicId,
-          priority: priority,
-          updated_at: new Date().toISOString(),
-        });
+  const [showPriorityPicker, setShowPriorityPicker] = useState<{topicId: string, subject: SubjectData} | null>(null);
 
-      if (error) throw error;
+  const setPriority = async (topicId: string, priority: number | null, subject: SubjectData) => {
+    try {
+      if (priority === null) {
+        // Delete the priority
+        const { error } = await supabase
+          .from('user_topic_priorities')
+          .delete()
+          .eq('user_id', user?.id)
+          .eq('topic_id', topicId);
+
+        if (error) throw error;
+      } else {
+        // Set/update the priority
+        const { error } = await supabase
+          .from('user_topic_priorities')
+          .upsert({
+            user_id: user?.id,
+            topic_id: topicId,
+            priority: priority,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (error) throw error;
+      }
 
       // Update local state
       const updateNodePriority = (nodes: TopicNode[]): TopicNode[] => {
@@ -275,6 +290,8 @@ export default function ManageAllCardsScreen() {
             : s
         )
       );
+
+      setShowPriorityPicker(null);
     } catch (error) {
       console.error('Error setting priority:', error);
       Alert.alert('Error', 'Failed to set priority');
@@ -351,27 +368,16 @@ export default function ManageAllCardsScreen() {
 
           {/* Right side - Priority/Cards/Actions */}
           <View style={styles.topicRight}>
-            {/* Priority - show emoji only to save space */}
-            {!priorityInfo ? (
-              <View style={styles.prioritySelector}>
-                {PRIORITY_LEVELS.map(level => (
-                  <TouchableOpacity
-                    key={level.value}
-                    style={[styles.priorityButton, { borderColor: level.color }]}
-                    onPress={() => setPriority(node.id, level.value, subject)}
-                  >
-                    <Text style={styles.priorityEmoji}>{level.emoji}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.priorityBadgeCompact, { backgroundColor: priorityInfo.color }]}
-                onPress={() => setPriority(node.id, 0, subject)}
-              >
-                <Text style={styles.priorityEmoji}>{priorityInfo.emoji}</Text>
-              </TouchableOpacity>
-            )}
+            {/* Priority picker button */}
+            <TouchableOpacity
+              style={[
+                styles.priorityPickerButton,
+                priorityInfo && { backgroundColor: priorityInfo.color }
+              ]}
+              onPress={() => setShowPriorityPicker({ topicId: node.id, subject })}
+            >
+              <Text style={styles.priorityEmoji}>{priorityInfo?.emoji || '⭐'}</Text>
+            </TouchableOpacity>
 
             {/* Card count or Add button */}
             {node.cardCount > 0 ? (
@@ -466,6 +472,38 @@ export default function ManageAllCardsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView}>
+        {/* Priority Picker Modal */}
+        {showPriorityPicker && (
+          <Modal transparent visible={true} animationType="fade" onRequestClose={() => setShowPriorityPicker(null)}>
+            <TouchableOpacity 
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowPriorityPicker(null)}
+            >
+              <View style={styles.priorityModal}>
+                <Text style={[styles.priorityModalTitle, { color: colors.text }]}>Set Priority</Text>
+                <View style={styles.priorityOptions}>
+                  {PRIORITY_LEVELS.map(level => (
+                    <TouchableOpacity
+                      key={level.value}
+                      style={[styles.priorityOption, { backgroundColor: level.color }]}
+                      onPress={() => setPriority(showPriorityPicker.topicId, level.value, showPriorityPicker.subject)}
+                    >
+                      <Text style={styles.priorityOptionEmoji}>{level.emoji}</Text>
+                      <Text style={styles.priorityOptionText}>{level.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={styles.priorityOptionClear}
+                    onPress={() => setPriority(showPriorityPicker.topicId, null, showPriorityPicker.subject)}
+                  >
+                    <Text style={styles.priorityOptionClearText}>Clear Priority</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        )}
         {/* Info Banner */}
         <View style={[styles.infoBanner, { backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: colors.primary }]}>
           <Icon name="information-circle" size={20} color={colors.primary} />
@@ -659,14 +697,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   topicRowWithCards: {
-    backgroundColor: 'rgba(0, 245, 255, 0.05)',
-    borderLeftWidth: 3,
+    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+    borderLeftWidth: 4,
     borderLeftColor: '#00D4FF',
-    shadowColor: '#00D4FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0, 212, 255, 0.3)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 212, 255, 0.2)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 212, 255, 0.2)',
   },
   topicLeft: {
     flexDirection: 'row',
@@ -730,28 +769,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  prioritySelector: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  priorityButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  priorityEmoji: {
-    fontSize: 13,
-  },
-  priorityBadgeCompact: {
+  priorityPickerButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  priorityEmoji: {
+    fontSize: 16,
   },
   cardBadge: {
     flexDirection: 'row',
@@ -832,6 +861,59 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  priorityModal: {
+    backgroundColor: '#1E1E2E',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+  },
+  priorityModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  priorityOptions: {
+    gap: 12,
+  },
+  priorityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+  },
+  priorityOptionEmoji: {
+    fontSize: 24,
+  },
+  priorityOptionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  priorityOptionClear: {
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  priorityOptionClearText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
