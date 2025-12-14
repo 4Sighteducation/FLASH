@@ -522,8 +522,8 @@ export default function FlashcardCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: CALCULATED_WIDTH,
-    height: CALCULATED_HEIGHT,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
     maxWidth: '95%',
     maxHeight: IS_MOBILE ? '75%' : '90%',
     marginVertical: 8,
