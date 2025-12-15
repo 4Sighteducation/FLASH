@@ -660,9 +660,21 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   subjectCard: {
     borderRadius: 20,
     marginBottom: 20,  // Increased from 16 to give space for floating badge
-    overflow: 'visible',  // Changed from 'hidden' - allows badge to float above!
-    borderWidth: 2,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
+    overflow: 'visible',  // Allows badge to float above
+    // Note: Gradient inside will handle rounded corners via its own borderRadius
+  },
+  subjectCardGrid: {
+    width: '48%',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'visible',  // Allow badges to float in grid view too
+  },
+  subjectCardWrapper: {
+    position: 'relative',  // Needed for absolute positioned badges
+  },
+  subjectGradient: {
+    borderRadius: 18,  // Slightly smaller than container to ensure rounding visible
+    padding: 16,
     ...Platform.select({
       web: {
         // Web: Enhanced border glow
@@ -727,10 +739,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flex: 1,
   },
   subjectNameGrid: {
-    fontSize: 18,
+    fontSize: 15,  // Reduced from 18 - more compact
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
+    lineHeight: 18,  // Tighter line height
   },
   examBoard: {
     fontSize: 14,
