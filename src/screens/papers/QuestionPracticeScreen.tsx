@@ -17,6 +17,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
+import ExamTimer from '../../components/ExamTimer';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Question {
   id: string;
@@ -56,6 +58,7 @@ export default function QuestionPracticeScreen() {
   const [userAnswer, setUserAnswer] = useState('');
   const [markingResult, setMarkingResult] = useState<MarkingResult | null>(null);
   const [marking, setMarking] = useState(false);
+  const [questionTime, setQuestionTime] = useState(0);
 
   useEffect(() => {
     loadQuestions();
@@ -229,6 +232,14 @@ export default function QuestionPracticeScreen() {
             </Text>
           </View>
           <View style={{ width: 24 }} />
+        </View>
+
+        {/* Timer */}
+        <View style={styles.timerContainer}>
+          <ExamTimer 
+            questionMarks={currentQuestion.marks}
+            onTimeUpdate={setQuestionTime}
+          />
         </View>
 
         {/* Question Card */}
@@ -561,6 +572,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  timerContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 18,

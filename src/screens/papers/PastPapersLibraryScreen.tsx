@@ -13,6 +13,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
+import PastPapersTutorial from '../../components/PastPapersTutorial';
+import QualityTierInfo from '../../components/QualityTierInfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UserSubject {
   id: string;
@@ -43,10 +46,33 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
   const { user } = useAuth();
   const [subjects, setSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showQualityInfo, setShowQualityInfo] = useState(false);
 
   useEffect(() => {
     loadSubjectsWithPapers();
+    checkTutorialStatus();
   }, []);
+
+  const checkTutorialStatus = async () => {
+    try {
+      const seen = await AsyncStorage.getItem('past_papers_tutorial_seen');
+      if (!seen) {
+        setShowTutorial(true);
+      }
+    } catch (error) {
+      console.error('Error checking tutorial status:', error);
+    }
+  };
+
+  const completeTutorial = async () => {
+    setShowTutorial(false);
+    try {
+      await AsyncStorage.setItem('past_papers_tutorial_seen', 'true');
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+    }
+  };
 
   const loadSubjectsWithPapers = async () => {
     if (!user?.id) return;
@@ -192,14 +218,27 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           colors={['#1a1a2e', '#0f0f1e']}
           style={styles.header}
         >
-          <Text style={styles.headerTitle}>Past Papers</Text>
-          <Text style={styles.headerSubtitle}>
-            Practice with real exam questions
-          </Text>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>Past Papers</Text>
+              <Text style={styles.headerSubtitle}>
+                Practice with real exam questions
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.helpButton}
+              onPress={() => setShowTutorial(true)}
+            >
+              <Icon name="help-circle" size={28} color="#6366F1" />
+            </TouchableOpacity>
+          </View>
         </LinearGradient>
 
-        {/* Info Card */}
-        <View style={styles.infoCard}>
+        {/* Info Card - Clickable */}
+        <TouchableOpacity 
+          style={styles.infoCard}
+          onPress={() => setShowQualityInfo(true)}
+        >
           <Icon name="information-circle" size={20} color="#00F5FF" />
           <View style={styles.infoText}>
             <Text style={styles.infoTitle}>Quality Tiers</Text>
@@ -207,7 +246,8 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
               ✅ Verified • ⭐ Official • 🤖 AI-Assisted
             </Text>
           </View>
-        </View>
+          <Icon name="chevron-forward" size={20} color="#00F5FF" />
+        </TouchableOpacity>
 
         {/* Subjects with Papers */}
         {subjects.length > 0 ? (
@@ -289,6 +329,18 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           </View>
         )}
       </ScrollView>
+
+      {/* Tutorial Modal */}
+      <PastPapersTutorial
+        visible={showTutorial}
+        onComplete={completeTutorial}
+      />
+
+      {/* Quality Tier Info Modal */}
+      <QualityTierInfo
+        visible={showQualityInfo}
+        onClose={() => setShowQualityInfo(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -315,6 +367,14 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 60,
     paddingBottom: 30,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  helpButton: {
+    padding: 4,
   },
   headerTitle: {
     fontSize: 32,
