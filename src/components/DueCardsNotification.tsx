@@ -56,7 +56,7 @@ export default function DueCardsNotification({ cardsDue, onPress, visible, onDis
     <Modal
       transparent
       visible={visible}
-      animationType="none"
+      animationType="slide"  // Changed from "none" - native slide animation!
       onRequestClose={onDismiss}
     >
       <TouchableOpacity 
@@ -91,7 +91,7 @@ export default function DueCardsNotification({ cardsDue, onPress, visible, onDis
               
               <View style={styles.iconContainer}>
                 <View style={styles.iconBackground}>
-                  <Icon name="notifications" size={32} color="#FFFFFF" />
+                  <Icon name="layers" size={32} color="#FFFFFF" />
                 </View>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{cardsDue}</Text>
@@ -123,8 +123,9 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',  // Changed from 'center' - slide from bottom!
     alignItems: 'center',
+    paddingBottom: 20,  // Space from bottom
   },
   container: {
     width: width * 0.85,
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: -4,
-    right: -4,
+    left: -4,  // Changed from right: -4 - now on LEFT side!
     backgroundColor: '#FF3B30',
     minWidth: 28,
     height: 28,

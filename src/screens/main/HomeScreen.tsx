@@ -79,8 +79,19 @@ export default function HomeScreen({ navigation }: any) {
       setCardsDue(dueCount);
       
       // Show notification if there are cards due AND in-app notifications are enabled
+      // Only show once per session to avoid annoying users
       if (dueCount.total > 0 && isEnabled) {
-        setTimeout(() => setShowNotification(true), 1000); // Show after a delay
+        const lastShownKey = `notification_last_shown_${user.id}`;
+        const lastShown = await AsyncStorage.getItem(lastShownKey);
+        const now = new Date().getTime();
+        
+        // Show if never shown before OR last shown more than 4 hours ago
+        if (!lastShown || (now - parseInt(lastShown)) > (4 * 60 * 60 * 1000)) {
+          setTimeout(() => {
+            setShowNotification(true);
+            AsyncStorage.setItem(lastShownKey, now.toString());
+          }, 2000); // Show after 2 second delay (was 1 second)
+        }
       }
       
       // Fetch user stats
