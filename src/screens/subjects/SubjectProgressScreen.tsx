@@ -60,12 +60,12 @@ interface SubjectProgressScreenProps {
   navigation: any;
 }
 
-// Priority levels configuration
+// Priority levels configuration - REVERSED (1 = highest priority!)
 const PRIORITY_LEVELS = [
-  { value: 1, label: "Low Priority", number: '1', color: '#10B981' }, // Green
-  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B' }, // Orange
-  { value: 3, label: 'High Priority', number: '3', color: '#FF006E' }, // Pink
-  { value: 4, label: 'Urgent', number: '4', color: '#EF4444' }, // Red
+  { value: 1, label: "🔥 Urgent", number: '1', color: '#EF4444', description: 'Top priority! Critical for exams.' }, // Red - #1!
+  { value: 2, label: '⚡ High Priority', number: '2', color: '#FF006E', description: 'Important topic - needs focus.' }, // Pink
+  { value: 3, label: '📌 Medium Priority', number: '3', color: '#F59E0B', description: 'Useful to know - review when ready.' }, // Orange
+  { value: 4, label: '✅ Low Priority', number: '4', color: '#10B981', description: 'Good to know - review occasionally.' }, // Green
 ];
 
 const getPriorityInfo = (priority: number | null | undefined) => {
@@ -101,6 +101,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const [showTopicOptions, setShowTopicOptions] = useState<DiscoveredTopic | null>(null);
   const [showContextModal, setShowContextModal] = useState<DiscoveredTopic | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null); // null = show all
+  const [showPriorityTooltip, setShowPriorityTooltip] = useState<number | null>(null);
 
   useEffect(() => {
     loadPriorityFilter();
@@ -672,6 +673,10 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                       ]
                     ]}
                     onPress={() => setPriorityFilter(level.value)}
+                    onLongPress={() => {
+                      setShowPriorityTooltip(level.value);
+                      setTimeout(() => setShowPriorityTooltip(null), 2500);
+                    }}
                   >
                     <Text style={[
                       styles.filterNumberText,
@@ -680,6 +685,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                     ]}>
                       {level.number}
                     </Text>
+                    {showPriorityTooltip === level.value && (
+                      <View style={[styles.priorityTooltip, { backgroundColor: level.color }]}>
+                        <Text style={styles.priorityTooltipText}>{level.description}</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1158,9 +1168,9 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     justifyContent: 'center',
   },
   filterNumberButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 40,  // Reduced from 56 (30% smaller)
+    height: 40,  // Reduced from 56
+    borderRadius: 20,  // Half of width/height
     borderWidth: 2,
     borderColor: theme === 'cyber' ? colors.border : '#D1D5DB',
     backgroundColor: theme === 'cyber' ? colors.surface : '#FFFFFF',
