@@ -390,7 +390,7 @@ export default function HomeScreen({ navigation }: any) {
                       )}
                       <View style={isGridView ? styles.subjectStatsGrid : styles.subjectStats}>
                         <View style={styles.statItem}>
-                          <Icon name="albums-outline" size={isGridView ? 14 : 16} color="#FFFFFF" />
+                          <Icon name="layers" size={isGridView ? 14 : 16} color="#FFFFFF" />
                           <Text style={isGridView ? styles.statTextGrid : styles.statText}>{subject.flashcard_count || 0}</Text>
                         </View>
                       </View>
@@ -916,8 +916,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   notificationBadgeContainer: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: -8,  // Float at very top corner
+    right: -8,  // Slightly outside card edge
   },
   dueBadge: {
     backgroundColor: '#FF3B30',
