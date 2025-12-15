@@ -705,10 +705,18 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                     <View key={level0Name} style={styles.topicGroup}>
                       {/* LEVEL 0: Exam Paper */}
                       <TouchableOpacity
-                        style={[styles.groupHeader, styles.level0Header]}
+                        style={[
+                          styles.groupHeader, 
+                          styles.level0Header,
+                          { 
+                            backgroundColor: `${level0Color}15`,  // 15% opacity tint
+                            borderLeftColor: level0Color, 
+                            borderLeftWidth: 5 
+                          }
+                        ]}
                         onPress={() => toggleLevel0(level0Name)}
                       >
-                        <View style={[styles.groupHeaderLeft, { borderLeftColor: level0Color, borderLeftWidth: 4 }]}>
+                        <View style={styles.groupHeaderLeft}>
                           <Icon
                             name={level0Collapsed ? "document-text" : "document-text-outline"}
                             size={24}
@@ -719,8 +727,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                           </Text>
                         </View>
                         <View style={styles.groupHeaderRight}>
-                          <View style={[styles.cardCountBadge, { backgroundColor: level0Color }]}>
-                            <Text style={styles.cardCountText}>{level0CardCount}</Text>
+                          <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: level0Color, borderWidth: 2 }]}>
+                            <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{level0CardCount}</Text>
                           </View>
                           <Icon
                             name={level0Collapsed ? "chevron-down" : "chevron-up"}
@@ -748,10 +756,18 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                               <View key={level1Name} style={styles.level1Section}>
                                 {/* LEVEL 1: Main Section */}
                                 <TouchableOpacity
-                                  style={[styles.groupHeader, styles.level1Header]}
+                                  style={[
+                                    styles.groupHeader, 
+                                    styles.level1Header,
+                                    { 
+                                      backgroundColor: `${level1Color}12`,  // 12% opacity tint
+                                      borderLeftColor: level1Color, 
+                                      borderLeftWidth: 4 
+                                    }
+                                  ]}
                                   onPress={() => toggleLevel1(`${level0Name}||${level1Name}`)}
                                 >
-                                  <View style={[styles.groupHeaderLeft, { borderLeftColor: level1Color, borderLeftWidth: 3 }]}>
+                                  <View style={styles.groupHeaderLeft}>
                                     <Icon
                                       name={level1Collapsed ? "folder" : "folder-open"}
                                       size={22}
@@ -762,8 +778,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                     </Text>
                                   </View>
                                   <View style={styles.groupHeaderRight}>
-                                    <View style={[styles.cardCountBadge, { backgroundColor: level1Color }]}>
-                                      <Text style={styles.cardCountText}>{level1CardCount}</Text>
+                                    <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: level1Color, borderWidth: 1.5 }]}>
+                                      <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{level1CardCount}</Text>
                                     </View>
                                     <Icon
                                       name={level1Collapsed ? "chevron-down" : "chevron-up"}
@@ -797,10 +813,18 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                         <View key={level2Name} style={styles.level2Section}>
                                           {/* LEVEL 2: Sub-section */}
                                           <TouchableOpacity
-                                            style={[styles.groupHeader, styles.level2Header]}
+                                            style={[
+                                              styles.groupHeader, 
+                                              styles.level2Header,
+                                              { 
+                                                backgroundColor: `${level2Color}10`,  // 10% opacity tint
+                                                borderLeftColor: level2Color, 
+                                                borderLeftWidth: 3 
+                                              }
+                                            ]}
                                             onPress={() => toggleLevel2(`${level0Name}||${level1Name}||${level2Name}`)}
                                           >
-                                            <View style={[styles.groupHeaderLeft, { borderLeftColor: level2Color, borderLeftWidth: 2 }]}>
+                                            <View style={styles.groupHeaderLeft}>
                                               <Icon
                                                 name={level2Collapsed ? "list" : "list-outline"}
                                                 size={20}
@@ -811,7 +835,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                               </Text>
                                             </View>
                                             <View style={styles.groupHeaderRight}>
-                                              <Text style={[styles.cardCountText, { color: level2Color }]}>{level2CardCount}</Text>
+                                              <Text style={[styles.cardCountText, { color: '#00F5FF', fontWeight: '700' }]}>{level2CardCount}</Text>
                                               <Icon
                                                 name={level2Collapsed ? "add" : "remove"}
                                                 size={16}

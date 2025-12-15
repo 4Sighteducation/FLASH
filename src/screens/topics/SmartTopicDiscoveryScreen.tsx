@@ -114,13 +114,12 @@ export default function SmartTopicDiscoveryScreen() {
       // Map exam type to database format
       const qualificationLevel = examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE';
       
-      // Build full subject name to match database format: "Biology (GCSE)"
-      // Database stores as "{Subject} ({ExamType})"
-      const fullSubjectName = `${subjectName} (${examType})`;
+      // subjectName already includes exam type: "Biology (GCSE)"
+      // Don't append exam type again!
+      const fullSubjectName = subjectName;
       
       console.log('🧠 Fetching smart suggestions for:', { 
         fullSubject: fullSubjectName,
-        subject: subjectName, 
         level: qualificationLevel 
       });
       
