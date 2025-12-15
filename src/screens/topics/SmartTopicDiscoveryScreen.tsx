@@ -141,7 +141,12 @@ export default function SmartTopicDiscoveryScreen() {
       }
 
       if (data && data.length > 0) {
-        const suggestions = data.map((item: any) => item.topic_name);
+        // Strip topic codes (e.g., "6.1 ", "3.4 ", "1.2.3 ") from topic names
+        const suggestions = data.map((item: any) => {
+          const topicName = item.topic_name;
+          // Remove leading numbers, periods, and spaces (e.g., "6.1 " or "3.4.5 ")
+          return topicName.replace(/^[\d.]+\s+/, '').trim();
+        });
         console.log('✅ Smart suggestions loaded:', suggestions);
         setSmartSuggestions(suggestions);
       } else {
