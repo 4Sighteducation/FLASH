@@ -659,8 +659,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   subjectCard: {
     borderRadius: 20,
-    marginBottom: 16,
-    overflow: 'hidden',
+    marginBottom: 20,  // Increased from 16 to give space for floating badge
+    overflow: 'visible',  // Changed from 'hidden' - allows badge to float above!
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
     ...Platform.select({
@@ -916,8 +916,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   notificationBadgeContainer: {
     position: 'absolute',
-    top: -8,  // Float at very top corner
-    right: -8,  // Slightly outside card edge
+    top: -12,  // Float well above card
+    right: -12,  // Float outside card edge
+    zIndex: 1000,  // Ensure it's above everything
   },
   dueBadge: {
     backgroundColor: '#FF3B30',
