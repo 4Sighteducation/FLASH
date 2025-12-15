@@ -65,7 +65,7 @@ Return ONLY valid JSON array in this format:
 ]`;
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20240620',
+      model: 'claude-3-sonnet-20240229',
       max_tokens: 16000,
       messages: [
         {
