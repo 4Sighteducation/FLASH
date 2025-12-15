@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import TopicContextModal from '../../components/TopicContextModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { generateHierarchyPalette, getHierarchyColor } from '../../utils/colorPaletteGenerator';
 
 interface DiscoveredTopic {
   id?: string;
@@ -78,6 +79,9 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const { colors, theme } = useTheme();
   const safeSubjectColor = subjectColor || '#6366F1'; // Fallback color if null
   const styles = createStyles(colors, theme, safeSubjectColor);
+  
+  // Generate color palette for hierarchy
+  const colorPalette = generateHierarchyPalette(safeSubjectColor);
 
   const [loading, setLoading] = useState(true);
   const [discoveredTopics, setDiscoveredTopics] = useState<DiscoveredTopic[]>([]);
@@ -688,11 +692,14 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
               {(() => {
                 const hierarchy = organizeHierarchy(groupedTopics);
                 
-                return Object.keys(hierarchy).sort().map((level0Name) => {
+                return Object.keys(hierarchy).sort().map((level0Name, level0Index) => {
                   const level0Collapsed = collapsedL0.has(level0Name);
                   const level0CardCount = groupedTopics
                     .filter(g => g.level0 === level0Name)
                     .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
+                  
+                  // Get unique color for this Level 0 section
+                  const level0Color = colorPalette.level0[level0Index % colorPalette.level0.length];
 
                   return (
                     <View key={level0Name} style={styles.topicGroup}>
@@ -701,24 +708,24 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                         style={[styles.groupHeader, styles.level0Header]}
                         onPress={() => toggleLevel0(level0Name)}
                       >
-                        <View style={styles.groupHeaderLeft}>
+                        <View style={[styles.groupHeaderLeft, { borderLeftColor: level0Color, borderLeftWidth: 4 }]}>
                           <Icon
                             name={level0Collapsed ? "document-text" : "document-text-outline"}
                             size={24}
-                            color={safeSubjectColor}
+                            color={level0Color}
                           />
                           <Text style={[styles.groupTitle, styles.level0Title]}>
                             {abbreviateTopicName(level0Name)}
                           </Text>
                         </View>
                         <View style={styles.groupHeaderRight}>
-                          <View style={styles.cardCountBadge}>
+                          <View style={[styles.cardCountBadge, { backgroundColor: level0Color }]}>
                             <Text style={styles.cardCountText}>{level0CardCount}</Text>
                           </View>
                           <Icon
                             name={level0Collapsed ? "chevron-down" : "chevron-up"}
                             size={20}
-                            color="#666"
+                            color={level0Color}
                           />
                         </View>
                       </TouchableOpacity>
@@ -726,13 +733,16 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                       {/* LEVEL 0 CONTENT */}
                       {!level0Collapsed && (
                         <View style={styles.level0Content}>
-                          {Object.keys(hierarchy[level0Name]).sort().map((level1Name) => {
+                          {Object.keys(hierarchy[level0Name]).sort().map((level1Name, level1Index) => {
                             if (!level1Name) return null;
                             
                             const level1Collapsed = collapsedL1.has(`${level0Name}||${level1Name}`);
                             const level1CardCount = groupedTopics
                               .filter(g => g.level0 === level0Name && g.level1 === level1Name)
                               .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
+                            
+                            // Get unique color for this Level 1 section
+                            const level1Color = colorPalette.level1[level1Index % colorPalette.level1.length];
 
                             return (
                               <View key={level1Name} style={styles.level1Section}>
@@ -741,24 +751,24 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                   style={[styles.groupHeader, styles.level1Header]}
                                   onPress={() => toggleLevel1(`${level0Name}||${level1Name}`)}
                                 >
-                                  <View style={styles.groupHeaderLeft}>
+                                  <View style={[styles.groupHeaderLeft, { borderLeftColor: level1Color, borderLeftWidth: 3 }]}>
                                     <Icon
                                       name={level1Collapsed ? "folder" : "folder-open"}
                                       size={22}
-                                      color={safeSubjectColor}
+                                      color={level1Color}
                                     />
                                     <Text style={[styles.groupTitle, styles.level1Title]}>
                                       {abbreviateTopicName(level1Name)}
                                     </Text>
                                   </View>
                                   <View style={styles.groupHeaderRight}>
-                                    <View style={styles.cardCountBadge}>
+                                    <View style={[styles.cardCountBadge, { backgroundColor: level1Color }]}>
                                       <Text style={styles.cardCountText}>{level1CardCount}</Text>
                                     </View>
                                     <Icon
                                       name={level1Collapsed ? "chevron-down" : "chevron-up"}
                                       size={18}
-                                      color="#666"
+                                      color={level1Color}
                                     />
                                   </View>
                                 </TouchableOpacity>
@@ -766,17 +776,20 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                 {/* LEVEL 1 CONTENT */}
                                 {!level1Collapsed && (
                                   <View style={styles.level1Content}>
-                                    {Object.keys(hierarchy[level0Name][level1Name]).sort().map((level2Name) => {
+                                    {Object.keys(hierarchy[level0Name][level1Name]).sort().map((level2Name, level2Index) => {
                                       const level2Groups = hierarchy[level0Name][level1Name][level2Name];
                                       const level2Collapsed = collapsedL2.has(`${level0Name}||${level1Name}||${level2Name}`);
                                       const level2CardCount = level2Groups.reduce((sum, g) => 
                                         sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
+                                      
+                                      // Get unique color for this Level 2 section
+                                      const level2Color = colorPalette.level2[level2Index % colorPalette.level2.length];
 
                                       // Skip "direct" if no Level 2 exists
                                       if (level2Name === 'direct' && level2Groups[0]?.level2 === undefined) {
-                                        // Render topics directly without Level 2 wrapper
+                                        // Render topics directly without Level 2 wrapper (use level1 color)
                                         return level2Groups.map(group => 
-                                          group.topics.map(topic => renderTopicCard(topic, safeSubjectColor, group))
+                                          group.topics.map(topic => renderTopicCard(topic, level1Color, group))
                                         );
                                       }
 
@@ -787,22 +800,22 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                             style={[styles.groupHeader, styles.level2Header]}
                                             onPress={() => toggleLevel2(`${level0Name}||${level1Name}||${level2Name}`)}
                                           >
-                                            <View style={styles.groupHeaderLeft}>
+                                            <View style={[styles.groupHeaderLeft, { borderLeftColor: level2Color, borderLeftWidth: 2 }]}>
                                               <Icon
                                                 name={level2Collapsed ? "list" : "list-outline"}
                                                 size={20}
-                                                color={safeSubjectColor}
+                                                color={level2Color}
                                               />
                                               <Text style={[styles.groupTitle, styles.level2Title]}>
                                                 {abbreviateTopicName(level2Name)}
                                               </Text>
                                             </View>
                                             <View style={styles.groupHeaderRight}>
-                                              <Text style={styles.cardCountText}>{level2CardCount}</Text>
+                                              <Text style={[styles.cardCountText, { color: level2Color }]}>{level2CardCount}</Text>
                                               <Icon
                                                 name={level2Collapsed ? "add" : "remove"}
                                                 size={16}
-                                                color="#666"
+                                                color={level2Color}
                                               />
                                             </View>
                                           </TouchableOpacity>
@@ -811,7 +824,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                           {!level2Collapsed && (
                                             <View style={styles.level2Content}>
                                               {level2Groups.map(group => 
-                                                group.topics.map(topic => renderTopicCard(topic, safeSubjectColor, group))
+                                                group.topics.map(topic => renderTopicCard(topic, level2Color, group))
                                               )}
                                             </View>
                                           )}
