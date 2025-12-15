@@ -28,6 +28,9 @@ import SubjectProgressScreen from '../screens/subjects/SubjectProgressScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import UserManagement from '../screens/admin/UserManagement';
 import TestTools from '../screens/admin/TestTools';
+import PastPapersLibraryScreen from '../screens/papers/PastPapersLibraryScreen';
+import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
+import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -192,6 +195,17 @@ function StudyStack() {
   );
 }
 
+// Papers Stack
+function PapersStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PapersMain" component={PastPapersLibraryScreen} />
+      <Stack.Screen name="PaperDetail" component={PaperDetailScreen} />
+      <Stack.Screen name="QuestionPractice" component={QuestionPracticeScreen} />
+    </Stack.Navigator>
+  );
+}
+
 // Profile Stack
 function ProfileStack() {
   return (
@@ -244,6 +258,8 @@ export default function MainNavigator() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Study') {
             iconName = focused ? 'book' : 'book-outline';
+          } else if (route.name === 'Papers') {
+            iconName = focused ? 'document-text' : 'document-text-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -259,6 +275,7 @@ export default function MainNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Study" component={StudyStack} />
+      <Tab.Screen name="Papers" component={PapersStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
