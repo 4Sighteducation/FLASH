@@ -52,6 +52,8 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
     if (!user?.id) return;
 
     try {
+      console.log('[Papers] Loading subjects for user:', user.id);
+      
       // Get user's subjects
       const { data: userSubjects, error: subjectsError } = await supabase
         .from('user_subjects')
@@ -68,10 +70,14 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
         .eq('user_id', user.id);
 
       if (subjectsError) throw subjectsError;
+      
+      console.log('[Papers] User subjects:', userSubjects?.length);
 
       // For each subject, find matching staging subject and count papers
       const subjectsWithPapers = await Promise.all(
         (userSubjects || []).map(async (subject: any) => {
+          console.log('[Papers] Processing subject:', subject.subject.subject_name);
+          
           // Get the exam board subject details
           const { data: ebSubject } = await supabase
             .from('exam_board_subjects')
@@ -79,7 +85,12 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             .eq('id', subject.subject_id)
             .single();
 
-          if (!ebSubject) return { ...subject, paper_count: 0 };
+          console.log('[Papers] Exam board subject:', ebSubject);
+
+          if (!ebSubject) {
+            console.log('[Papers] No exam board subject found');
+            return { ...subject, paper_count: 0 };
+          }
 
           // Get exam board name
           const { data: examBoard } = await supabase
@@ -88,16 +99,21 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             .eq('id', ebSubject.exam_board_id)
             .single();
 
+          console.log('[Papers] Exam board:', examBoard?.exam_board_name);
+
           // Find matching staging subject
           const { data: stagingSubject } = await supabase
             .from('staging_aqa_subjects')
-            .select('id')
+            .select('id, subject_name')
             .eq('subject_code', ebSubject.subject_code)
             .eq('qualification_type', ebSubject.qualification_type)
             .eq('exam_board', examBoard?.exam_board_name || subject.exam_board)
             .maybeSingle();
 
+          console.log('[Papers] Staging subject match:', stagingSubject);
+
           if (!stagingSubject) {
+            console.log('[Papers] No staging subject found for:', ebSubject.subject_code, ebSubject.qualification_type, examBoard?.exam_board_name);
             return { ...subject, paper_count: 0 };
           }
 
