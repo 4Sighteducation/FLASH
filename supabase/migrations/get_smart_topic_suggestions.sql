@@ -1,5 +1,5 @@
 -- Function: Get Smart Topic Suggestions
--- Purpose: Return 4 most relevant topic suggestions for a subject based on importance and popularity
+-- Purpose: Return 4 most relevant topic suggestions based on actual user popularity
 -- Used by: SmartTopicDiscoveryScreen for "Try searching for" suggestions
 
 CREATE OR REPLACE FUNCTION get_smart_topic_suggestions(
@@ -9,51 +9,45 @@ CREATE OR REPLACE FUNCTION get_smart_topic_suggestions(
 )
 RETURNS TABLE (
   topic_name TEXT,
-  exam_importance NUMERIC,
   flashcard_count BIGINT,
-  smart_score NUMERIC
+  topic_level INTEGER,
+  sort_order INTEGER
 ) 
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Strategy: Combine exam importance (70%) with user popularity (30%)
-  -- Falls back to pure importance if no flashcards exist yet
+  -- Strategy: Rank by flashcard popularity, fallback to curriculum order
+  -- Returns topics that users actually study OR well-ordered curriculum topics
   
   RETURN QUERY
+  WITH subject_topics AS (
+    SELECT 
+      ct.topic_id,
+      ct.topic_name,
+      ct.topic_level,
+      ct.sort_order,
+      COUNT(DISTINCT f.id) as card_count
+    FROM curriculum_topics ct
+    JOIN exam_board_subjects ebs ON ebs.id = ct.exam_board_subject_id
+    LEFT JOIN flashcards f ON f.topic_id = ct.topic_id
+    WHERE ebs.subject_name = p_subject_name
+      AND ebs.qualification_level = p_qualification_level
+      AND ct.topic_level >= 3  -- Specific enough
+      AND ct.topic_level <= 4  -- Not too deep
+      AND ct.topic_name IS NOT NULL
+      AND LENGTH(ct.topic_name) > 0
+    GROUP BY ct.topic_id, ct.topic_name, ct.topic_level, ct.sort_order
+  )
   SELECT 
-    ct.topic_name,
-    ct.exam_importance,
-    COUNT(DISTINCT f.id)::BIGINT as flashcard_count,
-    ROUND(
-      (
-        ct.exam_importance * 0.7 + 
-        COALESCE(
-          (COUNT(DISTINCT f.id)::NUMERIC / NULLIF(
-            (SELECT MAX(card_count) FROM (
-              SELECT COUNT(*)::NUMERIC as card_count 
-              FROM flashcards 
-              WHERE topic_id IN (
-                SELECT topic_id FROM curriculum_topics 
-                WHERE subject_name = p_subject_name
-              )
-              GROUP BY topic_id
-            ) sub), 0
-          )) * 0.3,
-          0  -- If no cards exist, this becomes 0
-        )
-      )::NUMERIC, 4
-    ) as smart_score
-  FROM curriculum_topics ct
-  LEFT JOIN flashcards f ON f.topic_id = ct.topic_id
-  WHERE ct.subject_name = p_subject_name
-    AND ct.qualification_level = p_qualification_level
-    AND ct.topic_level >= 3  -- Specific enough
-    AND ct.topic_level <= 4  -- Not too deep
-    AND ct.exam_importance > 0  -- Only important topics
-    AND ct.topic_name IS NOT NULL
-    AND LENGTH(ct.topic_name) > 0
-  GROUP BY ct.topic_id, ct.topic_name, ct.exam_importance
-  ORDER BY smart_score DESC
+    st.topic_name,
+    st.card_count::BIGINT,
+    st.topic_level,
+    st.sort_order
+  FROM subject_topics st
+  ORDER BY 
+    st.card_count DESC,  -- Most popular first
+    st.sort_order ASC,   -- Then curriculum order
+    st.topic_name ASC    -- Then alphabetical
   LIMIT p_limit;
 END;
 $$;
