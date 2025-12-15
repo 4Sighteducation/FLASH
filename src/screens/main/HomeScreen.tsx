@@ -921,11 +921,24 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     zIndex: 1000,  // Ensure it's above everything
   },
   dueBadge: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#FF006E',  // Neon pink!
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    shadowColor: '#000',
+    ...Platform.select({
+      web: {
+        borderWidth: 2,
+        borderColor: '#FF006E',
+        boxShadow: '0 0 20px rgba(255, 0, 110, 0.6)',  // Neon glow!
+      },
+      default: {
+        shadowColor: '#FF006E',  // Pink glow on mobile
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 15,
+        elevation: 8,
+      }
+    }),
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
