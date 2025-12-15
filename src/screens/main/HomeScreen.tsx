@@ -692,10 +692,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     }),
   },
   subjectCardGrid: {
-    borderRadius: 20,
-    marginBottom: 16,
-    overflow: 'hidden',
     width: '48%',
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'visible',  // Allow badges to float!
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
     ...Platform.select({
@@ -712,12 +712,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
       }
     }),
   },
-  subjectGradient: {
-    padding: 20,
-  },
   subjectGradientGrid: {
-    padding: 16,
-    height: 140,
+    borderRadius: 14,  // Rounded corners!
+    padding: 12,  // Reduced padding
+    height: 110,  // Reduced from 140 - fit 12 subjects!
     justifyContent: 'space-between',
   },
   subjectHeader: {
