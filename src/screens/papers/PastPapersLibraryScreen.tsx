@@ -69,24 +69,55 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
 
       if (subjectsError) throw subjectsError;
 
-      // For each subject, count papers from staging
+      // For each subject, find matching staging subject and count papers
       const subjectsWithPapers = await Promise.all(
         (userSubjects || []).map(async (subject: any) => {
+          // Get the exam board subject details
+          const { data: ebSubject } = await supabase
+            .from('exam_board_subjects')
+            .select('subject_code, qualification_type, exam_board_id')
+            .eq('id', subject.subject_id)
+            .single();
+
+          if (!ebSubject) return { ...subject, paper_count: 0 };
+
+          // Get exam board name
+          const { data: examBoard } = await supabase
+            .from('exam_boards')
+            .select('exam_board_name')
+            .eq('id', ebSubject.exam_board_id)
+            .single();
+
+          // Find matching staging subject
+          const { data: stagingSubject } = await supabase
+            .from('staging_aqa_subjects')
+            .select('id')
+            .eq('subject_code', ebSubject.subject_code)
+            .eq('qualification_type', ebSubject.qualification_type)
+            .eq('exam_board', examBoard?.exam_board_name || subject.exam_board)
+            .maybeSingle();
+
+          if (!stagingSubject) {
+            return { ...subject, paper_count: 0 };
+          }
+
           // Count papers in staging for this subject
           const { count: paperCount } = await supabase
             .from('staging_aqa_exam_papers')
             .select('*', { count: 'exact', head: true })
-            .eq('subject_id', subject.subject_id)
+            .eq('subject_id', stagingSubject.id)
             .gte('year', 2000)
-            .lte('year', 2030);
+            .lte('year', 2030)
+            .not('paper_number', 'eq', -1);
 
           // Count by quality tier
           const { data: papers } = await supabase
             .from('staging_aqa_exam_papers')
             .select('question_paper_url, mark_scheme_url, examiner_report_url')
-            .eq('subject_id', subject.subject_id)
+            .eq('subject_id', stagingSubject.id)
             .gte('year', 2000)
-            .lte('year', 2030);
+            .lte('year', 2030)
+            .not('paper_number', 'eq', -1);
 
           const qualityCounts = (papers || []).reduce((acc, p) => {
             if (p.examiner_report_url) acc.verified++;
@@ -101,6 +132,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             has_verified: qualityCounts.verified,
             has_official: qualityCounts.official,
             has_ai: qualityCounts.ai,
+            staging_subject_id: stagingSubject.id, // Store for paper detail screen
           };
         })
       );
