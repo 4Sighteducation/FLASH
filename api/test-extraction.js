@@ -29,12 +29,21 @@ export default async function handler(req, res) {
     console.log(`✅ Downloaded PDF (${(pdfBuffer.byteLength / 1024).toFixed(1)} KB)`);
 
     // Initialize Anthropic
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    
+    // DEBUG: Check API key
+    console.log('API Key exists:', !!apiKey);
+    console.log('API Key length:', apiKey?.length);
+    console.log('API Key prefix:', apiKey?.substring(0, 8));
+    
     const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: apiKey,
     });
 
     // Extract questions
+    const modelToUse = 'claude-3-haiku-20240307';
     console.log('🤖 Sending to Claude...');
+    console.log('Model:', modelToUse);
     
     const prompt = `You are an expert at extracting exam questions from PDF papers.
 
@@ -65,7 +74,7 @@ Return ONLY valid JSON array in this format:
 ]`;
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229',
+      model: modelToUse,
       max_tokens: 16000,
       messages: [
         {
@@ -129,9 +138,14 @@ Return ONLY valid JSON array in this format:
 
   } catch (error) {
     console.error('❌ Extraction failed:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    
     return res.status(500).json({
       success: false,
       error: error.message,
+      errorType: error.constructor.name,
+      errorStatus: error.status,
+      errorDetails: error.error || error.response?.data,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
