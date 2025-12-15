@@ -45,9 +45,10 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // Mobile-first responsive sizing
 const IS_MOBILE = screenWidth < 768;
 
-// Width: Narrower to fit in ManageTopic containers and stay centered
-const CARD_MAX_WIDTH = IS_MOBILE ? 340 : 600;
-const CARD_WIDTH = Math.min(screenWidth - 50, CARD_MAX_WIDTH); // More margin (50 vs 40)
+// Width: Much narrower for ManageTopic containers (account for section padding + accordion padding)
+// ManageTopic has: section padding (40px) + accordion padding (24px) + margins (32px) = ~96px consumed
+const CARD_MAX_WIDTH = IS_MOBILE ? 310 : 600;
+const CARD_WIDTH = Math.min(screenWidth - 80, CARD_MAX_WIDTH); // Large margins (80px) for tight containers
 
 // Height: Calculate available space properly
 // Screen - Leitner boxes (~120px) - Navigation (~100px) - Header (~60px) - Safe spacing (~60px)
