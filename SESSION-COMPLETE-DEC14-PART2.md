@@ -205,10 +205,71 @@
 
 ## 🐛 **KNOWN ISSUES / REMAINING WORK:**
 
+### **HIGH PRIORITY - Next Session:**
+
+**1. IMPLEMENT TRUE GRADIENT COLORS FOR SUBJECTS** 🎨
+
+**Problem:** 
+- Users can select "gradient" colors in color picker
+- But only ONE color is stored/displayed
+- Home page creates fake gradient by darkening that color
+- User's chosen gradient is lost!
+
+**Solution Required:**
+
+**A. Database Changes:**
+```sql
+ALTER TABLE user_subjects 
+ADD COLUMN gradient_start_color TEXT,
+ADD COLUMN gradient_end_color TEXT,
+ADD COLUMN use_gradient BOOLEAN DEFAULT false;
+
+-- Migrate existing data:
+UPDATE user_subjects SET gradient_start_color = color, use_gradient = false;
+```
+
+**B. Frontend Changes:**
+
+1. **ColorPicker Screen** (~1 hour):
+   - Add gradient toggle switch
+   - Show 2 color pickers when gradient enabled
+   - Preview the actual gradient
+   - Save both colors + use_gradient flag
+
+2. **HomeScreen Subject Cards** (~30 min):
+   ```typescript
+   const gradientColors = subject.use_gradient && subject.gradient_end_color
+     ? [subject.gradient_start_color, subject.gradient_end_color]
+     : [subject.color, adjustColor(subject.color, -20)];
+   
+   <LinearGradient colors={gradientColors} ... />
+   ```
+
+3. **Propagate to Other Screens** (~30 min):
+   - SubjectProgressScreen
+   - Study screens
+   - Anywhere subject color is used
+
+**Estimated Effort:** 2-3 hours total
+
+**Why Worth It:**
+- Beautiful visual customization
+- Users love personalization
+- Makes app feel premium
+- Already have color picker infrastructure
+
+**Files to Modify:**
+- `supabase/migrations/add_gradient_colors.sql` (NEW)
+- `src/screens/settings/ColorPickerScreen.tsx`
+- `src/screens/main/HomeScreen.tsx`
+- `src/screens/subjects/SubjectProgressScreen.tsx`
+
+---
+
 ### Minor Polish Needed:
-1. ❓ Priority tooltip styles need testing on device
-2. ❓ Verify color differences on various subject colors (not just royal blue)
-3. ❓ Test smart suggestions with different subjects
+2. ❓ Priority tooltip styles need testing on device
+3. ❓ Verify color differences on various subject colors (not just royal blue)
+4. ❓ Test smart suggestions with different subjects
 
 ### Future Enhancements (Optional):
 - Consider custom SVG icons (card-index.svg) with react-native-svg
