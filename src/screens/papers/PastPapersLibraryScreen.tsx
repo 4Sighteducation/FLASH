@@ -78,10 +78,14 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
         (userSubjects || []).map(async (subject: any) => {
           console.log('[Papers] Processing subject:', subject.subject.subject_name);
           
-          // Get the exam board subject details
+          // Get the exam board subject details WITH qualification type
           const { data: ebSubject } = await supabase
             .from('exam_board_subjects')
-            .select('subject_code, qualification_type, exam_board_id')
+            .select(`
+              subject_code,
+              exam_board_id,
+              qualification_type:qualification_types!qualification_type_id(code)
+            `)
             .eq('id', subject.subject_id)
             .single();
 
@@ -92,22 +96,27 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             return { ...subject, paper_count: 0 };
           }
 
-          // Get exam board name
+          // Get exam board code
           const { data: examBoard } = await supabase
             .from('exam_boards')
-            .select('exam_board_name')
+            .select('code')
             .eq('id', ebSubject.exam_board_id)
             .single();
 
-          console.log('[Papers] Exam board:', examBoard?.exam_board_name);
+          console.log('[Papers] Exam board code:', examBoard?.code);
+          console.log('[Papers] Looking for staging subject with:', {
+            subject_code: ebSubject.subject_code,
+            qual_type: ebSubject.qualification_type?.code,
+            exam_board: examBoard?.code
+          });
 
           // Find matching staging subject
           const { data: stagingSubject } = await supabase
             .from('staging_aqa_subjects')
-            .select('id, subject_name')
+            .select('id, subject_name, subject_code, qualification_type, exam_board')
             .eq('subject_code', ebSubject.subject_code)
-            .eq('qualification_type', ebSubject.qualification_type)
-            .eq('exam_board', examBoard?.exam_board_name || subject.exam_board)
+            .eq('qualification_type', ebSubject.qualification_type?.code || '')
+            .eq('exam_board', examBoard?.code || subject.exam_board)
             .maybeSingle();
 
           console.log('[Papers] Staging subject match:', stagingSubject);
