@@ -32,7 +32,7 @@ interface ExamPaper {
 export default function PaperDetailScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { subjectId, subjectName, examBoard, subjectColor } = route.params as any;
+  const { stagingSubjectId, subjectName, examBoard, subjectColor } = route.params as any;
   
   const [papers, setPapers] = useState<ExamPaper[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,17 +44,21 @@ export default function PaperDetailScreen() {
 
   const loadPapers = async () => {
     try {
+      console.log('[PaperDetail] Loading papers for staging subject:', stagingSubjectId);
+      
       // Load papers from staging
       const { data, error } = await supabase
         .from('staging_aqa_exam_papers')
         .select('*')
-        .eq('subject_id', subjectId)
+        .eq('subject_id', stagingSubjectId)
         .gte('year', 2000)
         .lte('year', 2030)
         .not('paper_number', 'eq', -1)
         .order('year', { ascending: false })
         .order('exam_series')
         .order('paper_number');
+      
+      console.log('[PaperDetail] Found papers:', data?.length);
 
       if (error) throw error;
 

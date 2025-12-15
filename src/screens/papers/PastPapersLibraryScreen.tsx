@@ -219,7 +219,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
                 style={styles.subjectCard}
                 onPress={() =>
                   navigation.navigate('PaperDetail', {
-                    subjectId: subject.subject_id,
+                    stagingSubjectId: subject.staging_subject_id,
                     subjectName: subject.subject.subject_name,
                     examBoard: subject.exam_board,
                     subjectColor: subject.color,
