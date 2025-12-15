@@ -45,16 +45,16 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // Mobile-first responsive sizing
 const IS_MOBILE = screenWidth < 768;
 
-// Width: Keep cards nicely sized for mobile (not too wide, not too narrow)
-const CARD_MAX_WIDTH = IS_MOBILE ? 350 : 600;
-const CARD_WIDTH = Math.min(screenWidth - 40, CARD_MAX_WIDTH);
+// Width: Narrower to fit in ManageTopic containers and stay centered
+const CARD_MAX_WIDTH = IS_MOBILE ? 340 : 600;
+const CARD_WIDTH = Math.min(screenWidth - 50, CARD_MAX_WIDTH); // More margin (50 vs 40)
 
 // Height: Calculate available space properly
-// Screen - Leitner boxes (~120px) - Navigation (~100px) - Header (~60px) - Safe spacing (~40px)
-// This gives us ~520px available on an 844px phone
-const AVAILABLE_HEIGHT = screenHeight - 320; // Reserve 320px for UI chrome
+// Screen - Leitner boxes (~120px) - Navigation (~100px) - Header (~60px) - Safe spacing (~60px)
+// Increased reserve to prevent overlap
+const AVAILABLE_HEIGHT = screenHeight - 340; // Reserve 340px for UI chrome (was 320)
 const CARD_HEIGHT = IS_MOBILE 
-  ? Math.min(AVAILABLE_HEIGHT * 0.95, 550) // Use 95% of available space, max 550px
+  ? Math.min(AVAILABLE_HEIGHT * 0.92, 520) // Use 92% (was 95%), max 520px (was 550)
   : 500;
 
 // Helper function to calculate dynamic font size based on text length
