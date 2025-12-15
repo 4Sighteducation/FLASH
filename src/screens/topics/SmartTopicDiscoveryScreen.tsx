@@ -125,10 +125,12 @@ export default function SmartTopicDiscoveryScreen() {
       });
       
       // Call database function to get smart topic suggestions
+      // Excludes topics the user already has cards for
       const { data, error } = await supabase
         .rpc('get_smart_topic_suggestions', {
           p_subject_name: fullSubjectName,  // Use full name with exam type
           p_qualification_level: qualificationLevel,
+          p_user_id: user?.id,  // Pass user ID to exclude their topics
           p_limit: 4
         });
 
