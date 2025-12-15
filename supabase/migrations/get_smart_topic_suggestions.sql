@@ -1,6 +1,9 @@
 -- Function: Get Smart Topic Suggestions
--- Purpose: Return 4 most relevant topic suggestions based on actual user popularity
+-- Purpose: Return 4 most relevant topics using exam_importance + user popularity
 -- Used by: SmartTopicDiscoveryScreen for "Try searching for" suggestions
+
+-- Drop old version if exists
+DROP FUNCTION IF EXISTS get_smart_topic_suggestions(text, text, integer);
 
 CREATE OR REPLACE FUNCTION get_smart_topic_suggestions(
   p_subject_name TEXT,
@@ -9,52 +12,57 @@ CREATE OR REPLACE FUNCTION get_smart_topic_suggestions(
 )
 RETURNS TABLE (
   topic_name TEXT,
+  exam_importance DOUBLE PRECISION,
   flashcard_count BIGINT,
-  topic_level INTEGER,
-  sort_order INTEGER
+  smart_score NUMERIC
 ) 
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Strategy: Rank by flashcard popularity, fallback to curriculum order
-  -- Returns topics that users actually study OR well-ordered curriculum topics
+  -- Strategy: 70% exam_importance + 30% user popularity
+  -- Uses topic_ai_metadata which has all the metadata in one place
   
   RETURN QUERY
   WITH subject_topics AS (
     SELECT 
-      ct.topic_id,
+      ai.topic_id,
       ct.topic_name,
-      ct.topic_level,
-      ct.sort_order,
+      ai.topic_level,
+      ai.exam_importance,
       COUNT(DISTINCT f.id) as card_count
-    FROM curriculum_topics ct
-    JOIN exam_board_subjects ebs ON ebs.id = ct.exam_board_subject_id
-    LEFT JOIN flashcards f ON f.topic_id = ct.topic_id
-    WHERE ebs.subject_name = p_subject_name
-      AND ebs.qualification_level = p_qualification_level
-      AND ct.topic_level >= 3  -- Specific enough
-      AND ct.topic_level <= 4  -- Not too deep
+    FROM topic_ai_metadata ai
+    JOIN curriculum_topics ct ON ct.id = ai.topic_id
+    LEFT JOIN flashcards f ON f.topic_id = ai.topic_id
+    WHERE ai.subject_name = p_subject_name
+      AND ai.qualification_level = p_qualification_level
+      AND ai.topic_level >= 2  -- Levels 2-4 (not all subjects have level 4)
+      AND ai.topic_level <= 4
+      AND ai.is_active = true
+      AND ai.exam_importance > 0
       AND ct.topic_name IS NOT NULL
       AND LENGTH(ct.topic_name) > 0
-    GROUP BY ct.topic_id, ct.topic_name, ct.topic_level, ct.sort_order
+    GROUP BY ai.topic_id, ct.topic_name, ai.topic_level, ai.exam_importance
+  ),
+  max_cards AS (
+    SELECT COALESCE(MAX(card_count), 1) as max_count FROM subject_topics
   )
   SELECT 
     st.topic_name,
+    st.exam_importance,
     st.card_count::BIGINT,
-    st.topic_level,
-    st.sort_order
-  FROM subject_topics st
-  ORDER BY 
-    st.card_count DESC,  -- Most popular first
-    st.sort_order ASC,   -- Then curriculum order
-    st.topic_name ASC    -- Then alphabetical
+    ROUND(
+      (COALESCE(st.exam_importance, 0) * 0.7 + 
+       (st.card_count::NUMERIC / mc.max_count) * 0.3)::NUMERIC, 
+      4
+    ) as smart_score
+  FROM subject_topics st, max_cards mc
+  ORDER BY smart_score DESC
   LIMIT p_limit;
 END;
 $$;
 
--- Grant access to authenticated users
+-- Grant access
 GRANT EXECUTE ON FUNCTION get_smart_topic_suggestions TO authenticated;
 GRANT EXECUTE ON FUNCTION get_smart_topic_suggestions TO anon;
 
--- Test the function
--- SELECT * FROM get_smart_topic_suggestions('Biology', 'GCSE', 4);
+-- Test: SELECT * FROM get_smart_topic_suggestions('Biology (GCSE)', 'GCSE', 4);

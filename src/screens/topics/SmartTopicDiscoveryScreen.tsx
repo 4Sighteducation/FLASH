@@ -114,7 +114,12 @@ export default function SmartTopicDiscoveryScreen() {
       // Map exam type to database format
       const qualificationLevel = examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE';
       
+      // Build full subject name to match database format: "Biology (GCSE)"
+      // Database stores as "{Subject} ({ExamType})"
+      const fullSubjectName = `${subjectName} (${examType})`;
+      
       console.log('🧠 Fetching smart suggestions for:', { 
+        fullSubject: fullSubjectName,
         subject: subjectName, 
         level: qualificationLevel 
       });
@@ -122,7 +127,7 @@ export default function SmartTopicDiscoveryScreen() {
       // Call database function to get smart topic suggestions
       const { data, error } = await supabase
         .rpc('get_smart_topic_suggestions', {
-          p_subject_name: subjectName,
+          p_subject_name: fullSubjectName,  // Use full name with exam type
           p_qualification_level: qualificationLevel,
           p_limit: 4
         });
