@@ -53,6 +53,8 @@ export default function SmartTopicDiscoveryScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicSearchResult | null>(null);
   const [showAllResults, setShowAllResults] = useState(false);
+  const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   
   const searchDebounceRef = useRef<NodeJS.Timeout>();
 
@@ -72,6 +74,7 @@ export default function SmartTopicDiscoveryScreen() {
 
   useEffect(() => {
     fetchRecentTopics();
+    fetchSmartSuggestions();
   }, []);
 
   const fetchRecentTopics = async () => {
@@ -101,6 +104,51 @@ export default function SmartTopicDiscoveryScreen() {
       setRecentTopics(formatted);
     } catch (error) {
       console.error('Error fetching recent topics:', error);
+    }
+  };
+
+  const fetchSmartSuggestions = async () => {
+    try {
+      setLoadingSuggestions(true);
+      
+      // Map exam type to database format
+      const qualificationLevel = examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE';
+      
+      console.log('🧠 Fetching smart suggestions for:', { 
+        subject: subjectName, 
+        level: qualificationLevel 
+      });
+      
+      // Call database function to get smart topic suggestions
+      const { data, error } = await supabase
+        .rpc('get_smart_topic_suggestions', {
+          p_subject_name: subjectName,
+          p_qualification_level: qualificationLevel,
+          p_limit: 4
+        });
+
+      if (error) {
+        console.error('❌ Error fetching smart suggestions:', error);
+        // Fallback to generic suggestions
+        setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const suggestions = data.map((item: any) => item.topic_name);
+        console.log('✅ Smart suggestions loaded:', suggestions);
+        setSmartSuggestions(suggestions);
+      } else {
+        console.log('⚠️ No suggestions found, using fallback');
+        // Fallback if no data
+        setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+      }
+    } catch (error) {
+      console.error('❌ Exception fetching suggestions:', error);
+      // Fallback to generic
+      setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+    } finally {
+      setLoadingSuggestions(false);
     }
   };
 
@@ -345,21 +393,29 @@ export default function SmartTopicDiscoveryScreen() {
             )}
           </View>
 
-          {/* Helpful Examples */}
+          {/* Smart Suggestions */}
           {searchQuery.length === 0 && (
             <View style={styles.examplesContainer}>
-              <Text style={styles.examplesTitle}>Try searching for:</Text>
-              <View style={styles.exampleChips}>
-                {['photosynthesis', 'atoms', 'world war 2', 'quadratic equations'].map((example) => (
-                  <TouchableOpacity
-                    key={example}
-                    style={styles.exampleChip}
-                    onPress={() => handleSearch(example)}
-                  >
-                    <Text style={styles.exampleText}>{example}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.examplesTitle}>
+                💡 Popular topics in {subjectName}:
+              </Text>
+              {loadingSuggestions ? (
+                <View style={styles.suggestionsLoading}>
+                  <ActivityIndicator size="small" color="#00F5FF" />
+                </View>
+              ) : (
+                <View style={styles.exampleChips}>
+                  {smartSuggestions.map((suggestion) => (
+                    <TouchableOpacity
+                      key={suggestion}
+                      style={styles.exampleChip}
+                      onPress={() => handleSearch(suggestion)}
+                    >
+                      <Text style={styles.exampleText}>{suggestion}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
 
@@ -678,6 +734,10 @@ const styles = StyleSheet.create({
   exampleText: {
     color: '#AAA',
     fontSize: 14,
+  },
+  suggestionsLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   recentSection: {
     paddingHorizontal: 20,
