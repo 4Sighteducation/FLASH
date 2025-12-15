@@ -1,0 +1,16 @@
+{
+  "name": "flash-paper-extraction-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for testing and running exam paper extraction",
+  "main": "test-paper-extraction.js",
+  "scripts": {
+    "test": "node test-paper-extraction.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

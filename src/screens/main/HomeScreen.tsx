@@ -28,6 +28,9 @@ interface UserSubject {
   subject_id: string;
   exam_board: string;
   color: string;
+  gradient_color_1?: string;
+  gradient_color_2?: string;
+  use_gradient?: boolean;
   subject: {
     subject_name: string;
   };
@@ -145,6 +148,9 @@ export default function HomeScreen({ navigation }: any) {
           subject_id,
           exam_board,
           color,
+          gradient_color_1,
+          gradient_color_2,
+          use_gradient,
           subject:exam_board_subjects!subject_id(subject_name)
         `)
         .eq('user_id', user?.id);
@@ -341,7 +347,11 @@ export default function HomeScreen({ navigation }: any) {
                 >
                   <View style={styles.subjectCardWrapper}>
                     <LinearGradient
-                      colors={[subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]}
+                      colors={
+                        subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
+                          ? [subject.gradient_color_1, subject.gradient_color_2]
+                          : [subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]
+                      }
                       style={isGridView ? styles.subjectGradientGrid : styles.subjectGradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -360,6 +370,10 @@ export default function HomeScreen({ navigation }: any) {
                                   subjectId: subject.subject_id,
                                   subjectName: subject.subject.subject_name,
                                   currentColor: subject.color,
+                                  currentGradient: subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
+                                    ? { color1: subject.gradient_color_1, color2: subject.gradient_color_2 }
+                                    : null,
+                                  useGradient: subject.use_gradient || false,
                                 });
                               }}
                             >
@@ -404,6 +418,10 @@ export default function HomeScreen({ navigation }: any) {
                                 subjectId: subject.subject_id,
                                 subjectName: subject.subject.subject_name,
                                 currentColor: subject.color,
+                                currentGradient: subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
+                                  ? { color1: subject.gradient_color_1, color2: subject.gradient_color_2 }
+                                  : null,
+                                useGradient: subject.use_gradient || false,
                               });
                             }}
                           >
@@ -691,27 +709,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
       }
     }),
   },
-  subjectCardGrid: {
-    width: '48%',
-    borderRadius: 16,
-    marginBottom: 16,
-    overflow: 'visible',  // Allow badges to float!
-    borderWidth: 2,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
-    ...Platform.select({
-      web: {
-        borderWidth: 2,
-        borderColor: 'rgba(0, 245, 255, 0.5)',
-      },
-      default: {
-        shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 15,
-        elevation: 8,
-      }
-    }),
-  },
   subjectGradientGrid: {
     borderRadius: 14,  // Rounded corners!
     padding: 12,  // Reduced padding
@@ -883,9 +880,6 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     padding: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
-  },
-  subjectCardWrapper: {
-    position: 'relative',
   },
   headerTop: {
     flexDirection: 'row',

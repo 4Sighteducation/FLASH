@@ -53,18 +53,41 @@ export default function ColorPickerScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { subjectId, subjectName, currentColor } = route.params as any;
+  const { subjectId, subjectName, currentColor, currentGradient, useGradient } = route.params as any;
   
   const [selectedColor, setSelectedColor] = useState(currentColor || '#6366F1');
+  const [selectedGradient, setSelectedGradient] = useState<{color1: string, color2: string} | null>(
+    currentGradient || null
+  );
   const [saving, setSaving] = useState(false);
-  const [colorMode, setColorMode] = useState<'solid' | 'gradient'>('solid');
+  const [colorMode, setColorMode] = useState<'solid' | 'gradient'>(useGradient ? 'gradient' : 'solid');
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      let updateData: any;
+      
+      if (colorMode === 'gradient' && selectedGradient) {
+        // Save gradient colors
+        updateData = {
+          gradient_color_1: selectedGradient.color1,
+          gradient_color_2: selectedGradient.color2,
+          use_gradient: true,
+          color: selectedGradient.color1, // Keep for backwards compatibility
+        };
+      } else {
+        // Save solid color
+        updateData = {
+          color: selectedColor,
+          use_gradient: false,
+          gradient_color_1: null,
+          gradient_color_2: null,
+        };
+      }
+
       const { error } = await supabase
         .from('user_subjects')
-        .update({ color: selectedColor })
+        .update(updateData)
         .eq('user_id', user?.id)
         .eq('subject_id', subjectId);
 
@@ -82,7 +105,11 @@ export default function ColorPickerScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={[selectedColor, adjustColor(selectedColor, -20)]}
+        colors={
+          colorMode === 'gradient' && selectedGradient
+            ? [selectedGradient.color1, selectedGradient.color2]
+            : [selectedColor, adjustColor(selectedColor, -20)]
+        }
         style={styles.headerGradient}
       >
         <View style={styles.header}>
@@ -147,28 +174,32 @@ export default function ColorPickerScreen() {
           <>
             <Text style={styles.sectionTitle}>Select a gradient:</Text>
             <View style={styles.gradientGrid}>
-              {GRADIENT_PRESETS.map((gradient) => (
-                <TouchableOpacity
-                  key={gradient.name}
-                  style={styles.gradientOption}
-                  onPress={() => setSelectedColor(gradient.colors[0])}
-                >
-                  <LinearGradient
-                    colors={gradient.colors as any}
-                    style={[
-                      styles.gradientPreview,
-                      selectedColor === gradient.colors[0] && styles.selectedGradient,
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+              {GRADIENT_PRESETS.map((gradient) => {
+                const isSelected = selectedGradient?.color1 === gradient.colors[0] && 
+                                  selectedGradient?.color2 === gradient.colors[1];
+                return (
+                  <TouchableOpacity
+                    key={gradient.name}
+                    style={styles.gradientOption}
+                    onPress={() => setSelectedGradient({ color1: gradient.colors[0], color2: gradient.colors[1] })}
                   >
-                    {selectedColor === gradient.colors[0] && (
-                      <Ionicons name="checkmark" size={24} color="#FFFFFF" />
-                    )}
-                  </LinearGradient>
-                  <Text style={styles.gradientName}>{gradient.name}</Text>
-                </TouchableOpacity>
-              ))}
+                    <LinearGradient
+                      colors={gradient.colors as any}
+                      style={[
+                        styles.gradientPreview,
+                        isSelected && styles.selectedGradient,
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      {isSelected && (
+                        <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+                      )}
+                    </LinearGradient>
+                    <Text style={styles.gradientName}>{gradient.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </>
         )}
