@@ -1,10 +1,11 @@
 /**
  * TEST PAPER EXTRACTION - Vercel Function
  * 
- * Access: https://your-app.vercel.app/api/test-extraction
+ * Extract text from PDF, then send to Claude for structuring
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const pdfParse = require('pdf-parse');
 
 const TEST_PAPER_URL = 'https://www.ocr.org.uk/Images/726692-question-paper-unified-biology.pdf';
 
@@ -20,13 +21,18 @@ export default async function handler(req, res) {
   console.log('🧪 Starting extraction test...');
 
   try {
-    // Download PDF
+    // Download and parse PDF to text
     console.log('⬇️ Downloading PDF...');
     const pdfResponse = await fetch(TEST_PAPER_URL);
-    const pdfBuffer = await pdfResponse.arrayBuffer();
-    const pdfBase64 = Buffer.from(pdfBuffer).toString('base64');
+    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
     
-    console.log(`✅ Downloaded PDF (${(pdfBuffer.byteLength / 1024).toFixed(1)} KB)`);
+    console.log(`✅ Downloaded (${(pdfBuffer.byteLength / 1024).toFixed(1)} KB)`);
+    console.log('📄 Extracting text from PDF...');
+    
+    const pdfData = await pdfParse(pdfBuffer);
+    const pdfText = pdfData.text;
+    
+    console.log(`✅ Extracted ${pdfText.length} characters, ${pdfData.numpages} pages`);
 
     // Initialize Anthropic
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -40,8 +46,8 @@ export default async function handler(req, res) {
       apiKey: apiKey,
     });
 
-    // Extract questions
-    const modelToUse = 'claude-3-opus-20240229';
+    // Extract questions - using Sonnet (good quality, reasonable cost)
+    const modelToUse = 'claude-3-5-sonnet-20241022';
     console.log('🤖 Sending to Claude...');
     console.log('Model:', modelToUse);
     
@@ -73,26 +79,19 @@ Return ONLY valid JSON array in this format:
   }
 ]`;
 
+    const fullPrompt = `${prompt}
+
+Here is the exam paper text extracted from PDF:
+
+${pdfText}`;
+
     const response = await anthropic.messages.create({
       model: modelToUse,
       max_tokens: 16000,
       messages: [
         {
           role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-            {
-              type: 'text',
-              text: prompt,
-            },
-          ],
+          content: fullPrompt,
         },
       ],
     });
