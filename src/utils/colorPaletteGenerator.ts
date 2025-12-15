@@ -101,37 +101,37 @@ export function generateHierarchyPalette(baseColor: string): {
 } {
   const base = hexToHSL(baseColor);
   
-  // Level 0: Lightness variations (±5%, ±10%, ±15%)
-  // Keeps hue the same, varies lightness for subtle distinction
+  // Level 0: DRAMATIC lightness variations for clear distinction
+  // Keeps hue the same, varies lightness significantly
   const level0Colors = [
     hslToHex(base.h, base.s, base.l),           // Original
-    hslToHex(base.h, base.s, base.l + 8),       // Lighter
-    hslToHex(base.h, base.s, base.l - 8),       // Darker
-    hslToHex(base.h, base.s, base.l + 12),      // More lighter
-    hslToHex(base.h, base.s, base.l - 12),      // More darker
-    hslToHex(base.h, base.s - 5, base.l + 5),   // Desaturated + lighter
-    hslToHex(base.h, base.s + 5, base.l - 5),   // Saturated + darker
+    hslToHex(base.h, base.s + 10, base.l + 15), // Much lighter + more saturated
+    hslToHex(base.h, base.s + 10, base.l - 15), // Much darker + more saturated
+    hslToHex(base.h, base.s - 10, base.l + 12), // Lighter + desaturated
+    hslToHex(base.h, base.s - 10, base.l - 12), // Darker + desaturated
+    hslToHex(base.h + 5, base.s, base.l + 10),  // Slightly warmer + lighter
+    hslToHex(base.h - 5, base.s, base.l + 10),  // Slightly cooler + lighter
   ];
   
-  // Level 1: Hue shifts (±8°, ±15°) with slight lightness adjustment
-  // Creates related but distinguishable colors
+  // Level 1: STRONG hue shifts for obvious distinction
+  // Creates clearly different colors while staying in the same family
   const level1Colors = [
-    hslToHex(base.h + 10, base.s, base.l + 3),   // Warmer + lighter
-    hslToHex(base.h - 10, base.s, base.l + 3),   // Cooler + lighter
-    hslToHex(base.h + 15, base.s - 5, base.l),   // More warm, less saturated
-    hslToHex(base.h - 15, base.s - 5, base.l),   // More cool, less saturated
-    hslToHex(base.h + 8, base.s, base.l - 3),    // Slightly warm + darker
-    hslToHex(base.h - 8, base.s, base.l - 3),    // Slightly cool + darker
+    hslToHex(base.h + 20, base.s, base.l + 8),   // Warm + lighter
+    hslToHex(base.h - 20, base.s, base.l + 8),   // Cool + lighter
+    hslToHex(base.h + 30, base.s - 8, base.l),   // Very warm
+    hslToHex(base.h - 30, base.s - 8, base.l),   // Very cool
+    hslToHex(base.h + 15, base.s + 5, base.l - 5), // Warm + saturated + darker
+    hslToHex(base.h - 15, base.s + 5, base.l - 5), // Cool + saturated + darker
   ];
   
-  // Level 2: Further variations (combine hue + saturation + lightness)
+  // Level 2: Dramatic variations for sub-items
   const level2Colors = [
-    hslToHex(base.h + 5, base.s - 8, base.l + 5),
-    hslToHex(base.h - 5, base.s - 8, base.l + 5),
-    hslToHex(base.h + 12, base.s - 10, base.l),
-    hslToHex(base.h - 12, base.s - 10, base.l),
-    hslToHex(base.h, base.s - 12, base.l + 8),
-    hslToHex(base.h, base.s - 12, base.l - 8),
+    hslToHex(base.h + 12, base.s - 10, base.l + 12),
+    hslToHex(base.h - 12, base.s - 10, base.l + 12),
+    hslToHex(base.h + 25, base.s - 15, base.l + 5),
+    hslToHex(base.h - 25, base.s - 15, base.l + 5),
+    hslToHex(base.h + 8, base.s + 5, base.l - 8),
+    hslToHex(base.h - 8, base.s + 5, base.l - 8),
   ];
   
   return {

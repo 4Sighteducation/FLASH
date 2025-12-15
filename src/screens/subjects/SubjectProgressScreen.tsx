@@ -709,7 +709,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                           styles.groupHeader, 
                           styles.level0Header,
                           { 
-                            backgroundColor: `${level0Color}25`,  // 25% opacity tint (more visible!)
+                            backgroundColor: `${level0Color}35`,  // 35% opacity - clearly visible!
                             borderLeftColor: level0Color, 
                             borderLeftWidth: 5 
                           }
@@ -760,7 +760,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                     styles.groupHeader, 
                                     styles.level1Header,
                                     { 
-                                      backgroundColor: `${level1Color}20`,  // 20% opacity tint (more visible!)
+                                      backgroundColor: `${level1Color}30`,  // 30% opacity - clearly visible!
                                       borderLeftColor: level1Color, 
                                       borderLeftWidth: 4 
                                     }
@@ -817,7 +817,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                                               styles.groupHeader, 
                                               styles.level2Header,
                                               { 
-                                                backgroundColor: `${level2Color}18`,  // 18% opacity tint (more visible!)
+                                                backgroundColor: `${level2Color}25`,  // 25% opacity - clearly visible!
                                                 borderLeftColor: level2Color, 
                                                 borderLeftWidth: 3 
                                               }
