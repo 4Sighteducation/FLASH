@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     });
 
     // Extract questions
-    const modelToUse = 'claude-3-haiku-20240307';
+    const modelToUse = 'claude-3-opus-20240229';
     console.log('🤖 Sending to Claude...');
     console.log('Model:', modelToUse);
     
