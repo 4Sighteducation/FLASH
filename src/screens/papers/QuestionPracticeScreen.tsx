@@ -59,10 +59,38 @@ export default function QuestionPracticeScreen() {
   const [markingResult, setMarkingResult] = useState<MarkingResult | null>(null);
   const [marking, setMarking] = useState(false);
   const [questionTime, setQuestionTime] = useState(0);
+  const [previousAttempts, setPreviousAttempts] = useState<any[]>([]);
+  const [showPreviousAnswer, setShowPreviousAnswer] = useState(false);
 
   useEffect(() => {
     loadQuestions();
   }, []);
+
+  // Load previous attempts when question changes
+  useEffect(() => {
+    if (questions.length > 0 && user?.id) {
+      loadPreviousAttempts();
+    }
+  }, [currentIndex, questions]);
+
+  const loadPreviousAttempts = async () => {
+    if (!user?.id || questions.length === 0) return;
+
+    const currentQuestion = questions[currentIndex];
+    
+    try {
+      const { data } = await supabase
+        .from('student_attempts')
+        .select('*')
+        .eq('question_id', currentQuestion.id)
+        .eq('user_id', user.id)
+        .order('attempted_at', { ascending: false });
+
+      setPreviousAttempts(data || []);
+    } catch (error) {
+      console.error('Error loading previous attempts:', error);
+    }
+  };
 
   const loadQuestions = async () => {
     try {
@@ -156,6 +184,7 @@ export default function QuestionPracticeScreen() {
           question_id: currentQuestion.id,
           user_answer: userAnswer,
           user_id: user?.id,
+          time_taken_seconds: questionTime,  // Send timer data!
         }),
       });
 
@@ -282,6 +311,45 @@ export default function QuestionPracticeScreen() {
         {/* Answer Section */}
         {!markingResult ? (
           <View style={styles.answerSection}>
+            {/* Previous Attempts Toggle */}
+            {previousAttempts.length > 0 && (
+              <TouchableOpacity 
+                style={styles.previousToggle}
+                onPress={() => setShowPreviousAnswer(!showPreviousAnswer)}
+              >
+                <Icon 
+                  name={showPreviousAnswer ? 'eye-off' : 'eye'} 
+                  size={18} 
+                  color="#3B82F6" 
+                />
+                <Text style={styles.previousToggleText}>
+                  {showPreviousAnswer ? 'Hide' : 'Show'} Previous Answer ({previousAttempts.length})
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Previous Answer Display */}
+            {showPreviousAnswer && previousAttempts[0] && (
+              <View style={styles.previousAnswerCard}>
+                <View style={styles.previousHeader}>
+                  <Text style={styles.previousLabel}>
+                    Your last answer - {previousAttempts[0].marks_awarded}/{previousAttempts[0].max_marks} marks
+                  </Text>
+                  <Text style={styles.previousDate}>
+                    {new Date(previousAttempts[0].attempted_at).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Text style={styles.previousAnswerText}>
+                  {previousAttempts[0].user_answer}
+                </Text>
+                {previousAttempts[0].ai_feedback && (
+                  <Text style={styles.previousFeedback}>
+                    💬 {previousAttempts[0].ai_feedback}
+                  </Text>
+                )}
+              </View>
+            )}
+
             <Text style={styles.answerLabel}>Your Answer:</Text>
             <TextInput
               style={styles.answerInput}
@@ -594,6 +662,58 @@ const styles = StyleSheet.create({
     color: '#0a0f1e',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  previousToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginBottom: 12,
+  },
+  previousToggleText: {
+    color: '#3B82F6',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  previousAnswerCard: {
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  previousHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  previousLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  previousDate: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  previousAnswerText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  previousFeedback: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  timerContainer: {
+    paddingHorizontal: 20,
   },
 });
 
