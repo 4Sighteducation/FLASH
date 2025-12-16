@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   Platform,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
 } from 'react-native';
@@ -94,11 +95,33 @@ export default function QuestionPracticeScreen() {
   const [lastExtractionUpdateAt, setLastExtractionUpdateAt] = useState<string | null>(null);
   const [staleSeconds, setStaleSeconds] = useState<number>(0);
   const [canRetryExtraction, setCanRetryExtraction] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const answerInputRef = useRef<TextInput | null>(null);
+  const [maxIndexReached, setMaxIndexReached] = useState(0);
 
   useEffect(() => {
     loadQuestions();
     checkForSavedProgress();
     loadPaperUrls();
+  }, []);
+
+  // Track keyboard height so we can ensure answer input is visible on small screens
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates?.height || 0);
+      // Give layout a moment, then scroll to the input
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   const getQuestionPaperUrl = () =>
@@ -772,11 +795,21 @@ export default function QuestionPracticeScreen() {
 
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const next = currentIndex + 1;
+      setCurrentIndex(next);
+      setMaxIndexReached((m) => Math.max(m, next));
       setUserAnswer('');
       setMarkingResult(null);
     } else {
       showCompletionSummary();
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setUserAnswer('');
+      setMarkingResult(null);
     }
   };
 
@@ -785,6 +818,10 @@ export default function QuestionPracticeScreen() {
     if (timerControl && !userAnswer) {
       timerControl.start();
     }
+    // Scroll to ensure input is visible above keyboard
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 50);
   };
 
   const handleLeaveExtraction = () => {
@@ -863,10 +900,18 @@ export default function QuestionPracticeScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
       >
-      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScrollView
+        ref={(r) => {
+          // @ts-ignore - RN's ScrollView ref typing can be picky
+          scrollViewRef.current = r;
+        }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: Math.max(24, keyboardHeight) }}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -894,12 +939,36 @@ export default function QuestionPracticeScreen() {
 
         {/* Action Buttons Row */}
         <View style={styles.actionButtonsRow}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={skipQuestion}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.navButton, currentIndex === 0 && styles.navButtonDisabled]}
+            onPress={prevQuestion}
+            disabled={currentIndex === 0}
           >
-            <Icon name="play-skip-forward" size={18} color="#F59E0B" />
-            <Text style={styles.actionButtonText}>Skip</Text>
+            <Icon name="arrow-back-circle" size={18} color={currentIndex === 0 ? '#475569' : '#3B82F6'} />
+            <Text style={[styles.actionButtonText, styles.navButtonText, currentIndex === 0 && styles.navButtonTextDisabled]}>
+              Prev
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.skipOrNextButton]}
+            onPress={() => {
+              // If user navigated back, moving forward should be Next (not Skip).
+              // Only show skip semantics when at the furthest point reached.
+              if (currentIndex < maxIndexReached) {
+                nextQuestion();
+              } else {
+                skipQuestion();
+              }
+            }}
+          >
+            <Icon
+              name={currentIndex < maxIndexReached ? 'chevron-forward' : 'play-skip-forward'}
+              size={18}
+              color="#F59E0B"
+            />
+            <Text style={styles.actionButtonText}>
+              {currentIndex < maxIndexReached ? 'Next' : 'Skip'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.actionButton, styles.pauseButton]}
@@ -1070,6 +1139,10 @@ export default function QuestionPracticeScreen() {
 
             <Text style={styles.answerLabel}>Your Answer:</Text>
             <TextInput
+              ref={(r) => {
+                // @ts-ignore
+                answerInputRef.current = r;
+              }}
               style={styles.answerInput}
               multiline
               placeholder={isLikelyMultipleChoice ? 'Type your selected letter/answer here...' : 'Type your answer here...'}
@@ -1472,6 +1545,23 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     fontSize: 14,
     fontWeight: '600',
+  },
+  navButton: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderColor: 'rgba(59, 130, 246, 0.28)',
+  },
+  navButtonText: {
+    color: '#3B82F6',
+  },
+  navButtonDisabled: {
+    backgroundColor: 'rgba(71, 85, 105, 0.10)',
+    borderColor: 'rgba(71, 85, 105, 0.22)',
+  },
+  navButtonTextDisabled: {
+    color: '#475569',
+  },
+  skipOrNextButton: {
+    // keep existing amber styling from actionButton
   },
   pauseButton: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
