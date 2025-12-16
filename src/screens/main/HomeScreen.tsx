@@ -22,6 +22,7 @@ import NotificationBadge from '../../components/NotificationBadge';
 import DueCardsNotification from '../../components/DueCardsNotification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
+import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
 
 interface UserSubject {
   id: string;
@@ -67,6 +68,7 @@ export default function HomeScreen({ navigation }: any) {
   });
   const [showNotification, setShowNotification] = useState(false);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
+  const [unlockedCyber, setUnlockedCyber] = useState(false);
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
@@ -115,6 +117,23 @@ export default function HomeScreen({ navigation }: any) {
       }
       
       setUserStats({ ...stats, correct_percentage: correctPercentage });
+
+      // Minimal theme unlock: Cyber Mode at XP threshold (persisted in AsyncStorage)
+      try {
+        const threshold = gamificationConfig.themeUnlocks.cyber;
+        const storageKey = `unlocked_theme_cyber_v1_${user.id}`;
+        const alreadyUnlocked = (await AsyncStorage.getItem(storageKey)) === 'true';
+        const canUnlock = (stats.total_points || 0) >= threshold;
+        if (!alreadyUnlocked && canUnlock) {
+          await AsyncStorage.setItem(storageKey, 'true');
+          setUnlockedCyber(true);
+          Alert.alert('Unlocked! 🎉', `Cyber Mode is now available (earned ${threshold.toLocaleString()} XP).`);
+        } else {
+          setUnlockedCyber(alreadyUnlocked || canUnlock);
+        }
+      } catch {
+        // non-fatal
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -267,9 +286,16 @@ export default function HomeScreen({ navigation }: any) {
         >
           <View style={styles.header}>
             <View style={styles.headerTop}>
-              <View>
-                <Text style={styles.greeting}>Welcome back!</Text>
-                <Text style={styles.username}>{userData?.username || 'Student'}</Text>
+              <View style={styles.headerTopLeft}>
+                <View style={styles.headerAvatar}>
+                  <Text style={styles.headerAvatarText}>
+                    {(userData?.username || 'Student').slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.greeting}>Welcome back!</Text>
+                  <Text style={styles.username}>{userData?.username || 'Student'}</Text>
+                </View>
               </View>
               {userData?.exam_type && (
                 <View style={styles.examTypeBadge}>
@@ -279,6 +305,45 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
               )}
             </View>
+
+            {/* Rank / Progress */}
+            {(() => {
+              const { current, next, progressToNext } = getRankForXp(userStats.total_points);
+              return (
+                <View style={styles.rankRow}>
+                  <View style={styles.rankLeft}>
+                    <View style={[styles.rankBadge, { borderColor: current.color }]}>
+                      <Text style={[styles.rankBadgeText, { color: current.color }]}>
+                        {current.name.toUpperCase()}
+                      </Text>
+                    </View>
+                    {next ? (
+                      <Text style={styles.rankHint}>
+                        Next: {next.name} at {next.minXp.toLocaleString()} XP
+                      </Text>
+                    ) : (
+                      <Text style={styles.rankHint}>Max rank reached</Text>
+                    )}
+                  </View>
+                  {!unlockedCyber && (
+                    <View style={styles.lockPill}>
+                      <Text style={styles.lockPillText}>
+                        🔒 Cyber @ {gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+            {(() => {
+              const { progressToNext, next } = getRankForXp(userStats.total_points);
+              if (!next) return null;
+              return (
+                <View style={styles.rankProgressBar}>
+                  <View style={[styles.rankProgressFill, { width: `${Math.round(progressToNext * 100)}%` }]} />
+                </View>
+              );
+            })()}
             <View style={styles.headerStats}>
               <View style={styles.headerStatItem}>
                 <View style={styles.statIconContainer}>
@@ -580,6 +645,81 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   header: {
     marginBottom: 10,
+  },
+  // headerTop is defined later in this file (keep a single source of truth)
+  headerTopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 245, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerAvatarText: {
+    color: '#00F5FF',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  rankRow: {
+    marginTop: 14,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  rankLeft: {
+    flex: 1,
+  },
+  rankBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+  },
+  rankBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  rankHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  rankProgressBar: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  rankProgressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  lockPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.20)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  lockPillText: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    fontWeight: '700',
   },
   greeting: {
     fontSize: 24,

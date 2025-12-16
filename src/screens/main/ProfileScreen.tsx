@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAdminAccess } from '../../hooks/useAdminAccess';
+import { gamificationConfig } from '../../services/gamificationService';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
   const { theme, toggleTheme } = useTheme();
   const { tier, limits, purchaseFullVersion, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
+  const [cyberUnlocked, setCyberUnlocked] = useState(false);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
@@ -41,6 +43,20 @@ export default function ProfileScreen() {
   React.useEffect(() => {
     loadNotificationPreferences();
   }, []);
+
+  React.useEffect(() => {
+    const loadUnlocks = async () => {
+      try {
+        if (!user?.id) return;
+        const storageKey = `unlocked_theme_cyber_v1_${user.id}`;
+        const unlocked = (await AsyncStorage.getItem(storageKey)) === 'true';
+        setCyberUnlocked(unlocked);
+      } catch {
+        setCyberUnlocked(false);
+      }
+    };
+    loadUnlocks();
+  }, [user?.id]);
 
   const loadNotificationPreferences = async () => {
     try {
@@ -316,7 +332,16 @@ export default function ProfileScreen() {
             <Text style={styles.settingText}>Cyber Mode</Text>
             <Switch
               value={theme === 'cyber'}
-              onValueChange={toggleTheme}
+              onValueChange={(v) => {
+                if (v && !cyberUnlocked) {
+                  Alert.alert(
+                    'Locked',
+                    `Cyber Mode unlocks at ${gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP. Keep studying to unlock it!`
+                  );
+                  return;
+                }
+                toggleTheme();
+              }}
               trackColor={{ false: '#E5E7EB', true: '#00FF88' }}
               thumbColor={theme === 'cyber' ? '#fff' : '#f4f3f4'}
             />

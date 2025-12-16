@@ -40,7 +40,44 @@ export const gamificationConfig = {
 
   // Generic actions (wizard complete, first card, prioritise topic etc.)
   genericActionPoints: 25,
+
+  // Theme unlocks (minimal v1)
+  themeUnlocks: {
+    cyber: 2000, // unlock Cyber Mode at 2,000 XP
+  },
 };
+
+export type Rank = {
+  key: string;
+  name: string;
+  minXp: number;
+  color: string;
+};
+
+export const ranks: Rank[] = [
+  { key: 'rookie', name: 'Rookie', minXp: 0, color: '#94A3B8' },
+  { key: 'learner', name: 'Learner', minXp: 250, color: '#3B82F6' },
+  { key: 'scholar', name: 'Scholar', minXp: 1000, color: '#10B981' },
+  { key: 'contender', name: 'Contender', minXp: 5000, color: '#F59E0B' },
+  { key: 'ace', name: 'Ace', minXp: 20000, color: '#A855F7' },
+  { key: 'elite', name: 'Elite', minXp: 75000, color: '#FF006E' },
+  { key: 'legend', name: 'Legend', minXp: 200000, color: '#FFD700' },
+];
+
+export function getRankForXp(totalPoints: number) {
+  const xp = Math.max(0, Math.floor(Number(totalPoints) || 0));
+  let current = ranks[0];
+  for (const r of ranks) {
+    if (xp >= r.minXp) current = r;
+  }
+  const currentIdx = ranks.findIndex((r) => r.key === current.key);
+  const next = currentIdx >= 0 && currentIdx < ranks.length - 1 ? ranks[currentIdx + 1] : null;
+  const progressToNext =
+    next && next.minXp > current.minXp
+      ? Math.min(1, Math.max(0, (xp - current.minXp) / (next.minXp - current.minXp)))
+      : 1;
+  return { xp, current, next, progressToNext };
+}
 
 function startOfTodayISO() {
   const d = new Date();
