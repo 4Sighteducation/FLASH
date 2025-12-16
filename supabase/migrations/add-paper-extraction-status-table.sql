@@ -135,6 +135,10 @@ ALTER TABLE paper_extraction_status
   ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE paper_extraction_status
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS notified BOOLEAN DEFAULT false;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ;
 
 -- Ensure unique constraint exists (best-effort)
 DO $$
@@ -154,6 +158,7 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_paper_extraction_paper_id ON paper_extraction_status(paper_id);
 CREATE INDEX IF NOT EXISTS idx_paper_extraction_user_id ON paper_extraction_status(user_id);
 CREATE INDEX IF NOT EXISTS idx_paper_extraction_status ON paper_extraction_status(status);
+CREATE INDEX IF NOT EXISTS idx_paper_extraction_notified ON paper_extraction_status(notified);
 
 -- Enable Row Level Security
 ALTER TABLE paper_extraction_status ENABLE ROW LEVEL SECURITY;

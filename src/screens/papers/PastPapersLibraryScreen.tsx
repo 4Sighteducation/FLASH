@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
@@ -16,6 +17,7 @@ import Icon from '../../components/Icon';
 import PastPapersTutorial from '../../components/PastPapersTutorial';
 import QualityTierInfo from '../../components/QualityTierInfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface UserSubject {
   id: string;
@@ -49,10 +51,57 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showQualityInfo, setShowQualityInfo] = useState(false);
 
+  const checkExtractionNotifications = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Show completion alerts for any completed extractions that haven't been acknowledged yet.
+      const { data, error } = await supabase
+        .from('paper_extraction_status')
+        .select('id, paper_id')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .eq('notified', false)
+        .order('completed_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      const row = data?.[0];
+      if (!row) return;
+
+      Alert.alert(
+        'Paper Ready ✅',
+        'Your paper extraction has completed. You can now open it from Past Papers and start practicing.',
+        [
+          {
+            text: 'OK',
+            onPress: async () => {
+              await supabase
+                .from('paper_extraction_status')
+                .update({ notified: true, notified_at: new Date().toISOString() })
+                .eq('id', row.id);
+            },
+          },
+        ]
+      );
+    } catch (e) {
+      // If columns don't exist yet or RLS blocks, don't crash the library screen.
+      console.warn('[Papers] extraction notification check skipped:', e);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     loadSubjectsWithPapers();
     checkTutorialStatus();
   }, []);
+
+  // In-app notification when user returns to Papers tab
+  useFocusEffect(
+    useCallback(() => {
+      checkExtractionNotifications();
+    }, [checkExtractionNotifications])
+  );
 
   const checkTutorialStatus = async () => {
     try {

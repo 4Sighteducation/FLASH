@@ -44,6 +44,7 @@ const emojiMap: Record<string, string> = {
   'alert-circle': '⚠️',
   'alert-circle-outline': '⚠️',
   'information-circle': 'ℹ️',
+  'information-circle-outline': 'ℹ️',
   
   // Profile & Settings
   'person': '👤',
@@ -73,6 +74,12 @@ const emojiMap: Record<string, string> = {
   'trending-up': '📈',
   'rocket-outline': '🚀',
   'play-circle': '▶️',
+  'play': '▶️',
+  'pause': '⏸️',
+  'timer-outline': '⏱️',
+  'arrow-up-circle': '⬆️',
+  'arrow-down-circle': '⬇️',
+  'refresh': '🔄',
   'mic': '🎤',
   'mic-outline': '🎤',
   'volume-high': '🔊',

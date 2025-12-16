@@ -65,7 +65,9 @@ export default function QuestionPracticeScreen() {
   const [timerControl, setTimerControl] = useState<{
     start: () => void;
     stop: () => void;
+    reset: () => void;
     isPaused: () => boolean;
+    autoStop: boolean;
   } | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState(0);
@@ -73,11 +75,20 @@ export default function QuestionPracticeScreen() {
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [extractionStatusId, setExtractionStatusId] = useState<string | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const [resumeTimerSeconds, setResumeTimerSeconds] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     loadQuestions();
     checkForSavedProgress();
   }, []);
+
+  // Clear resume seconds after they've been applied once
+  useEffect(() => {
+    if (resumeTimerSeconds !== undefined) {
+      const t = setTimeout(() => setResumeTimerSeconds(undefined), 0);
+      return () => clearTimeout(t);
+    }
+  }, [resumeTimerSeconds]);
 
   const checkForSavedProgress = async () => {
     if (!user?.id) return;
@@ -114,6 +125,7 @@ export default function QuestionPracticeScreen() {
                 setCurrentIndex(data.current_question_index);
                 setUserAnswer(data.current_answer || '');
                 setQuestionTime(data.timer_seconds || 0);
+                setResumeTimerSeconds(data.timer_seconds || 0);
               }
             }
           ]
@@ -180,6 +192,10 @@ export default function QuestionPracticeScreen() {
 
   const extractPaper = async () => {
     try {
+      if (!user?.id) {
+        throw new Error('Must be signed in to extract papers');
+      }
+
       // Get paper details
       const { data: paperData } = await supabase
         .from('staging_aqa_exam_papers')
@@ -189,16 +205,94 @@ export default function QuestionPracticeScreen() {
 
       if (!paperData) throw new Error('Paper not found');
 
-      // Create extraction status record
+      // Reuse existing extraction status if present (prevents duplicate requests when user leaves and returns)
+      const { data: existingStatus } = await supabase
+        .from('paper_extraction_status')
+        .select('*')
+        .eq('paper_id', paperId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingStatus) {
+        if (existingStatus.status === 'completed') {
+          // Status says completed - reload questions from DB
+          setLoading(true);
+          await loadQuestions();
+          setLoading(false);
+          return;
+        }
+
+        if (existingStatus.status === 'failed') {
+          Alert.alert(
+            'Extraction Failed Previously',
+            existingStatus.error_message || 'Would you like to retry extraction?',
+            [
+              { text: 'Go Back', style: 'cancel', onPress: () => navigation.goBack() },
+              {
+                text: 'Retry',
+                onPress: async () => {
+                  await supabase
+                    .from('paper_extraction_status')
+                    .update({
+                      status: 'pending',
+                      progress_percentage: 0,
+                      current_step: 'Retrying extraction...',
+                      error_message: null,
+                      notified: false,
+                      notified_at: null,
+                    })
+                    .eq('id', existingStatus.id);
+
+                  setExtractionStatusId(existingStatus.id);
+                  setShowExtractionModal(true);
+                  setExtractionProgress(0);
+                  setExtractionStep('Retrying extraction...');
+                  startPollingExtractionStatus(existingStatus.id);
+
+                  fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      paper_id: paperId,
+                      extraction_status_id: existingStatus.id,
+                      question_url: paperData.question_paper_url,
+                      mark_scheme_url: paperData.mark_scheme_url,
+                      examiner_report_url: paperData.examiner_report_url,
+                    }),
+                  }).catch(error => {
+                    console.error('Background extraction error:', error);
+                  });
+                },
+              },
+            ]
+          );
+          return;
+        }
+
+        // pending / extracting - show modal and keep polling, don't re-trigger extraction
+        setExtractionStatusId(existingStatus.id);
+        setShowExtractionModal(true);
+        setExtractionProgress(existingStatus.progress_percentage || 0);
+        setExtractionStep(existingStatus.current_step || 'Processing...');
+        startPollingExtractionStatus(existingStatus.id);
+        return;
+      }
+
+      // Create extraction status record (upsert to respect unique(paper_id,user_id))
       const { data: statusData, error: statusError } = await supabase
         .from('paper_extraction_status')
-        .insert({
-          paper_id: paperId,
-          user_id: user?.id,
-          status: 'pending',
-          progress_percentage: 0,
-          current_step: 'Initializing extraction...'
-        })
+        .upsert(
+          {
+            paper_id: paperId,
+            user_id: user.id,
+            status: 'pending',
+            progress_percentage: 0,
+            current_step: 'Initializing extraction...',
+            notified: false,
+            notified_at: null,
+          },
+          { onConflict: 'paper_id,user_id' }
+        )
         .select()
         .single();
 
@@ -265,7 +359,20 @@ export default function QuestionPracticeScreen() {
             Alert.alert(
               'Extraction Complete! ✅',
               'Questions are ready to practice.',
-              [{ text: 'Start Practicing' }]
+              [{
+                text: 'Start Practicing',
+                onPress: async () => {
+                  try {
+                    await supabase
+                      .from('paper_extraction_status')
+                      .update({ notified: true, notified_at: new Date().toISOString() })
+                      .eq('id', statusId);
+                  } catch (e) {
+                    // Non-fatal if columns aren't present yet
+                    console.warn('[Papers] failed to mark extraction notified:', e);
+                  }
+                }
+              }]
             );
           } else if (data.status === 'failed') {
             stopPollingExtractionStatus();
@@ -301,6 +408,11 @@ export default function QuestionPracticeScreen() {
     if (!userAnswer.trim()) {
       Alert.alert('Please enter an answer');
       return;
+    }
+
+    // Auto-stop timer on submit (if enabled)
+    if (timerControl?.autoStop) {
+      timerControl.stop();
     }
 
     setMarking(true);
@@ -420,6 +532,8 @@ export default function QuestionPracticeScreen() {
     navigation.navigate('PaperCompletion' as never, {
       paperId,
       paperName,
+      subjectName,
+      subjectColor,
       totalQuestions: questions.length
     } as never);
   };
@@ -499,6 +613,8 @@ export default function QuestionPracticeScreen() {
         <View style={styles.timerContainer}>
           <ExamTimer 
             questionMarks={currentQuestion.marks}
+            questionKey={currentQuestion.id}
+            initialSeconds={resumeTimerSeconds}
             onTimeUpdate={setQuestionTime}
             onTimerControl={setTimerControl}
           />

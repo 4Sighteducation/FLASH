@@ -13,11 +13,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ExamTimerProps {
   questionMarks: number;
+  questionKey?: string;
+  initialSeconds?: number;
   onTimeUpdate?: (seconds: number) => void;
-  onTimerControl?: (control: { start: () => void; stop: () => void; isPaused: () => boolean }) => void;
+  onTimerControl?: (control: { start: () => void; stop: () => void; reset: () => void; isPaused: () => boolean; autoStop: boolean }) => void;
 }
 
-export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl }: ExamTimerProps) {
+export default function ExamTimer({ questionMarks, questionKey, initialSeconds, onTimeUpdate, onTimerControl }: ExamTimerProps) {
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<'up' | 'down'>('up');
@@ -26,6 +28,7 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
   const [enabled, setEnabled] = useState(true);
   const [secondsPerMark, setSecondsPerMark] = useState(90); // Default: 1.5 min per mark
   const [autoStart, setAutoStart] = useState(false); // Auto-start timer on typing
+  const [autoStop, setAutoStop] = useState(true); // Auto-stop timer on submit
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -34,13 +37,38 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
     loadSettings();
   }, []);
 
-  // Calculate target time based on marks
+  // Reset timer when question changes or mode/settings change
   useEffect(() => {
+    setIsRunning(false);
     if (mode === 'down') {
-      setTargetSeconds(questionMarks * secondsPerMark);
-      setSeconds(questionMarks * secondsPerMark);
+      const target = questionMarks * secondsPerMark;
+      setTargetSeconds(target);
+      if (typeof initialSeconds === 'number') {
+        setSeconds(Math.min(Math.max(initialSeconds, 0), target));
+      } else {
+        setSeconds(target);
+      }
+    } else {
+      setTargetSeconds(0);
+      if (typeof initialSeconds === 'number') {
+        setSeconds(Math.max(initialSeconds, 0));
+      } else {
+        setSeconds(0);
+      }
     }
-  }, [mode, questionMarks, secondsPerMark]);
+  }, [questionKey, mode, questionMarks, secondsPerMark]);
+
+  // Apply resume seconds (only when explicitly provided)
+  useEffect(() => {
+    if (typeof initialSeconds === 'number') {
+      setIsRunning(false);
+      if (mode === 'down' && targetSeconds > 0) {
+        setSeconds(Math.min(Math.max(initialSeconds, 0), targetSeconds));
+      } else {
+        setSeconds(Math.max(initialSeconds, 0));
+      }
+    }
+  }, [initialSeconds]);
 
   // Timer logic
   useEffect(() => {
@@ -73,9 +101,11 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
   // Report time to parent
   useEffect(() => {
     if (onTimeUpdate) {
-      onTimeUpdate(seconds);
+      // Always report elapsed seconds for consistent metrics
+      const elapsed = mode === 'up' ? seconds : Math.max(0, targetSeconds - seconds);
+      onTimeUpdate(elapsed);
     }
-  }, [seconds]);
+  }, [seconds, mode, targetSeconds]);
 
   // Expose timer controls to parent
   useEffect(() => {
@@ -87,10 +117,17 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
           }
         },
         stop: () => setIsRunning(false),
+        reset: () => {
+          setIsRunning(false);
+          if (mode === 'down') setSeconds(targetSeconds);
+          else setSeconds(0);
+        },
         isPaused: () => !isRunning
+        ,
+        autoStop
       });
     }
-  }, [onTimerControl, enabled, autoStart, isRunning]);
+  }, [onTimerControl, enabled, autoStart, autoStop, isRunning, mode, targetSeconds]);
 
   const loadSettings = async () => {
     try {
@@ -98,11 +135,13 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
       const savedMode = await AsyncStorage.getItem('examTimer_mode');
       const savedSecondsPerMark = await AsyncStorage.getItem('examTimer_secondsPerMark');
       const savedAutoStart = await AsyncStorage.getItem('examTimer_autoStart');
+      const savedAutoStop = await AsyncStorage.getItem('examTimer_autoStop');
       
       if (savedEnabled !== null) setEnabled(savedEnabled === 'true');
       if (savedMode) setMode(savedMode as 'up' | 'down');
       if (savedSecondsPerMark) setSecondsPerMark(parseInt(savedSecondsPerMark));
       if (savedAutoStart !== null) setAutoStart(savedAutoStart === 'true');
+      if (savedAutoStop !== null) setAutoStop(savedAutoStop === 'true');
     } catch (error) {
       console.error('Error loading timer settings:', error);
     }
@@ -114,6 +153,7 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
       await AsyncStorage.setItem('examTimer_mode', mode);
       await AsyncStorage.setItem('examTimer_secondsPerMark', secondsPerMark.toString());
       await AsyncStorage.setItem('examTimer_autoStart', autoStart.toString());
+      await AsyncStorage.setItem('examTimer_autoStop', autoStop.toString());
     } catch (error) {
       console.error('Error saving timer settings:', error);
     }
@@ -298,9 +338,9 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
               {/* Auto-start toggle */}
               <View style={styles.settingRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.settingLabel}>Auto-Start on Typing</Text>
+                  <Text style={styles.settingLabel}>Auto-Start on Answer Tap</Text>
                   <Text style={styles.settingDescription}>
-                    Timer starts when you begin typing your answer
+                    Timer starts when you tap into the answer box
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -308,6 +348,22 @@ export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl 
                   onPress={() => setAutoStart(!autoStart)}
                 >
                   <View style={[styles.toggleKnob, autoStart && styles.toggleKnobActive]} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Auto-stop toggle */}
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Auto-Stop on Submit</Text>
+                  <Text style={styles.settingDescription}>
+                    Timer pauses automatically when you submit your answer
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.toggle, autoStop && styles.toggleActive]}
+                  onPress={() => setAutoStop(!autoStop)}
+                >
+                  <View style={[styles.toggleKnob, autoStop && styles.toggleKnobActive]} />
                 </TouchableOpacity>
               </View>
 

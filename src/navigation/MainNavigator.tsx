@@ -31,6 +31,7 @@ import TestTools from '../screens/admin/TestTools';
 import PastPapersLibraryScreen from '../screens/papers/PastPapersLibraryScreen';
 import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
+import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -202,6 +203,7 @@ function PapersStack() {
       <Stack.Screen name="PapersMain" component={PastPapersLibraryScreen} />
       <Stack.Screen name="PaperDetail" component={PaperDetailScreen} />
       <Stack.Screen name="QuestionPractice" component={QuestionPracticeScreen} />
+      <Stack.Screen name="PaperCompletion" component={PaperCompletionScreen} />
     </Stack.Navigator>
   );
 }

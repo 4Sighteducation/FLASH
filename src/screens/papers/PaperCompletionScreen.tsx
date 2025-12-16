@@ -26,7 +26,7 @@ export default function PaperCompletionScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { paperId, paperName, totalQuestions } = route.params as any;
+  const { paperId, paperName, totalQuestions, subjectName, subjectColor } = route.params as any;
 
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [totalScore, setTotalScore] = useState(0);
@@ -131,7 +131,7 @@ export default function PaperCompletionScreen() {
       <ScrollView>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate('PastPapersLibrary' as never)}>
+          <TouchableOpacity onPress={() => (navigation as any).popToTop()}>
             <Icon name="close" size={24} color="#00F5FF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Paper Complete!</Text>
@@ -217,6 +217,8 @@ export default function PaperCompletionScreen() {
             onPress={() => navigation.navigate('QuestionPractice' as never, {
               paperId,
               paperName,
+              subjectName,
+              subjectColor,
               reviewMode: true
             } as never)}
           >
@@ -237,7 +239,9 @@ export default function PaperCompletionScreen() {
                   .then(() => {
                     navigation.navigate('QuestionPractice' as never, {
                       paperId,
-                      paperName
+                      paperName,
+                      subjectName,
+                      subjectColor
                     } as never);
                   });
               }
@@ -253,7 +257,7 @@ export default function PaperCompletionScreen() {
         {/* Done Button */}
         <TouchableOpacity 
           style={styles.doneButton}
-          onPress={() => navigation.navigate('PastPapersLibrary' as never)}
+          onPress={() => (navigation as any).popToTop()}
         >
           <Text style={styles.doneButtonText}>Back to Papers</Text>
         </TouchableOpacity>
