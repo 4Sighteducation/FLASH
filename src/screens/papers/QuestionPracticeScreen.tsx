@@ -18,6 +18,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import Icon from '../../components/Icon';
 import ExamTimer from '../../components/ExamTimer';
 import PaperExtractionModal from '../../components/PaperExtractionModal';
@@ -35,6 +36,7 @@ interface Question {
   has_image: boolean;
   image_url: string | null;
   image_description: string | null;
+  image_page?: number | null;
 }
 
 interface MarkingResult {
@@ -76,7 +78,7 @@ export default function QuestionPracticeScreen() {
   const [extractionStep, setExtractionStep] = useState('Initializing extraction...');
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [extractionStatusId, setExtractionStatusId] = useState<string | null>(null);
-  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const [resumeTimerSeconds, setResumeTimerSeconds] = useState<number | undefined>(undefined);
   const [paperUrls, setPaperUrls] = useState<{
     question_paper_url?: string | null;
@@ -98,6 +100,37 @@ export default function QuestionPracticeScreen() {
     checkForSavedProgress();
     loadPaperUrls();
   }, []);
+
+  const getQuestionPaperUrl = () =>
+    paperUrlsRef.current?.question_paper_url ?? paperUrls?.question_paper_url ?? null;
+
+  const withPdfPage = (url: string, page?: number | null) => {
+    if (!page || page <= 0) return url;
+    const [base, hash] = url.split('#');
+    const pageFragment = `page=${page}`;
+    if (!hash) return `${base}#${pageFragment}`;
+    if (hash.includes('page=')) {
+      return `${base}#${hash.replace(/page=\d+/i, pageFragment)}`;
+    }
+    return `${base}#${hash}&${pageFragment}`;
+  };
+
+  const openQuestionPaperPdf = async (page?: number | null) => {
+    const url = getQuestionPaperUrl();
+    if (!url) {
+      Alert.alert('PDF Unavailable', 'This paper is missing a question paper PDF URL.');
+      return;
+    }
+    const target = withPdfPage(url, page);
+    try {
+      await WebBrowser.openBrowserAsync(target, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+      });
+    } catch (e) {
+      console.warn('[Papers] openBrowserAsync failed, falling back to Linking.openURL', e);
+      Linking.openURL(target);
+    }
+  };
 
   // Track staleness of extraction updates to distinguish "slow" vs "stuck"
   useEffect(() => {
@@ -319,7 +352,9 @@ export default function QuestionPracticeScreen() {
       try {
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), 8000);
-        const healthRes = await fetch(`${EXTRACTION_SERVICE_URL}/health`, { signal: controller.signal });
+        const healthRes = await fetch(`${EXTRACTION_SERVICE_URL}/health`, {
+          signal: controller.signal as any,
+        });
         clearTimeout(t);
         if (!healthRes.ok) {
           throw new Error(`Extraction service health check failed (${healthRes.status})`);
@@ -556,7 +591,7 @@ export default function QuestionPracticeScreen() {
         throw new Error('Marking failed');
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as any;
       setMarkingResult(result.marking);
 
     } catch (error) {
@@ -649,13 +684,13 @@ export default function QuestionPracticeScreen() {
   };
 
   const showCompletionSummary = () => {
-    navigation.navigate('PaperCompletion' as never, {
+    (navigation as any).navigate('PaperCompletion', {
       paperId,
       paperName,
       subjectName,
       subjectColor,
       totalQuestions: questions.length
-    } as never);
+    });
   };
 
   const nextQuestion = () => {
@@ -741,6 +776,9 @@ export default function QuestionPracticeScreen() {
   }
 
   const currentQuestion = questions[currentIndex];
+  const isLikelyMultipleChoice = /tick\s*\(?.*?\)?\s*one\s*box|tick\s+one\s+box|multiple\s+choice/i.test(
+    currentQuestion.question_text || ''
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -837,10 +875,10 @@ export default function QuestionPracticeScreen() {
                   You can open the original PDF to view it.
                 </Text>
               </View>
-              {!!paperUrls?.question_paper_url && (
+              {!!getQuestionPaperUrl() && (
                 <TouchableOpacity
                   style={styles.openPdfButton}
-                  onPress={() => Linking.openURL(paperUrls.question_paper_url!)}
+                  onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
                 >
                   <Text style={styles.openPdfButtonText}>Open PDF</Text>
                 </TouchableOpacity>
@@ -850,6 +888,28 @@ export default function QuestionPracticeScreen() {
 
           {/* Question Text */}
           <Text style={styles.questionText}>{currentQuestion.question_text}</Text>
+
+          {/* Multiple choice fallback */}
+          {isLikelyMultipleChoice && (
+            <View style={styles.missingImageBox}>
+              <Icon name="information-circle" size={16} color="#F59E0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.missingImageTitle}>Multiple choice</Text>
+                <Text style={styles.missingImageText}>
+                  This looks like a “tick one box” question. The answer options aren’t rendered in-app yet —
+                  open the PDF to view the choices, then enter your selected letter/answer below.
+                </Text>
+              </View>
+              {!!getQuestionPaperUrl() && (
+                <TouchableOpacity
+                  style={styles.openPdfButton}
+                  onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
+                >
+                  <Text style={styles.openPdfButtonText}>Open PDF</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Answer Section */}
@@ -898,7 +958,7 @@ export default function QuestionPracticeScreen() {
             <TextInput
               style={styles.answerInput}
               multiline
-              placeholder="Type your answer here..."
+              placeholder={isLikelyMultipleChoice ? 'Type your selected letter/answer here...' : 'Type your answer here...'}
               placeholderTextColor="#64748B"
               value={userAnswer}
               onChangeText={setUserAnswer}
@@ -1275,9 +1335,6 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontStyle: 'italic',
     lineHeight: 18,
-  },
-  timerContainer: {
-    paddingHorizontal: 20,
   },
   actionButtonsRow: {
     flexDirection: 'row',
