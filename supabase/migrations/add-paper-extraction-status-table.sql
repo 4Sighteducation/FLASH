@@ -67,13 +67,15 @@ BEGIN
     IF EXISTS (
       SELECT 1
       FROM pg_constraint c
-      JOIN pg_attribute a
-        ON a.attrelid = c.conrelid
-       AND a.attnum = ANY (c.conkey)
       WHERE c.conrelid = 'public.paper_extraction_status'::regclass
         AND c.contype = 'p'
-      GROUP BY c.conname
-      HAVING array_agg(a.attname ORDER BY a.attname) = ARRAY['paper_id']
+        AND array_length(c.conkey, 1) = 1
+        AND (
+          SELECT a.attname
+          FROM pg_attribute a
+          WHERE a.attrelid = c.conrelid
+            AND a.attnum = c.conkey[1]
+        ) = 'paper_id'
     ) THEN
       EXECUTE format('ALTER TABLE paper_extraction_status DROP CONSTRAINT %I', pk_name);
     END IF;
