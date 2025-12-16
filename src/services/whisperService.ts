@@ -43,12 +43,12 @@ export class WhisperService {
       console.log('Transcription response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         console.error('Transcription API Error:', errorData);
         throw new Error(errorData.error || 'Failed to transcribe audio');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { success?: boolean; text?: string };
       console.log('Transcription result:', data);
 
       if (data.success && data.text) {

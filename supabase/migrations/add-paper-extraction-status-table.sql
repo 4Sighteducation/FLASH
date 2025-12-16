@@ -1,25 +1,71 @@
 -- Paper Extraction Status Table
 -- Tracks the status of background paper extraction jobs
 
-CREATE TABLE IF NOT EXISTS paper_extraction_status (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  paper_id UUID NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-    -- 'pending', 'extracting', 'completed', 'failed'
-  progress_percentage INTEGER DEFAULT 0,
-  current_step TEXT,
-  error_message TEXT,
-  questions_extracted INTEGER DEFAULT 0,
-  mark_schemes_extracted INTEGER DEFAULT 0,
-  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Allow multiple users to trigger same paper extraction
-  UNIQUE(paper_id, user_id)
-);
+-- NOTE: This migration is written to be safe even if an earlier version of the
+-- table already exists (e.g. created by create-exam-papers-system.sql).
+-- The previous error you saw ("column user_id does not exist") happens when
+-- the table exists but policies reference a column that wasn't in the older schema.
+
+DO $$
+BEGIN
+  IF to_regclass('public.paper_extraction_status') IS NULL THEN
+    CREATE TABLE paper_extraction_status (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      paper_id UUID NOT NULL,
+      user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+        -- 'pending', 'extracting', 'completed', 'failed'
+      progress_percentage INTEGER DEFAULT 0,
+      current_step TEXT,
+      error_message TEXT,
+      questions_extracted INTEGER DEFAULT 0,
+      mark_schemes_extracted INTEGER DEFAULT 0,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END
+$$;
+
+-- Ensure expected columns exist (covers older schema versions)
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS progress_percentage INTEGER DEFAULT 0;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS current_step TEXT;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS questions_extracted INTEGER DEFAULT 0;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS mark_schemes_extracted INTEGER DEFAULT 0;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- Ensure unique constraint exists (best-effort)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'paper_extraction_status_paper_id_user_id_key'
+  ) THEN
+    ALTER TABLE paper_extraction_status
+      ADD CONSTRAINT paper_extraction_status_paper_id_user_id_key UNIQUE (paper_id, user_id);
+  END IF;
+END
+$$;
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS idx_paper_extraction_paper_id ON paper_extraction_status(paper_id);
@@ -30,16 +76,19 @@ CREATE INDEX IF NOT EXISTS idx_paper_extraction_status ON paper_extraction_statu
 ALTER TABLE paper_extraction_status ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies - Users can view all extraction statuses (to benefit from others' extractions)
+DROP POLICY IF EXISTS "Anyone can view extraction status" ON paper_extraction_status;
 CREATE POLICY "Anyone can view extraction status"
   ON paper_extraction_status
   FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Users can insert their own extraction requests" ON paper_extraction_status;
 CREATE POLICY "Users can insert their own extraction requests"
   ON paper_extraction_status
   FOR INSERT
   WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Service role can update extraction status" ON paper_extraction_status;
 CREATE POLICY "Service role can update extraction status"
   ON paper_extraction_status
   FOR UPDATE
@@ -55,6 +104,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_extraction_status_timestamp ON paper_extraction_status;
 CREATE TRIGGER update_extraction_status_timestamp
   BEFORE UPDATE ON paper_extraction_status
   FOR EACH ROW

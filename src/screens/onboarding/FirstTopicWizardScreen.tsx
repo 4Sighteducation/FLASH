@@ -50,7 +50,7 @@ export default function FirstTopicWizardScreen() {
   const [currentSubject, setCurrentSubject] = useState<SelectedSubject>(subjects[0]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const searchDebounceRef = useRef<NodeJS.Timeout>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -107,7 +107,11 @@ export default function FirstTopicWizardScreen() {
           throw new Error('Search request failed');
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+          success: boolean;
+          message?: string;
+          results?: TopicSearchResult[];
+        };
         
         if (!data.success) {
           throw new Error(data.message || 'Search failed');
