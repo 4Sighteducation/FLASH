@@ -141,6 +141,7 @@ export default function FlashcardsScreen() {
         .insert({
           flashcard_id: cardId,
           user_id: user?.id,
+          was_correct: correct,
           quality: correct ? 5 : 1,
           reviewed_at: new Date().toISOString(),
         });

@@ -22,6 +22,7 @@ import CardSwooshAnimation from '../../components/CardSwooshAnimation';
 import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
+import { gamificationService } from '../../services/gamificationService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -81,6 +82,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     incorrectAnswers: 0,
   });
   const [pointsEarned, setPointsEarned] = useState(0);
+  const [sessionPoints, setSessionPoints] = useState(0);
   const sessionStartTime = useRef(new Date());
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [animationPoints, setAnimationPoints] = useState(0);
@@ -455,9 +457,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     setShowAnswerFeedback(true);
     
     // Show points animation
-    const pointsForAnswer = correct ? 10 : 2;
+    const pointsForAnswer = user?.id
+      ? await gamificationService.computeStudyPointsForReview({
+          userId: user.id,
+          flashcardId: cardId,
+          oldBoxNumber,
+          wasCorrect: correct,
+        })
+      : 0;
     setAnimationPoints(pointsForAnswer);
     setShowPointsAnimation(true);
+    setSessionPoints((p) => p + pointsForAnswer);
     
     // Animate feedback modal entrance
     Animated.spring(feedbackScale, {
@@ -604,18 +614,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         ? (sessionStats.correctAnswers / sessionStats.totalReviewed) * 100
         : 0;
       
-      let pointsEarned = 0;
-      
-      // Points for correct/incorrect answers
-      pointsEarned += sessionStats.correctAnswers * 10; // 10 points per correct
-      pointsEarned += sessionStats.incorrectAnswers * 2; // 2 consolation points
-      
-      // Bonus points based on performance
-      if (successRate === 100 && sessionStats.totalReviewed >= 5) {
-        pointsEarned += 50; // Perfect session bonus
-      } else if (successRate >= 70 && sessionStats.totalReviewed >= 5) {
-        pointsEarned += 25; // Great session bonus
-      }
+      // Points are computed per-review using gamification rules and accumulated in sessionPoints.
+      const pointsEarned = sessionPoints;
       
       // Calculate session duration
       const sessionDuration = Math.floor((new Date().getTime() - sessionStartTime.current.getTime()) / 1000);
@@ -640,14 +640,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         console.error('Error saving session:', sessionError);
         animatingRef.current = false; // Unlock animation on error
       } else {
-        // Update user stats
-        await supabase.rpc('update_user_stats_after_session', {
-          p_user_id: user?.id,
-          p_cards_reviewed: sessionStats.totalReviewed,
-          p_correct_answers: sessionStats.correctAnswers,
-          p_incorrect_answers: sessionStats.incorrectAnswers,
-          p_points_earned: pointsEarned,
-        });
+        // Update user stats (client-side, no RPC dependency)
+        if (user?.id) {
+          await gamificationService.upsertUserStatsDelta({
+            userId: user.id,
+            pointsDelta: pointsEarned,
+            cardsReviewedDelta: sessionStats.totalReviewed,
+            correctDelta: sessionStats.correctAnswers,
+            incorrectDelta: sessionStats.incorrectAnswers,
+          });
+        }
         
         // Store points for display
         setPointsEarned(pointsEarned);
