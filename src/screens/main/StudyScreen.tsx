@@ -449,7 +449,7 @@ export default function StudyScreen({ route, navigation }: any) {
               />
             </TouchableOpacity>
             
-            {showAccordion && selectedBox !== null && (
+            {showAccordion && (
               <Modal
                 visible={true}
                 animationType="slide"
@@ -461,14 +461,54 @@ export default function StudyScreen({ route, navigation }: any) {
                     <TouchableOpacity onPress={handleCloseBoxModal} style={styles.modalCloseButton}>
                       <Icon name="close" size={28} color="#333" />
                     </TouchableOpacity>
-                    <Text style={styles.modalTitle}>{LeitnerSystem.getBoxDisplayName(selectedBox)} - Select Subject</Text>
+                    <Text style={styles.modalTitle}>
+                      {selectedBox !== null
+                        ? `${LeitnerSystem.getBoxDisplayName(selectedBox)} - Select Subject`
+                        : 'Select a stage to study'}
+                    </Text>
                     <View style={{ width: 28 }} />
                   </View>
-                  <StudySubjectAccordion
-                    boxNumber={selectedBox}
-                    onSubjectStudy={handleSubjectStudy}
-                    onTopicStudy={handleTopicStudy}
-                  />
+                  {selectedBox === null ? (
+                    <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
+                      <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 12 }}>
+                        Choose which stage you want to study, then pick a subject or topic.
+                      </Text>
+                      {[1, 2, 3, 4, 5].map((boxNumber) => {
+                        const info = getBoxInfo(boxNumber);
+                        const count = boxStats[`box${boxNumber}` as keyof BoxStats] as number;
+                        return (
+                          <TouchableOpacity
+                            key={boxNumber}
+                            style={[
+                              styles.boxListCard,
+                              { marginBottom: 12, opacity: count === 0 ? 0.5 : 1 },
+                            ]}
+                            onPress={() => count > 0 && setSelectedBox(boxNumber)}
+                            disabled={count === 0}
+                          >
+                            <View style={styles.boxListContent}>
+                              <View style={styles.boxListTop}>
+                                <Text style={styles.boxListName}>
+                                  {info.name} {info.emoji}
+                                </Text>
+                                <Text style={styles.boxListCount}>{count} cards</Text>
+                              </View>
+                              <Text style={styles.boxListInterval}>Review: {info.displayInterval}</Text>
+                            </View>
+                            {count > 0 && (
+                              <Icon name="chevron-forward" size={20} color="#999" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <StudySubjectAccordion
+                      boxNumber={selectedBox}
+                      onSubjectStudy={handleSubjectStudy}
+                      onTopicStudy={handleTopicStudy}
+                    />
+                  )}
                 </SafeAreaView>
               </Modal>
             )}

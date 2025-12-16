@@ -77,27 +77,29 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          isOnboarded ? (
-            <Stack.Screen name="Main" component={MainNavigator} />
+    <SubscriptionProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {user ? (
+            isOnboarded ? (
+              <Stack.Screen name="Main" component={MainNavigator} />
+            ) : (
+              <>
+                <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                <Stack.Screen name="ExamTypeSelection" component={ExamTypeSelectionScreen} />
+                <Stack.Screen name="SubjectSearch" component={SubjectSearchScreen} />
+                <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
+                <Stack.Screen name="Main" component={MainNavigator} />
+              </>
+            )
           ) : (
             <>
-              <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="ExamTypeSelection" component={ExamTypeSelectionScreen} />
-              <Stack.Screen name="SubjectSearch" component={SubjectSearchScreen} />
-              <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
-              <Stack.Screen name="Main" component={MainNavigator} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="SignUp" component={SignUpScreen} />
             </>
-          )
-        ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SubscriptionProvider>
   );
 } 

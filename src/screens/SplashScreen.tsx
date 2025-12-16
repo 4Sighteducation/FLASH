@@ -11,8 +11,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
-export default function SplashScreen({ onReady }: { onReady: () => void }) {
+export default function SplashScreen({ onReady }: { onReady?: () => void }) {
   useEffect(() => {
+    if (!onReady) return;
     const timer = setTimeout(onReady, 2000);
     return () => clearTimeout(timer);
   }, [onReady]);
