@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from './Icon';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface QualityTierInfoProps {
   visible: boolean;
@@ -167,6 +167,8 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: width * 0.92,
     maxWidth: 420,
+    // Give the ScrollView a real height to flex into (otherwise it can collapse on iOS)
+    height: Math.min(height * 0.82, 640),
     maxHeight: '92%',
     backgroundColor: '#1a1a2e',
     borderRadius: 20,
@@ -192,6 +194,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingTop: 20,
     paddingBottom: 10,
+    flexGrow: 1,
   },
   tierCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',

@@ -51,6 +51,7 @@ const emojiMap: Record<string, string> = {
   'color-palette-outline': '🎨',
   'notifications': '🔔',
   'notifications-outline': '🔔',
+  'help-circle': '❓',
   'help-circle-outline': '❓',
   'key-outline': '🔑',
   'trash-outline': '🗑️',

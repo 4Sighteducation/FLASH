@@ -15,6 +15,8 @@ import {
   KeyboardAvoidingView,
   Linking,
   findNodeHandle,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -114,6 +116,7 @@ export default function QuestionPracticeScreen() {
   const [examinerInsight, setExaminerInsight] = useState<ExaminerInsight | null>(null);
   const [showExaminerInsight, setShowExaminerInsight] = useState(false);
   const currentQuestionId = questions[currentIndex]?.id ?? null;
+  const [showAnswerEditor, setShowAnswerEditor] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -957,7 +960,7 @@ export default function QuestionPracticeScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
       <ScrollView
         ref={(r) => {
@@ -966,7 +969,8 @@ export default function QuestionPracticeScreen() {
         }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingBottom: Math.max(24, keyboardHeight) }}
+        // Avoid double-padding: KeyboardAvoidingView already shifts content on iOS.
+        contentContainerStyle={{ paddingBottom: 24 }}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -1193,7 +1197,16 @@ export default function QuestionPracticeScreen() {
               </View>
             )}
 
-            <Text style={styles.answerLabel}>Your Answer:</Text>
+            <View style={styles.answerHeaderRow}>
+              <Text style={styles.answerLabel}>Your Answer:</Text>
+              <TouchableOpacity
+                style={styles.expandButton}
+                onPress={() => setShowAnswerEditor(true)}
+              >
+                <Icon name="create-outline" size={16} color="#00F5FF" />
+                <Text style={styles.expandButtonText}>Expand</Text>
+              </TouchableOpacity>
+            </View>
             <TextInput
               ref={(r) => {
                 // @ts-ignore
@@ -1314,6 +1327,44 @@ export default function QuestionPracticeScreen() {
         )}
       </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Expanded answer editor (better UX for long responses) */}
+      <Modal
+        visible={showAnswerEditor}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAnswerEditor(false)}
+      >
+        <View style={styles.editorOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          >
+            <View style={styles.editorSheet}>
+              <View style={styles.editorHeader}>
+                <Text style={styles.editorTitle}>Answer</Text>
+                <TouchableOpacity onPress={() => setShowAnswerEditor(false)} style={styles.editorDoneButton}>
+                  <Text style={styles.editorDoneText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                style={styles.editorInput}
+                multiline
+                autoFocus
+                placeholder="Type your answer here..."
+                placeholderTextColor="#64748B"
+                value={userAnswer}
+                onChangeText={setUserAnswer}
+              />
+              <View style={styles.editorHintRow}>
+                <Text style={styles.editorHintText}>
+                  Tip: You can write long answers here comfortably, then tap Done.
+                </Text>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
 
       {/* Extraction Modal */}
       <PaperExtractionModal
@@ -1454,11 +1505,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+  answerHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   answerLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 12,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  expandButtonText: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   answerInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
@@ -1471,6 +1543,62 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 16,
+  },
+  editorOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  editorSheet: {
+    backgroundColor: '#0f172a',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.18)',
+    maxHeight: Math.min(Dimensions.get('window').height * 0.70, 520),
+  },
+  editorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  editorTitle: {
+    color: '#E2E8F0',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  editorDoneButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  editorDoneText: {
+    color: '#00F5FF',
+    fontWeight: '800',
+  },
+  editorInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    padding: 14,
+    color: '#FFFFFF',
+    fontSize: 15,
+    minHeight: 220,
+    textAlignVertical: 'top',
+  },
+  editorHintRow: {
+    marginTop: 10,
+  },
+  editorHintText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    lineHeight: 16,
   },
   submitButton: {
     flexDirection: 'row',
