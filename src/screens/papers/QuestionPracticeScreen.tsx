@@ -113,12 +113,25 @@ export default function QuestionPracticeScreen() {
   const [maxIndexReached, setMaxIndexReached] = useState(0);
   const [examinerInsight, setExaminerInsight] = useState<ExaminerInsight | null>(null);
   const [showExaminerInsight, setShowExaminerInsight] = useState(false);
+  const currentQuestionId = questions[currentIndex]?.id ?? null;
 
   useEffect(() => {
     loadQuestions();
     checkForSavedProgress();
     loadPaperUrls();
   }, []);
+
+  // IMPORTANT: hooks must run before any early returns below.
+  // Load examiner insight for the current question (if available).
+  useEffect(() => {
+    if (!currentQuestionId) {
+      setExaminerInsight(null);
+      setShowExaminerInsight(false);
+      return;
+    }
+    loadExaminerInsight(currentQuestionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionId]);
 
   // Track keyboard height so we can ensure answer input is visible on small screens
   useEffect(() => {
@@ -938,11 +951,6 @@ export default function QuestionPracticeScreen() {
   );
   const mcqOptions = isLikelyMultipleChoice ? parseMultipleChoiceOptions(currentQuestion.question_text || '') : [];
   const hasMcqOptions = mcqOptions.length >= 2;
-
-  useEffect(() => {
-    if (!currentQuestion?.id) return;
-    loadExaminerInsight(currentQuestion.id);
-  }, [currentQuestion?.id]);
 
   return (
     <SafeAreaView style={styles.container}>
