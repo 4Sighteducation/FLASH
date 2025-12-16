@@ -329,12 +329,18 @@ export default function HomeScreen({ navigation }: any) {
                 )}
               </View>
               <TouchableOpacity style={styles.lockPill} onPress={() => setShowSkinsModal(true)}>
-                <Text style={styles.lockPillText}>
-                  {rank.next
-                    ? `🔓 Next skin: ${rank.next.name} @ ${rank.next.minXp.toLocaleString()} XP`
-                    : '🏆 Skins Vault (max rank)'}{' '}
-                  <Text style={styles.lockPillTextDim}>Tap</Text>
-                </Text>
+                {rank.next ? (
+                  <View>
+                    <Text style={styles.lockPillTextLine1}>🔓 Next skin: {rank.next.name}</Text>
+                    <Text style={styles.lockPillTextLine2}>
+                      {rank.next.minXp.toLocaleString()} XP <Text style={styles.lockPillTextDim}>• Tap</Text>
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.lockPillTextLine1}>
+                    🏆 Skins Vault <Text style={styles.lockPillTextDim}>• Tap</Text>
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
             {rank.next ? (
@@ -666,8 +672,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
   },
   headerAvatarImage: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
   },
   rankRow: {
     marginTop: 14,
@@ -722,6 +728,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 12,
     color: '#E2E8F0',
     fontWeight: '700',
+  },
+  lockPillTextLine1: {
+    fontSize: 12,
+    color: '#E2E8F0',
+    fontWeight: '900',
+  },
+  lockPillTextLine2: {
+    marginTop: 2,
+    fontSize: 11,
+    color: '#CBD5E1',
+    fontWeight: '800',
   },
   lockPillTextDim: {
     color: '#94A3B8',

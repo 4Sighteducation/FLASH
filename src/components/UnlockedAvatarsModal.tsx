@@ -45,7 +45,6 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
               <Text style={styles.introText}>
                 Earn XP → rank up → unlock the next “desk item” skin. No store, no grind traps — just progress.
               </Text>
-              <Text style={styles.introHint}>Tip: hit an unlock exactly at the XP threshold to test it fast.</Text>
             </View>
 
             {ladder.map(({ rank, avatar }) => {
@@ -177,12 +176,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '600',
   },
-  introHint: {
-    marginTop: 8,
-    color: '#7DD3FC',
-    fontSize: 12,
-    fontWeight: '800',
-  },
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -205,8 +198,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
   },
   iconLocked: {
     opacity: 0.35,
