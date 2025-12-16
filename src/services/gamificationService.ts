@@ -173,6 +173,80 @@ export const gamificationService = {
       console.warn('[Gamification] Failed to update users.current_streak:', usersErr);
     }
   },
+
+  computePaperBonusPoints(percentage: number): number {
+    // Clamp 0..100
+    const p = Math.max(0, Math.min(100, percentage));
+    // Special case 100%
+    if (p >= 100) return 50000;
+    const tier = gamificationConfig.paper.percentageBonus.find((t) => p >= t.min && p < t.max);
+    return tier?.points ?? 0;
+  },
+
+  async awardPaperCompletionXp(params: {
+    userId: string;
+    paperId: string;
+    totalScore: number;
+    maxScore: number;
+  }): Promise<{ awarded: boolean; points: number; reason?: string }> {
+    const { userId, paperId } = params;
+    const totalScore = Math.max(0, Math.floor(Number(params.totalScore) || 0));
+    const maxScore = Math.max(0, Math.floor(Number(params.maxScore) || 0));
+    if (!userId || !paperId || maxScore <= 0) {
+      return { awarded: false, points: 0, reason: 'invalid_input' };
+    }
+
+    // Dedupe: award once per user per paper
+    const { data: existing, error: existingErr } = await supabase
+      .from('paper_xp_awards')
+      .select('id, total_points')
+      .eq('user_id', userId)
+      .eq('paper_id', paperId)
+      .maybeSingle();
+
+    // If the table doesn't exist yet, don't silently double-count. Ask user to run migration.
+    if (existingErr && String((existingErr as any)?.message || '').includes('paper_xp_awards')) {
+      console.warn('[Gamification] paper_xp_awards table missing; run migration create-paper-xp-awards-table.sql');
+      return { awarded: false, points: 0, reason: 'missing_table' };
+    }
+
+    if (existing?.id) {
+      return { awarded: false, points: Number((existing as any).total_points || 0), reason: 'already_awarded' };
+    }
+
+    const percentage = (totalScore / maxScore) * 100;
+    const marksPoints = totalScore * gamificationConfig.paper.pointsPerMarkFirstAttempt;
+    const completionPoints = gamificationConfig.paper.completionBonus;
+    const bonusPoints = this.computePaperBonusPoints(percentage);
+    const totalPoints = marksPoints + completionPoints + bonusPoints;
+
+    const { error: insertErr } = await supabase.from('paper_xp_awards').insert({
+      user_id: userId,
+      paper_id: paperId,
+      marks_points: marksPoints,
+      completion_points: completionPoints,
+      bonus_points: bonusPoints,
+      total_points: totalPoints,
+      total_score: totalScore,
+      max_score: maxScore,
+      percentage,
+    });
+
+    if (insertErr) {
+      console.warn('[Gamification] Failed to insert paper_xp_awards:', insertErr);
+      return { awarded: false, points: 0, reason: 'insert_failed' };
+    }
+
+    await this.upsertUserStatsDelta({
+      userId,
+      pointsDelta: totalPoints,
+      cardsReviewedDelta: 0,
+      correctDelta: 0,
+      incorrectDelta: 0,
+    });
+
+    return { awarded: true, points: totalPoints };
+  },
 };
 
 

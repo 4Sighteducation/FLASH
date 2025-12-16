@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { gamificationService } from '../../services/gamificationService';
 
 interface QuestionResult {
   questionNumber: string;
@@ -33,6 +34,7 @@ export default function PaperCompletionScreen() {
   const [maxScore, setMaxScore] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [xpAwarded, setXpAwarded] = useState<{ awarded: boolean; points: number; reason?: string } | null>(null);
 
   useEffect(() => {
     loadResults();
@@ -90,6 +92,19 @@ export default function PaperCompletionScreen() {
       setTotalScore(total);
       setMaxScore(max);
       setTotalTime(time);
+
+      // Award paper XP once per user+paper (deduped via paper_xp_awards)
+      try {
+        const award = await gamificationService.awardPaperCompletionXp({
+          userId: user.id,
+          paperId,
+          totalScore: total,
+          maxScore: max,
+        });
+        setXpAwarded(award);
+      } catch (e) {
+        console.warn('[Papers] Failed to award paper XP:', e);
+      }
     } catch (error) {
       console.error('Error loading results:', error);
     } finally {
@@ -214,13 +229,13 @@ export default function PaperCompletionScreen() {
         <View style={styles.actionsSection}>
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => navigation.navigate('QuestionPractice' as never, {
+            onPress={() => (navigation as any).navigate('QuestionPractice', {
               paperId,
               paperName,
               subjectName,
               subjectColor,
               reviewMode: true
-            } as never)}
+            })}
           >
             <Icon name="eye" size={20} color="#00F5FF" />
             <Text style={styles.actionButtonText}>Review Answers</Text>
@@ -237,12 +252,12 @@ export default function PaperCompletionScreen() {
                   .eq('user_id', user.id)
                   .eq('paper_id', paperId)
                   .then(() => {
-                    navigation.navigate('QuestionPractice' as never, {
+                    (navigation as any).navigate('QuestionPractice', {
                       paperId,
                       paperName,
                       subjectName,
                       subjectColor
-                    } as never);
+                    });
                   });
               }
             }}
