@@ -15,16 +15,22 @@ interface PaperExtractionModalProps {
   visible: boolean;
   progress: number;
   currentStep: string;
+  metaText?: string;
   onCancel?: () => void;
   allowCancel?: boolean;
+  onRetry?: () => void;
+  allowRetry?: boolean;
 }
 
 export default function PaperExtractionModal({
   visible,
   progress,
   currentStep,
+  metaText,
   onCancel,
   allowCancel = true,
+  onRetry,
+  allowRetry = false,
 }: PaperExtractionModalProps) {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -107,6 +113,7 @@ export default function PaperExtractionModal({
               This may take 2-30 minutes depending on paper length
             </Text>
             <Text style={styles.stepText}>{currentStep}</Text>
+            {!!metaText && <Text style={styles.metaText}>{metaText}</Text>}
 
             {/* Progress Bar */}
             <View style={styles.progressContainer}>
@@ -167,6 +174,16 @@ export default function PaperExtractionModal({
                 onPress={onCancel}
               >
                 <Text style={styles.cancelButtonText}>Leave & Continue Using App</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Retry Button (when stuck) */}
+            {allowRetry && onRetry && (
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={onRetry}
+              >
+                <Text style={styles.retryButtonText}>Retry Extraction</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -268,6 +285,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     minHeight: 20,
   },
+  metaText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: -18,
+    marginBottom: 18,
+    textAlign: 'center',
+  },
   progressContainer: {
     width: '100%',
     marginBottom: 20,
@@ -362,6 +386,21 @@ const styles = StyleSheet.create({
     color: '#6366F1',
     fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  retryButtonText: {
+    color: '#F59E0B',
+    fontSize: 14,
+    fontWeight: '700',
     textAlign: 'center',
   },
 });

@@ -84,12 +84,29 @@ export default function QuestionPracticeScreen() {
     examiner_report_url?: string | null;
   } | null>(null);
   const [extractionRequestSent, setExtractionRequestSent] = useState(false);
+  const [lastExtractionUpdateAt, setLastExtractionUpdateAt] = useState<string | null>(null);
+  const [staleSeconds, setStaleSeconds] = useState<number>(0);
+  const [canRetryExtraction, setCanRetryExtraction] = useState<boolean>(false);
 
   useEffect(() => {
     loadQuestions();
     checkForSavedProgress();
     loadPaperUrls();
   }, []);
+
+  // Track staleness of extraction updates to distinguish "slow" vs "stuck"
+  useEffect(() => {
+    if (!showExtractionModal) return;
+    const t = setInterval(() => {
+      const base = lastExtractionUpdateAt;
+      if (!base) return;
+      const ms = Date.now() - new Date(base).getTime();
+      const secs = Math.max(0, Math.floor(ms / 1000));
+      setStaleSeconds(secs);
+      setCanRetryExtraction(secs >= 60); // no updates for 60s → offer retry
+    }, 1000);
+    return () => clearInterval(t);
+  }, [showExtractionModal, lastExtractionUpdateAt]);
 
   const loadPaperUrls = async () => {
     try {
@@ -102,6 +119,50 @@ export default function QuestionPracticeScreen() {
     } catch (e) {
       console.warn('[Papers] failed to load paper urls', e);
     }
+  };
+
+  const triggerExtractionRequest = async (statusId: string) => {
+    if (!paperUrls?.question_paper_url) {
+      Alert.alert('Cannot Start Extraction', 'Missing question paper PDF URL for this paper.');
+      return;
+    }
+    setExtractionStep('Sending extraction request…');
+    setExtractionRequestSent(false);
+
+    try {
+      // Best-effort update to reflect retry in UI/polling
+      await supabase
+        .from('paper_extraction_status')
+        .update({
+          status: 'pending',
+          progress_percentage: 0,
+          current_step: 'Retrying extraction...',
+          error_message: null,
+        })
+        .eq('id', statusId);
+    } catch (e) {
+      console.warn('[Papers] failed to update status before retry', e);
+    }
+
+    fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paper_id: paperId,
+        extraction_status_id: statusId,
+        question_url: paperUrls.question_paper_url,
+        mark_scheme_url: paperUrls.mark_scheme_url,
+        examiner_report_url: paperUrls.examiner_report_url,
+      }),
+    })
+      .then((res) => {
+        setExtractionRequestSent(true);
+        console.log('[Papers] extract-paper request accepted:', res.status);
+      })
+      .catch((err) => {
+        console.error('[Papers] extract-paper request failed:', err);
+        setExtractionStep('Failed to contact extraction service.');
+      });
   };
 
   // Clear resume seconds after they've been applied once
@@ -286,21 +347,10 @@ export default function QuestionPracticeScreen() {
                   setShowExtractionModal(true);
                   setExtractionProgress(0);
                   setExtractionStep('Retrying extraction...');
+                  setLastExtractionUpdateAt(existingStatus.updated_at || existingStatus.created_at || null);
                   startPollingExtractionStatus(existingStatus.id);
 
-                  fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      paper_id: paperId,
-                      extraction_status_id: existingStatus.id,
-                      question_url: paperData.question_paper_url,
-                      mark_scheme_url: paperData.mark_scheme_url,
-                      examiner_report_url: paperData.examiner_report_url,
-                    }),
-                  }).catch(error => {
-                    console.error('Background extraction error:', error);
-                  });
+                  triggerExtractionRequest(existingStatus.id);
                 },
               },
             ]
@@ -313,6 +363,7 @@ export default function QuestionPracticeScreen() {
         setShowExtractionModal(true);
         setExtractionProgress(existingStatus.progress_percentage || 0);
         setExtractionStep(existingStatus.current_step || 'Processing...');
+        setLastExtractionUpdateAt(existingStatus.updated_at || existingStatus.created_at || null);
         startPollingExtractionStatus(existingStatus.id);
         return;
       }
@@ -340,6 +391,7 @@ export default function QuestionPracticeScreen() {
       setExtractionProgress(0);
       setExtractionStep('Starting extraction process...');
       setExtractionRequestSent(false);
+      setLastExtractionUpdateAt(new Date().toISOString());
 
       // Start polling for status updates
       startPollingExtractionStatus(statusData.id);
@@ -349,25 +401,7 @@ export default function QuestionPracticeScreen() {
         paperId,
         extraction_status_id: statusData.id,
       });
-      fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paper_id: paperId,
-          extraction_status_id: statusData.id,
-          question_url: paperData.question_paper_url,
-          mark_scheme_url: paperData.mark_scheme_url,
-          examiner_report_url: paperData.examiner_report_url,
-        }),
-      })
-        .then((res) => {
-          setExtractionRequestSent(true);
-          console.log('[Papers] extract-paper request accepted:', res.status);
-        })
-        .catch(error => {
-          console.error('Background extraction error:', error);
-          setExtractionStep('Failed to contact extraction service.');
-        });
+      triggerExtractionRequest(statusData.id);
       
     } catch (error) {
       console.error('Extraction error:', error);
@@ -394,6 +428,7 @@ export default function QuestionPracticeScreen() {
         if (data) {
           setExtractionProgress(data.progress_percentage || 0);
           setExtractionStep(data.current_step || 'Processing...');
+          if (data.updated_at) setLastExtractionUpdateAt(data.updated_at);
 
           if (data.status === 'completed') {
             // Extraction complete!
@@ -632,6 +667,11 @@ export default function QuestionPracticeScreen() {
   // If extraction modal is showing but we don't have questions yet, do NOT try to render question UI.
   // (Otherwise we crash on currentQuestion.marks when extraction fails quickly.)
   if (questions.length === 0 && showExtractionModal) {
+    const statusLine = extractionRequestSent ? 'request sent' : 'request not yet confirmed';
+    const metaText = lastExtractionUpdateAt
+      ? `Status: ${statusLine} • Last update: ${Math.floor(staleSeconds / 60)}m ${staleSeconds % 60}s ago`
+      : `Status: ${statusLine}`;
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -641,8 +681,13 @@ export default function QuestionPracticeScreen() {
           visible={showExtractionModal}
           progress={extractionProgress}
           currentStep={extractionStep}
+          metaText={metaText}
           onCancel={handleLeaveExtraction}
           allowCancel={true}
+          allowRetry={canRetryExtraction && !!extractionStatusId}
+          onRetry={() => {
+            if (extractionStatusId) triggerExtractionRequest(extractionStatusId);
+          }}
         />
       </SafeAreaView>
     );
@@ -883,8 +928,17 @@ export default function QuestionPracticeScreen() {
         visible={showExtractionModal}
         progress={extractionProgress}
         currentStep={extractionStep}
+        metaText={
+          lastExtractionUpdateAt
+            ? `Last update: ${Math.floor(staleSeconds / 60)}m ${staleSeconds % 60}s ago`
+            : undefined
+        }
         onCancel={handleLeaveExtraction}
         allowCancel={true}
+        allowRetry={canRetryExtraction && !!extractionStatusId}
+        onRetry={() => {
+          if (extractionStatusId) triggerExtractionRequest(extractionStatusId);
+        }}
       />
     </SafeAreaView>
   );
