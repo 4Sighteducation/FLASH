@@ -30,6 +30,31 @@ END
 $$;
 
 -- Ensure expected columns exist (covers older schema versions)
+-- Some earlier versions may not have had a surrogate primary key. The app code expects `id`.
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS id UUID;
+ALTER TABLE paper_extraction_status
+  ALTER COLUMN id SET DEFAULT gen_random_uuid();
+UPDATE paper_extraction_status
+  SET id = gen_random_uuid()
+  WHERE id IS NULL;
+ALTER TABLE paper_extraction_status
+  ALTER COLUMN id SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.paper_extraction_status'::regclass
+      AND contype = 'p'
+  ) THEN
+    ALTER TABLE paper_extraction_status
+      ADD CONSTRAINT paper_extraction_status_pkey PRIMARY KEY (id);
+  END IF;
+END
+$$;
+
 ALTER TABLE paper_extraction_status
   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE paper_extraction_status
