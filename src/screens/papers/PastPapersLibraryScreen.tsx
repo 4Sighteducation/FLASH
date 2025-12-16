@@ -55,13 +55,14 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
     if (!user?.id) return;
 
     try {
-      // Show completion alerts for any completed extractions that haven't been acknowledged yet.
+      // Show completion alerts for any completed extractions the user hasn't acknowledged yet.
+      // We intentionally do NOT depend on DB columns like `notified` because Supabase schema cache
+      // can lag; we use AsyncStorage to avoid repeat alerts.
       const { data, error } = await supabase
         .from('paper_extraction_status')
-        .select('id, paper_id')
+        .select('id, paper_id, completed_at')
         .eq('user_id', user.id)
         .eq('status', 'completed')
-        .eq('notified', false)
         .order('completed_at', { ascending: false })
         .limit(1);
 
@@ -70,6 +71,11 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
       const row = data?.[0];
       if (!row) return;
 
+      const storageKey = 'papers_extraction_notified_ids_v1';
+      const raw = await AsyncStorage.getItem(storageKey);
+      const notifiedIds = new Set<string>(raw ? JSON.parse(raw) : []);
+      if (notifiedIds.has(row.id)) return;
+
       Alert.alert(
         'Paper Ready ✅',
         'Your paper extraction has completed. You can now open it from Past Papers and start practicing.',
@@ -77,10 +83,8 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           {
             text: 'OK',
             onPress: async () => {
-              await supabase
-                .from('paper_extraction_status')
-                .update({ notified: true, notified_at: new Date().toISOString() })
-                .eq('id', row.id);
+              notifiedIds.add(row.id);
+              await AsyncStorage.setItem(storageKey, JSON.stringify(Array.from(notifiedIds)));
             },
           },
         ]

@@ -35,7 +35,11 @@ export default function QualityTierInfo({ visible, onClose }: QualityTierInfoPro
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.content}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Tier 1 */}
             <View style={[styles.tierCard, { borderColor: '#10B981' }]}>
               <View style={styles.tierHeader}>
@@ -163,7 +167,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: width * 0.92,
     maxWidth: 420,
-    maxHeight: '85%',
+    maxHeight: '92%',
     backgroundColor: '#1a1a2e',
     borderRadius: 20,
     overflow: 'hidden',
@@ -183,7 +187,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+  },
+  contentContainer: {
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   tierCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',

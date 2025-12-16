@@ -335,8 +335,10 @@ export default function ExamTimer({ questionMarks, questionKey, initialSeconds, 
                 </View>
               )}
 
+              <Text style={styles.sectionHeading}>Automation</Text>
+
               {/* Auto-start toggle */}
-              <View style={styles.settingRow}>
+              <View style={styles.settingRowInline}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.settingLabel}>Auto-Start on Answer Tap</Text>
                   <Text style={styles.settingDescription}>
@@ -352,7 +354,7 @@ export default function ExamTimer({ questionMarks, questionKey, initialSeconds, 
               </View>
 
               {/* Auto-stop toggle */}
-              <View style={styles.settingRow}>
+              <View style={styles.settingRowInline}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.settingLabel}>Auto-Stop on Submit</Text>
                   <Text style={styles.settingDescription}>
@@ -368,7 +370,8 @@ export default function ExamTimer({ questionMarks, questionKey, initialSeconds, 
               </View>
 
               {/* Enable/disable */}
-              <View style={styles.settingRow}>
+              <Text style={styles.sectionHeading}>General</Text>
+              <View style={styles.settingRowInline}>
                 <Text style={styles.settingLabel}>Timer Enabled</Text>
                 <TouchableOpacity
                   style={[styles.toggle, enabled && styles.toggleActive]}
@@ -509,6 +512,22 @@ const styles = StyleSheet.create({
   },
   settingRow: {
     marginBottom: 24,
+  },
+  settingRowInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1.2,
+    marginTop: 6,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   settingLabel: {
     fontSize: 16,

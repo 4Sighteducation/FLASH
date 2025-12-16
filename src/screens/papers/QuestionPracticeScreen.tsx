@@ -11,6 +11,8 @@ import {
   Image,
   Alert,
   Platform,
+  KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -76,11 +78,30 @@ export default function QuestionPracticeScreen() {
   const [extractionStatusId, setExtractionStatusId] = useState<string | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const [resumeTimerSeconds, setResumeTimerSeconds] = useState<number | undefined>(undefined);
+  const [paperUrls, setPaperUrls] = useState<{
+    question_paper_url?: string | null;
+    mark_scheme_url?: string | null;
+    examiner_report_url?: string | null;
+  } | null>(null);
 
   useEffect(() => {
     loadQuestions();
     checkForSavedProgress();
+    loadPaperUrls();
   }, []);
+
+  const loadPaperUrls = async () => {
+    try {
+      const { data } = await supabase
+        .from('staging_aqa_exam_papers')
+        .select('question_paper_url, mark_scheme_url, examiner_report_url')
+        .eq('id', paperId)
+        .maybeSingle();
+      setPaperUrls(data || null);
+    } catch (e) {
+      console.warn('[Papers] failed to load paper urls', e);
+    }
+  };
 
   // Clear resume seconds after they've been applied once
   useEffect(() => {
@@ -238,8 +259,6 @@ export default function QuestionPracticeScreen() {
                       progress_percentage: 0,
                       current_step: 'Retrying extraction...',
                       error_message: null,
-                      notified: false,
-                      notified_at: null,
                     })
                     .eq('id', existingStatus.id);
 
@@ -288,8 +307,6 @@ export default function QuestionPracticeScreen() {
             status: 'pending',
             progress_percentage: 0,
             current_step: 'Initializing extraction...',
-            notified: false,
-            notified_at: null,
           },
           { onConflict: 'paper_id,user_id' }
         )
@@ -361,17 +378,7 @@ export default function QuestionPracticeScreen() {
               'Questions are ready to practice.',
               [{
                 text: 'Start Practicing',
-                onPress: async () => {
-                  try {
-                    await supabase
-                      .from('paper_extraction_status')
-                      .update({ notified: true, notified_at: new Date().toISOString() })
-                      .eq('id', statusId);
-                  } catch (e) {
-                    // Non-fatal if columns aren't present yet
-                    console.warn('[Papers] failed to mark extraction notified:', e);
-                  }
-                }
+                onPress: async () => {}
               }]
             );
           } else if (data.status === 'failed') {
@@ -594,7 +601,12 @@ export default function QuestionPracticeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -667,6 +679,28 @@ export default function QuestionPracticeScreen() {
               />
               {currentQuestion.image_description && (
                 <Text style={styles.imageCaption}>{currentQuestion.image_description}</Text>
+              )}
+            </View>
+          )}
+
+          {/* Image missing fallback */}
+          {currentQuestion.has_image && !currentQuestion.image_url && (
+            <View style={styles.missingImageBox}>
+              <Icon name="information-circle" size={16} color="#F59E0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.missingImageTitle}>Diagram required</Text>
+                <Text style={styles.missingImageText}>
+                  This question likely needs a diagram/image that isn’t available in-app yet.
+                  You can open the original PDF to view it.
+                </Text>
+              </View>
+              {!!paperUrls?.question_paper_url && (
+                <TouchableOpacity
+                  style={styles.openPdfButton}
+                  onPress={() => Linking.openURL(paperUrls.question_paper_url!)}
+                >
+                  <Text style={styles.openPdfButtonText}>Open PDF</Text>
+                </TouchableOpacity>
               )}
             </View>
           )}
@@ -791,6 +825,7 @@ export default function QuestionPracticeScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Extraction Modal */}
       <PaperExtractionModal
@@ -1121,6 +1156,41 @@ const styles = StyleSheet.create({
   },
   pauseButtonText: {
     color: '#3B82F6',
+  },
+  missingImageBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  missingImageTitle: {
+    color: '#F59E0B',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  missingImageText: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  openPdfButton: {
+    backgroundColor: 'rgba(0, 245, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  openPdfButtonText: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
 
