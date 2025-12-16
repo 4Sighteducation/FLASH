@@ -14,9 +14,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface ExamTimerProps {
   questionMarks: number;
   onTimeUpdate?: (seconds: number) => void;
+  onTimerControl?: (control: { start: () => void; stop: () => void; isPaused: () => boolean }) => void;
 }
 
-export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProps) {
+export default function ExamTimer({ questionMarks, onTimeUpdate, onTimerControl }: ExamTimerProps) {
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<'up' | 'down'>('up');
@@ -24,6 +25,7 @@ export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProp
   const [showSettings, setShowSettings] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [secondsPerMark, setSecondsPerMark] = useState(90); // Default: 1.5 min per mark
+  const [autoStart, setAutoStart] = useState(false); // Auto-start timer on typing
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -75,15 +77,32 @@ export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProp
     }
   }, [seconds]);
 
+  // Expose timer controls to parent
+  useEffect(() => {
+    if (onTimerControl) {
+      onTimerControl({
+        start: () => {
+          if (enabled && autoStart && !isRunning) {
+            setIsRunning(true);
+          }
+        },
+        stop: () => setIsRunning(false),
+        isPaused: () => !isRunning
+      });
+    }
+  }, [onTimerControl, enabled, autoStart, isRunning]);
+
   const loadSettings = async () => {
     try {
       const savedEnabled = await AsyncStorage.getItem('examTimer_enabled');
       const savedMode = await AsyncStorage.getItem('examTimer_mode');
       const savedSecondsPerMark = await AsyncStorage.getItem('examTimer_secondsPerMark');
+      const savedAutoStart = await AsyncStorage.getItem('examTimer_autoStart');
       
       if (savedEnabled !== null) setEnabled(savedEnabled === 'true');
       if (savedMode) setMode(savedMode as 'up' | 'down');
       if (savedSecondsPerMark) setSecondsPerMark(parseInt(savedSecondsPerMark));
+      if (savedAutoStart !== null) setAutoStart(savedAutoStart === 'true');
     } catch (error) {
       console.error('Error loading timer settings:', error);
     }
@@ -94,6 +113,7 @@ export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProp
       await AsyncStorage.setItem('examTimer_enabled', enabled.toString());
       await AsyncStorage.setItem('examTimer_mode', mode);
       await AsyncStorage.setItem('examTimer_secondsPerMark', secondsPerMark.toString());
+      await AsyncStorage.setItem('examTimer_autoStart', autoStart.toString());
     } catch (error) {
       console.error('Error saving timer settings:', error);
     }
@@ -254,7 +274,7 @@ export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProp
                 <View style={styles.settingRow}>
                   <Text style={styles.settingLabel}>Time per Mark</Text>
                   <View style={styles.timeOptions}>
-                    {[60, 90, 120, 150].map(secs => (
+                    {[30, 45, 60, 90, 120, 150].map(secs => (
                       <TouchableOpacity
                         key={secs}
                         style={[
@@ -267,13 +287,29 @@ export default function ExamTimer({ questionMarks, onTimeUpdate }: ExamTimerProp
                           styles.timeOptionText,
                           secondsPerMark === secs && styles.timeOptionTextActive
                         ]}>
-                          {secs / 60} min
+                          {secs < 60 ? `${secs}s` : `${secs / 60} min`}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </View>
               )}
+
+              {/* Auto-start toggle */}
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.settingLabel}>Auto-Start on Typing</Text>
+                  <Text style={styles.settingDescription}>
+                    Timer starts when you begin typing your answer
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.toggle, autoStart && styles.toggleActive]}
+                  onPress={() => setAutoStart(!autoStart)}
+                >
+                  <View style={[styles.toggleKnob, autoStart && styles.toggleKnobActive]} />
+                </TouchableOpacity>
+              </View>
 
               {/* Enable/disable */}
               <View style={styles.settingRow}>
@@ -423,6 +459,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#E2E8F0',
     marginBottom: 12,
+  },
+  settingDescription: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
+    lineHeight: 18,
   },
   segmentedControl: {
     flexDirection: 'row',

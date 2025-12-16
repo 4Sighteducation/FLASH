@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
 import ExamTimer from '../../components/ExamTimer';
+import PaperExtractionModal from '../../components/PaperExtractionModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Question {
@@ -61,10 +62,67 @@ export default function QuestionPracticeScreen() {
   const [questionTime, setQuestionTime] = useState(0);
   const [previousAttempts, setPreviousAttempts] = useState<any[]>([]);
   const [showPreviousAnswer, setShowPreviousAnswer] = useState(false);
+  const [timerControl, setTimerControl] = useState<{
+    start: () => void;
+    stop: () => void;
+    isPaused: () => boolean;
+  } | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState(0);
+  const [extractionStep, setExtractionStep] = useState('Initializing extraction...');
+  const [showExtractionModal, setShowExtractionModal] = useState(false);
+  const [extractionStatusId, setExtractionStatusId] = useState<string | null>(null);
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadQuestions();
+    checkForSavedProgress();
   }, []);
+
+  const checkForSavedProgress = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('paper_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('paper_id', paperId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
+
+      if (data) {
+        Alert.alert(
+          'Resume Paper?',
+          `You paused this paper on question ${data.current_question_index + 1}. Would you like to resume where you left off?`,
+          [
+            {
+              text: 'Start Fresh',
+              onPress: async () => {
+                // Delete saved progress
+                await supabase
+                  .from('paper_progress')
+                  .delete()
+                  .eq('user_id', user.id)
+                  .eq('paper_id', paperId);
+              }
+            },
+            {
+              text: 'Resume',
+              onPress: () => {
+                setCurrentIndex(data.current_question_index);
+                setUserAnswer(data.current_answer || '');
+                setQuestionTime(data.timer_seconds || 0);
+              }
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error checking for saved progress:', error);
+    }
+  };
 
   // Load previous attempts when question changes
   useEffect(() => {
@@ -121,8 +179,6 @@ export default function QuestionPracticeScreen() {
   };
 
   const extractPaper = async () => {
-    setExtracting(true);
-    
     try {
       // Get paper details
       const { data: paperData } = await supabase
@@ -133,37 +189,113 @@ export default function QuestionPracticeScreen() {
 
       if (!paperData) throw new Error('Paper not found');
 
-      // Call extraction service
-      const response = await fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
+      // Create extraction status record
+      const { data: statusData, error: statusError } = await supabase
+        .from('paper_extraction_status')
+        .insert({
+          paper_id: paperId,
+          user_id: user?.id,
+          status: 'pending',
+          progress_percentage: 0,
+          current_step: 'Initializing extraction...'
+        })
+        .select()
+        .single();
+
+      if (statusError) throw statusError;
+
+      setExtractionStatusId(statusData.id);
+      setShowExtractionModal(true);
+      setExtractionProgress(0);
+      setExtractionStep('Starting extraction process...');
+
+      // Start polling for status updates
+      startPollingExtractionStatus(statusData.id);
+
+      // Trigger extraction in background
+      fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paper_id: paperId,
+          extraction_status_id: statusData.id,
           question_url: paperData.question_paper_url,
           mark_scheme_url: paperData.mark_scheme_url,
           examiner_report_url: paperData.examiner_report_url,
         }),
+      }).catch(error => {
+        console.error('Background extraction error:', error);
       });
-
-      if (!response.ok) {
-        throw new Error('Extraction failed');
-      }
-
-      // Wait and reload questions
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await loadQuestions();
       
     } catch (error) {
       console.error('Extraction error:', error);
       Alert.alert(
-        'Extraction In Progress',
-        'Questions are being extracted. This takes 2-3 minutes. Please try again in a moment.',
+        'Extraction Error',
+        'Failed to start extraction. Please try again.',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
-    } finally {
-      setExtracting(false);
     }
   };
+
+  const startPollingExtractionStatus = (statusId: string) => {
+    // Poll every 3 seconds
+    pollingInterval.current = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('paper_extraction_status')
+          .select('*')
+          .eq('id', statusId)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setExtractionProgress(data.progress_percentage || 0);
+          setExtractionStep(data.current_step || 'Processing...');
+
+          if (data.status === 'completed') {
+            // Extraction complete!
+            stopPollingExtractionStatus();
+            setShowExtractionModal(false);
+            setLoading(true);
+            await loadQuestions();
+            setLoading(false);
+            
+            // Show success notification
+            Alert.alert(
+              'Extraction Complete! ✅',
+              'Questions are ready to practice.',
+              [{ text: 'Start Practicing' }]
+            );
+          } else if (data.status === 'failed') {
+            stopPollingExtractionStatus();
+            setShowExtractionModal(false);
+            Alert.alert(
+              'Extraction Failed',
+              data.error_message || 'Something went wrong during extraction.',
+              [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 3000);
+  };
+
+  const stopPollingExtractionStatus = () => {
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+      pollingInterval.current = null;
+    }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPollingExtractionStatus();
+    };
+  }, []);
 
   const submitAnswer = async () => {
     if (!userAnswer.trim()) {
@@ -203,28 +335,128 @@ export default function QuestionPracticeScreen() {
     }
   };
 
+  const skipQuestion = () => {
+    // If there's a previous attempt, retain it
+    if (previousAttempts.length > 0) {
+      Alert.alert(
+        'Skip Question',
+        'Your previous answer will be retained and counted towards your total score.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Skip & Retain', 
+            onPress: () => {
+              // Move to next question without submitting new answer
+              if (currentIndex < questions.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+                setUserAnswer('');
+                setMarkingResult(null);
+              } else {
+                // Show completion
+                showCompletionSummary();
+              }
+            }
+          }
+        ]
+      );
+    } else {
+      // No previous attempt - just skip
+      Alert.alert(
+        'Skip Question',
+        'This question will not be counted towards your total score.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Skip', 
+            onPress: () => {
+              if (currentIndex < questions.length - 1) {
+                setCurrentIndex(currentIndex + 1);
+                setUserAnswer('');
+                setMarkingResult(null);
+              } else {
+                showCompletionSummary();
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const pausePaper = async () => {
+    // Stop timer
+    if (timerControl) {
+      timerControl.stop();
+    }
+    
+    // Save progress to database
+    try {
+      const { error } = await supabase
+        .from('paper_progress')
+        .upsert({
+          user_id: user?.id,
+          paper_id: paperId,
+          current_question_index: currentIndex,
+          current_answer: userAnswer,
+          timer_seconds: questionTime,
+          paused_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      Alert.alert(
+        'Paper Paused',
+        'Your progress has been saved. You can resume anytime from the Papers tab.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error saving progress:', error);
+      Alert.alert('Error', 'Failed to save progress. Please try again.');
+    }
+  };
+
+  const showCompletionSummary = () => {
+    navigation.navigate('PaperCompletion' as never, {
+      paperId,
+      paperName,
+      totalQuestions: questions.length
+    } as never);
+  };
+
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setUserAnswer('');
       setMarkingResult(null);
     } else {
-      Alert.alert(
-        'Practice Complete!',
-        'You\'ve completed all questions.',
-        [{ text: 'Back to Papers', onPress: () => navigation.goBack() }]
-      );
+      showCompletionSummary();
     }
   };
 
-  if (loading || extracting) {
+  const handleAnswerFocus = () => {
+    // Auto-start timer when user focuses on answer field
+    if (timerControl && !userAnswer) {
+      timerControl.start();
+    }
+  };
+
+  const handleLeaveExtraction = () => {
+    setShowExtractionModal(false);
+    // Keep polling in background
+    Alert.alert(
+      'Extraction Continues',
+      'Extraction will continue in the background. Come back later to practice.',
+      [{ text: 'OK', onPress: () => navigation.goBack() }]
+    );
+  };
+
+  if (loading && !showExtractionModal) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00F5FF" />
-          <Text style={styles.loadingText}>
-            {extracting ? 'Extracting questions...\n(2-3 minutes)' : 'Loading questions...'}
-          </Text>
+          <Text style={styles.loadingText}>Loading questions...</Text>
         </View>
       </SafeAreaView>
     );
@@ -268,7 +500,26 @@ export default function QuestionPracticeScreen() {
           <ExamTimer 
             questionMarks={currentQuestion.marks}
             onTimeUpdate={setQuestionTime}
+            onTimerControl={setTimerControl}
           />
+        </View>
+
+        {/* Action Buttons Row */}
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={skipQuestion}
+          >
+            <Icon name="play-skip-forward" size={18} color="#F59E0B" />
+            <Text style={styles.actionButtonText}>Skip</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.pauseButton]}
+            onPress={pausePaper}
+          >
+            <Icon name="pause" size={18} color="#3B82F6" />
+            <Text style={[styles.actionButtonText, styles.pauseButtonText]}>Pause Paper</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Question Card */}
@@ -358,6 +609,7 @@ export default function QuestionPracticeScreen() {
               placeholderTextColor="#64748B"
               value={userAnswer}
               onChangeText={setUserAnswer}
+              onFocus={handleAnswerFocus}
               editable={!marking}
             />
             <TouchableOpacity
@@ -423,6 +675,15 @@ export default function QuestionPracticeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Extraction Modal */}
+      <PaperExtractionModal
+        visible={showExtractionModal}
+        progress={extractionProgress}
+        currentStep={extractionStep}
+        onCancel={handleLeaveExtraction}
+        allowCancel={true}
+      />
     </SafeAreaView>
   );
 }
@@ -714,6 +975,36 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     paddingHorizontal: 20,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  actionButtonText: {
+    color: '#F59E0B',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pauseButton: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  pauseButtonText: {
+    color: '#3B82F6',
   },
 });
 
