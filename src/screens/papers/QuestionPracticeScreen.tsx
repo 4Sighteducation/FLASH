@@ -83,6 +83,11 @@ export default function QuestionPracticeScreen() {
     mark_scheme_url?: string | null;
     examiner_report_url?: string | null;
   } | null>(null);
+  const paperUrlsRef = useRef<{
+    question_paper_url?: string | null;
+    mark_scheme_url?: string | null;
+    examiner_report_url?: string | null;
+  } | null>(null);
   const [extractionRequestSent, setExtractionRequestSent] = useState(false);
   const [lastExtractionUpdateAt, setLastExtractionUpdateAt] = useState<string | null>(null);
   const [staleSeconds, setStaleSeconds] = useState<number>(0);
@@ -115,14 +120,23 @@ export default function QuestionPracticeScreen() {
         .select('question_paper_url, mark_scheme_url, examiner_report_url')
         .eq('id', paperId)
         .maybeSingle();
+      paperUrlsRef.current = data || null;
       setPaperUrls(data || null);
     } catch (e) {
       console.warn('[Papers] failed to load paper urls', e);
     }
   };
 
-  const triggerExtractionRequest = async (statusId: string) => {
-    if (!paperUrls?.question_paper_url) {
+  const triggerExtractionRequest = async (
+    statusId: string,
+    overrideUrls?: {
+      question_paper_url?: string | null;
+      mark_scheme_url?: string | null;
+      examiner_report_url?: string | null;
+    }
+  ) => {
+    const urls = overrideUrls ?? paperUrlsRef.current ?? paperUrls;
+    if (!urls?.question_paper_url) {
       Alert.alert('Cannot Start Extraction', 'Missing question paper PDF URL for this paper.');
       return;
     }
@@ -150,9 +164,9 @@ export default function QuestionPracticeScreen() {
       body: JSON.stringify({
         paper_id: paperId,
         extraction_status_id: statusId,
-        question_url: paperUrls.question_paper_url,
-        mark_scheme_url: paperUrls.mark_scheme_url,
-        examiner_report_url: paperUrls.examiner_report_url,
+        question_url: urls.question_paper_url,
+        mark_scheme_url: urls.mark_scheme_url,
+        examiner_report_url: urls.examiner_report_url,
       }),
     })
       .then((res) => {
@@ -292,11 +306,13 @@ export default function QuestionPracticeScreen() {
       }
 
       // Ensure we have URLs available for retries (don’t rely on separate loadPaperUrls timing)
-      setPaperUrls({
+      const urls = {
         question_paper_url: paperData.question_paper_url,
         mark_scheme_url: paperData.mark_scheme_url,
         examiner_report_url: paperData.examiner_report_url,
-      });
+      };
+      paperUrlsRef.current = urls;
+      setPaperUrls(urls);
 
       // Quick connectivity check so we don't create "pending forever" rows
       setExtractionStep('Checking extraction service...');
@@ -363,7 +379,7 @@ export default function QuestionPracticeScreen() {
                   setLastExtractionUpdateAt(existingStatus.updated_at || existingStatus.created_at || null);
                   startPollingExtractionStatus(existingStatus.id);
 
-                  triggerExtractionRequest(existingStatus.id);
+                  triggerExtractionRequest(existingStatus.id, urls);
                 },
               },
             ]
@@ -389,7 +405,7 @@ export default function QuestionPracticeScreen() {
               {
                 text: 'Retry Now',
                 onPress: () => {
-                  triggerExtractionRequest(existingStatus.id);
+                  triggerExtractionRequest(existingStatus.id, urls);
                 },
               },
             ]
@@ -432,7 +448,7 @@ export default function QuestionPracticeScreen() {
         paperId,
         extraction_status_id: statusData.id,
       });
-      triggerExtractionRequest(statusData.id);
+      triggerExtractionRequest(statusData.id, urls);
       
     } catch (error) {
       console.error('Extraction error:', error);
