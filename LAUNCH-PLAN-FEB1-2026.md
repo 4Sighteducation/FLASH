@@ -191,4 +191,42 @@ Already shipped:
 Optional before launch:
 - Add “Skins Vault” entry in Settings/Profile for discoverability
 
+---
+
+## Railway notes (Papers extraction + marking API)
+### Dev server warning (“This is a development server…”)
+- Railway is currently starting Flask via `python api-server.py`, which uses Flask’s built-in dev server.
+- **OK for beta/testing**, but for launch you should switch to a production WSGI server (**Gunicorn**) for better concurrency and stability.
+
+**Recommended launch start command (example):**
+- Add `gunicorn` to `scrapers/requirements.txt`
+- Change Railway start command to something like:
+  - `cd scrapers && gunicorn -w 2 -k gthread -t 300 -b 0.0.0.0:$PORT api-server:app`
+
+### Hobby vs Pro plan (expected ~1,000 users)
+- The real load driver is **concurrent first-time extractions**, not total user count (cached papers are cheap).
+- Hobby may be fine early if extraction concurrency is low, but as usage grows you’ll want:
+  - Better worker/job architecture (background jobs) and/or
+  - More CPU/RAM headroom (plan upgrade) depending on concurrency.
+
+**If under-provisioned, UX usually degrades as:**
+- Extractions become slow / appear stuck
+- More timeouts / retries
+- “Queueing” effect (multiple extractions slow each other down)
+
+### Build determinism / dependency pinning (avoid surprise crashes)
+- Railway/Nixpacks can reuse cached layers. If dependency installs aren’t clean, you can get mismatched packages.
+- We already saw this with OpenAI SDK: container crashed on import (`ImportError ... omit`).
+- Mitigation:
+  - Pin critical deps in `scrapers/requirements.txt`
+  - Force clean installs in Railway build (e.g. `pip install --no-cache-dir --upgrade --force-reinstall -r scrapers/requirements.txt`)
+  - Keep the extraction service dependency file (`scrapers/requirements.txt`) as the “source of truth”.
+
+### Wiring Railway into iOS/Android builds (Expo)
+- Both iOS and Android builds just call the same HTTPS API base URL.
+- Add a single env var (e.g. `EXPO_PUBLIC_PAPERS_API_URL`) in Expo/EAS and point it to your Railway service URL.
+- Ensure the app uses that env var everywhere it calls:
+  - `POST /api/extract-paper`
+  - `POST /api/mark-answer`
+
 
