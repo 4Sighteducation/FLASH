@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import DueCardsNotification from '../../components/DueCardsNotification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
+import { getAvatarForXp } from '../../services/avatarService';
 
 interface UserSubject {
   id: string;
@@ -277,6 +279,10 @@ export default function HomeScreen({ navigation }: any) {
     );
   }
 
+  const totalPoints = userStats?.total_points ?? 0;
+  const rank = getRankForXp(totalPoints);
+  const avatar = getAvatarForXp(totalPoints);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -287,10 +293,8 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
-                <View style={styles.headerAvatar}>
-                  <Text style={styles.headerAvatarText}>
-                    {(userData?.username || 'Student').slice(0, 1).toUpperCase()}
-                  </Text>
+                <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
+                  <Image source={avatar.source} style={styles.headerAvatarImage} resizeMode="contain" />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -307,43 +311,34 @@ export default function HomeScreen({ navigation }: any) {
             </View>
 
             {/* Rank / Progress */}
-            {(() => {
-              const { current, next, progressToNext } = getRankForXp(userStats.total_points);
-              return (
-                <View style={styles.rankRow}>
-                  <View style={styles.rankLeft}>
-                    <View style={[styles.rankBadge, { borderColor: current.color }]}>
-                      <Text style={[styles.rankBadgeText, { color: current.color }]}>
-                        {current.name.toUpperCase()}
-                      </Text>
-                    </View>
-                    {next ? (
-                      <Text style={styles.rankHint}>
-                        Next: {next.name} at {next.minXp.toLocaleString()} XP
-                      </Text>
-                    ) : (
-                      <Text style={styles.rankHint}>Max rank reached</Text>
-                    )}
-                  </View>
-                  {!unlockedCyber && (
-                    <View style={styles.lockPill}>
-                      <Text style={styles.lockPillText}>
-                        🔒 Cyber @ {gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP
-                      </Text>
-                    </View>
-                  )}
+            <View style={styles.rankRow}>
+              <View style={styles.rankLeft}>
+                <View style={[styles.rankBadge, { borderColor: rank.current.color }]}>
+                  <Text style={[styles.rankBadgeText, { color: rank.current.color }]}>
+                    {rank.current.name.toUpperCase()}
+                  </Text>
                 </View>
-              );
-            })()}
-            {(() => {
-              const { progressToNext, next } = getRankForXp(userStats.total_points);
-              if (!next) return null;
-              return (
-                <View style={styles.rankProgressBar}>
-                  <View style={[styles.rankProgressFill, { width: `${Math.round(progressToNext * 100)}%` }]} />
+                {rank.next ? (
+                  <Text style={styles.rankHint}>
+                    Next: {rank.next.name} at {rank.next.minXp.toLocaleString()} XP
+                  </Text>
+                ) : (
+                  <Text style={styles.rankHint}>Max rank reached</Text>
+                )}
+              </View>
+              {!unlockedCyber && (
+                <View style={styles.lockPill}>
+                  <Text style={styles.lockPillText}>
+                    🔒 Cyber @ {gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP
+                  </Text>
                 </View>
-              );
-            })()}
+              )}
+            </View>
+            {rank.next ? (
+              <View style={styles.rankProgressBar}>
+                <View style={[styles.rankProgressFill, { width: `${Math.round(rank.progressToNext * 100)}%` }]} />
+              </View>
+            ) : null}
             <View style={styles.headerStats}>
               <View style={styles.headerStatItem}>
                 <View style={styles.statIconContainer}>
@@ -658,14 +653,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     borderRadius: 14,
     backgroundColor: 'rgba(0, 245, 255, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerAvatarText: {
-    color: '#00F5FF',
-    fontSize: 18,
-    fontWeight: '900',
+  headerAvatarImage: {
+    width: 34,
+    height: 34,
   },
   rankRow: {
     marginTop: 14,

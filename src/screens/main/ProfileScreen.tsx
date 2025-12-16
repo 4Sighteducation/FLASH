@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
@@ -23,7 +24,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAdminAccess } from '../../hooks/useAdminAccess';
-import { gamificationConfig } from '../../services/gamificationService';
+import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
+import { getAvatarForXp } from '../../services/avatarService';
+import { supabase } from '../../services/supabase';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -32,12 +35,36 @@ export default function ProfileScreen() {
   const { tier, limits, purchaseFullVersion, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
   const [cyberUnlocked, setCyberUnlocked] = useState(false);
+  const [totalPoints, setTotalPoints] = useState(0);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUserPoints() {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('user_stats')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        console.warn('[Profile] Failed to load user_stats.total_points', error);
+        return;
+      }
+      setTotalPoints(data?.total_points ?? 0);
+    }
+    loadUserPoints();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
   const [sendingMessage, setSendingMessage] = useState(false);
 
   React.useEffect(() => {
@@ -269,9 +296,15 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Icon name="person" size={60} color="#fff" />
-          </View>
+          {(() => {
+            const rank = getRankForXp(totalPoints);
+            const avatar = getAvatarForXp(totalPoints);
+            return (
+              <View style={[styles.avatar, { borderColor: rank.current.color }]}>
+                <Image source={avatar.source} style={styles.avatarImage} resizeMode="contain" />
+              </View>
+            );
+          })()}
           <Text style={styles.name}>{user?.user_metadata?.username || 'Student'}</Text>
         </View>
 
@@ -448,9 +481,15 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     backgroundColor: '#00D4FF',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+  },
+  avatarImage: {
+    width: 92,
+    height: 92,
   },
   name: {
     fontSize: 24,
