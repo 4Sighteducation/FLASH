@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import FlashcardCard from '../../components/FlashcardCard';
 import StudySlideshowModal from '../../components/StudySlideshowModal';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
+import { gamificationService } from '../../services/gamificationService';
 
 interface Flashcard {
   id: string;
@@ -121,6 +122,8 @@ export default function FlashcardsScreen() {
       const card = flashcards.find(c => c.id === cardId);
       if (!card) return;
 
+      const oldBoxNumber = card.box_number;
+
       // Update box number based on answer using LeitnerSystem
       const newBoxNumber = LeitnerSystem.getNewBoxNumber(card.box_number, correct);
       const nextReviewDate = LeitnerSystem.getNextReviewDate(newBoxNumber, false);
@@ -147,6 +150,23 @@ export default function FlashcardsScreen() {
         });
 
       if (reviewError) throw reviewError;
+
+      // Award points + increment reviewed count (best-effort)
+      if (user?.id) {
+        const pointsForAnswer = await gamificationService.computeStudyPointsForReview({
+          userId: user.id,
+          flashcardId: cardId,
+          oldBoxNumber,
+          wasCorrect: correct,
+        });
+        await gamificationService.upsertUserStatsDelta({
+          userId: user.id,
+          pointsDelta: pointsForAnswer,
+          cardsReviewedDelta: 1,
+          correctDelta: correct ? 1 : 0,
+          incorrectDelta: correct ? 0 : 1,
+        });
+      }
 
       // Update local state
       setFlashcards(flashcards.map(c => 

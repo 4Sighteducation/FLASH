@@ -528,6 +528,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         console.error('❌ Error recording review:', reviewError);
         // Continue anyway - don't block the UI
       }
+
+      // Update user stats immediately so Home header updates even if user exits mid-session.
+      if (user?.id) {
+        await gamificationService.upsertUserStatsDelta({
+          userId: user.id,
+          pointsDelta: pointsForAnswer,
+          cardsReviewedDelta: 1,
+          correctDelta: correct ? 1 : 0,
+          incorrectDelta: correct ? 0 : 1,
+        });
+      }
     } catch (error) {
       console.error('❌ Database operation failed:', error);
       // Continue anyway - update local state and don't block UI
@@ -640,17 +651,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         console.error('Error saving session:', sessionError);
         animatingRef.current = false; // Unlock animation on error
       } else {
-        // Update user stats (client-side, no RPC dependency)
-        if (user?.id) {
-          await gamificationService.upsertUserStatsDelta({
-            userId: user.id,
-            pointsDelta: pointsEarned,
-            cardsReviewedDelta: sessionStats.totalReviewed,
-            correctDelta: sessionStats.correctAnswers,
-            incorrectDelta: sessionStats.incorrectAnswers,
-          });
-        }
-        
+        // Stats are now updated per-answer; avoid double-counting here.
         // Store points for display
         setPointsEarned(pointsEarned);
       }

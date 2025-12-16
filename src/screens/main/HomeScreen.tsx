@@ -350,7 +350,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Icon name="albums" size={16} color="#FFD700" />
                 </View>
                 <Text style={styles.headerStatNumber}>{userStats.total_cards_reviewed}</Text>
-                <Text style={styles.headerStatLabel}>Cards</Text>
+                <Text style={styles.headerStatLabel}>Reviewed</Text>
               </View>
               <View style={styles.headerStatDivider} />
               <View style={styles.headerStatItem}>
