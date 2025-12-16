@@ -1,5 +1,5 @@
 import { ImageSourcePropType } from 'react-native';
-import { getRankForXp } from './gamificationService';
+import { getRankForXp, ranks } from './gamificationService';
 
 export type AvatarKey =
   | 'ballpoint'
@@ -63,9 +63,20 @@ const avatarsByRankKey: Record<string, AvatarDef> = {
   },
 };
 
+export function getAvatarForRankKey(rankKey: string): AvatarDef {
+  return avatarsByRankKey[rankKey] || avatarsByRankKey.rookie;
+}
+
 export function getAvatarForXp(totalPoints: number): AvatarDef {
   const { current } = getRankForXp(totalPoints);
-  return avatarsByRankKey[current.key] || avatarsByRankKey.rookie;
+  return getAvatarForRankKey(current.key);
+}
+
+export function getAvatarLadder() {
+  return ranks.map((rank) => ({
+    rank,
+    avatar: getAvatarForRankKey(rank.key),
+  }));
 }
 
 

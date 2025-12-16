@@ -24,6 +24,7 @@ import DueCardsNotification from '../../components/DueCardsNotification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
+import UnlockedAvatarsModal from '../../components/UnlockedAvatarsModal';
 import { getAvatarForXp } from '../../services/avatarService';
 
 interface UserSubject {
@@ -71,6 +72,7 @@ export default function HomeScreen({ navigation }: any) {
   const [showNotification, setShowNotification] = useState(false);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
   const [unlockedCyber, setUnlockedCyber] = useState(false);
+  const [showSkinsModal, setShowSkinsModal] = useState(false);
 
   const fetchNotifications = async () => {
     if (!user?.id) return;
@@ -326,13 +328,14 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.rankHint}>Max rank reached</Text>
                 )}
               </View>
-              {!unlockedCyber && (
-                <View style={styles.lockPill}>
-                  <Text style={styles.lockPillText}>
-                    🔒 Cyber @ {gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP
-                  </Text>
-                </View>
-              )}
+              <TouchableOpacity style={styles.lockPill} onPress={() => setShowSkinsModal(true)}>
+                <Text style={styles.lockPillText}>
+                  {rank.next
+                    ? `🔓 Next skin: ${rank.next.name} @ ${rank.next.minXp.toLocaleString()} XP`
+                    : '🏆 Skins Vault (max rank)'}{' '}
+                  <Text style={styles.lockPillTextDim}>Tap</Text>
+                </Text>
+              </TouchableOpacity>
             </View>
             {rank.next ? (
               <View style={styles.rankProgressBar}>
@@ -381,6 +384,12 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         </LinearGradient>
+
+        <UnlockedAvatarsModal
+          visible={showSkinsModal}
+          onClose={() => setShowSkinsModal(false)}
+          totalPoints={totalPoints}
+        />
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Subjects</Text>
@@ -713,6 +722,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 12,
     color: '#E2E8F0',
     fontWeight: '700',
+  },
+  lockPillTextDim: {
+    color: '#94A3B8',
+    fontWeight: '900',
   },
   greeting: {
     fontSize: 24,
