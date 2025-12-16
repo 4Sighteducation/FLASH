@@ -83,6 +83,7 @@ export default function QuestionPracticeScreen() {
     mark_scheme_url?: string | null;
     examiner_report_url?: string | null;
   } | null>(null);
+  const [extractionRequestSent, setExtractionRequestSent] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -229,6 +230,22 @@ export default function QuestionPracticeScreen() {
         throw new Error('This paper is missing a question paper PDF URL.');
       }
 
+      // Quick connectivity check so we don't create "pending forever" rows
+      setExtractionStep('Checking extraction service...');
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 8000);
+        const healthRes = await fetch(`${EXTRACTION_SERVICE_URL}/health`, { signal: controller.signal });
+        clearTimeout(t);
+        if (!healthRes.ok) {
+          throw new Error(`Extraction service health check failed (${healthRes.status})`);
+        }
+      } catch (e) {
+        throw new Error(
+          'Cannot reach extraction service right now. Please try again in a moment (or check Railway is running).'
+        );
+      }
+
       // Reuse existing extraction status if present (prevents duplicate requests when user leaves and returns)
       const { data: existingStatus } = await supabase
         .from('paper_extraction_status')
@@ -322,6 +339,7 @@ export default function QuestionPracticeScreen() {
       setShowExtractionModal(true);
       setExtractionProgress(0);
       setExtractionStep('Starting extraction process...');
+      setExtractionRequestSent(false);
 
       // Start polling for status updates
       startPollingExtractionStatus(statusData.id);
@@ -341,9 +359,15 @@ export default function QuestionPracticeScreen() {
           mark_scheme_url: paperData.mark_scheme_url,
           examiner_report_url: paperData.examiner_report_url,
         }),
-      }).catch(error => {
-        console.error('Background extraction error:', error);
-      });
+      })
+        .then((res) => {
+          setExtractionRequestSent(true);
+          console.log('[Papers] extract-paper request accepted:', res.status);
+        })
+        .catch(error => {
+          console.error('Background extraction error:', error);
+          setExtractionStep('Failed to contact extraction service.');
+        });
       
     } catch (error) {
       console.error('Extraction error:', error);
