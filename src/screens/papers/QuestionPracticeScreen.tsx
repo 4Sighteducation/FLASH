@@ -605,6 +605,25 @@ export default function QuestionPracticeScreen() {
     );
   }
 
+  // If extraction modal is showing but we don't have questions yet, do NOT try to render question UI.
+  // (Otherwise we crash on currentQuestion.marks when extraction fails quickly.)
+  if (questions.length === 0 && showExtractionModal) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Preparing extraction…</Text>
+        </View>
+        <PaperExtractionModal
+          visible={showExtractionModal}
+          progress={extractionProgress}
+          currentStep={extractionStep}
+          onCancel={handleLeaveExtraction}
+          allowCancel={true}
+        />
+      </SafeAreaView>
+    );
+  }
+
   const currentQuestion = questions[currentIndex];
 
   return (
