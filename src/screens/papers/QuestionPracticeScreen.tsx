@@ -225,6 +225,9 @@ export default function QuestionPracticeScreen() {
         .single();
 
       if (!paperData) throw new Error('Paper not found');
+      if (!paperData.question_paper_url) {
+        throw new Error('This paper is missing a question paper PDF URL.');
+      }
 
       // Reuse existing extraction status if present (prevents duplicate requests when user leaves and returns)
       const { data: existingStatus } = await supabase
@@ -324,6 +327,10 @@ export default function QuestionPracticeScreen() {
       startPollingExtractionStatus(statusData.id);
 
       // Trigger extraction in background
+      console.log('[Papers] Triggering extraction', {
+        paperId,
+        extraction_status_id: statusData.id,
+      });
       fetch(`${EXTRACTION_SERVICE_URL}/api/extract-paper`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -342,7 +349,7 @@ export default function QuestionPracticeScreen() {
       console.error('Extraction error:', error);
       Alert.alert(
         'Extraction Error',
-        'Failed to start extraction. Please try again.',
+        error instanceof Error ? error.message : 'Failed to start extraction. Please try again.',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     }
@@ -583,7 +590,8 @@ export default function QuestionPracticeScreen() {
     );
   }
 
-  if (questions.length === 0) {
+  // Only show "No questions" if we're not extracting/loading
+  if (questions.length === 0 && !showExtractionModal && !loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
