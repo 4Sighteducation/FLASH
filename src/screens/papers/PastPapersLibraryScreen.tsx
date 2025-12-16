@@ -34,6 +34,7 @@ interface UserSubject {
   has_verified?: number;
   has_official?: number;
   has_ai?: number;
+  staging_subject_id?: string;
 }
 
 const adjustColor = (color: string, amount: number): string => {
@@ -132,6 +133,12 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
 
     try {
       console.log('[Papers] Loading subjects for user:', user.id);
+
+      const normalize = (s: string | null | undefined) =>
+        (s || '')
+          .toString()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
       
       // Get user's subjects
       const { data: userSubjects, error: subjectsError } = await supabase
@@ -175,6 +182,10 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             return { ...subject, paper_count: 0 };
           }
 
+          const qualificationCode = Array.isArray((ebSubject as any).qualification_type)
+            ? (ebSubject as any).qualification_type?.[0]?.code
+            : (ebSubject as any).qualification_type?.code;
+
           // Get exam board code
           const { data: examBoard } = await supabase
             .from('exam_boards')
@@ -182,26 +193,55 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
             .eq('id', ebSubject.exam_board_id)
             .single();
 
-          console.log('[Papers] Exam board code:', examBoard?.code);
+          const examBoardCode = (examBoard as any)?.code;
+          console.log('[Papers] Exam board code:', examBoardCode);
           console.log('[Papers] Looking for staging subject with:', {
             subject_code: ebSubject.subject_code,
-            qual_type: ebSubject.qualification_type?.code,
-            exam_board: examBoard?.code
+            qual_type: qualificationCode,
+            exam_board: examBoardCode
           });
 
           // Find matching staging subject
-          const { data: stagingSubject } = await supabase
+          // NOTE: qualification_type formatting differs across sources (e.g. "A Level" vs "A-Level").
+          // So we fetch candidates by subject_code + exam_board, then match qualification client-side.
+          const { data: stagingCandidates } = await supabase
             .from('staging_aqa_subjects')
             .select('id, subject_name, subject_code, qualification_type, exam_board')
             .eq('subject_code', ebSubject.subject_code)
-            .eq('qualification_type', ebSubject.qualification_type?.code || '')
-            .eq('exam_board', examBoard?.code || subject.exam_board)
-            .maybeSingle();
+            .eq('exam_board', examBoardCode || subject.exam_board)
+            .limit(10);
+
+          const wantedQual = normalize(qualificationCode);
+          let stagingSubject: any =
+            (stagingCandidates || []).find((s: any) => normalize(s.qualification_type) === wantedQual) ||
+            (stagingCandidates || [])[0] ||
+            null;
+
+          // Fallback: if no candidates by subject_code, try fuzzy match by subject name for that exam board.
+          if (!stagingSubject) {
+            const prodName = normalize(subject.subject.subject_name);
+            const { data: nameCandidates } = await supabase
+              .from('staging_aqa_subjects')
+              .select('id, subject_name, subject_code, qualification_type, exam_board')
+              .eq('exam_board', examBoardCode || subject.exam_board)
+              .limit(50);
+
+            stagingSubject =
+              (nameCandidates || []).find((s: any) => {
+                const name = normalize(s.subject_name);
+                return name && prodName && (name.includes(prodName) || prodName.includes(name));
+              }) || null;
+          }
 
           console.log('[Papers] Staging subject match:', stagingSubject);
 
           if (!stagingSubject) {
-            console.log('[Papers] No staging subject found for:', ebSubject.subject_code, ebSubject.qualification_type, examBoard?.exam_board_name);
+            console.log('[Papers] No staging subject found for:', {
+              subject_code: ebSubject.subject_code,
+              qual_type: qualificationCode,
+              exam_board: examBoardCode || subject.exam_board,
+              candidate_count: (stagingCandidates || []).length,
+            });
             return { ...subject, paper_count: 0 };
           }
 
@@ -346,21 +386,21 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
 
                   {/* Quality breakdown */}
                   <View style={styles.qualityRow}>
-                    {subject.has_verified > 0 && (
+                    {(subject.has_verified || 0) > 0 && (
                       <View style={styles.qualityBadge}>
                         <Text style={styles.qualityBadgeText}>
                           ✅ {subject.has_verified}
                         </Text>
                       </View>
                     )}
-                    {subject.has_official > 0 && (
+                    {(subject.has_official || 0) > 0 && (
                       <View style={styles.qualityBadge}>
                         <Text style={styles.qualityBadgeText}>
                           ⭐ {subject.has_official}
                         </Text>
                       </View>
                     )}
-                    {subject.has_ai > 0 && (
+                    {(subject.has_ai || 0) > 0 && (
                       <View style={styles.qualityBadge}>
                         <Text style={styles.qualityBadgeText}>
                           🤖 {subject.has_ai}
