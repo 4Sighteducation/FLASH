@@ -47,18 +47,9 @@ interface TopicGroup {
   topics: DiscoveredTopic[];
 }
 
-interface SubjectProgressScreenProps {
-  route: {
-    params: {
-      subjectId: string;
-      subjectName: string;
-      subjectColor: string;
-      examBoard: string;
-      examType: string;
-    };
-  };
-  navigation: any;
-}
+// Keep props broad so React Navigation can pass through its own route typing without conflicts.
+// (Strict param typing belongs on the navigator's ParamList, not here.)
+type SubjectProgressScreenProps = any;
 
 // Priority levels configuration - REVERSED (1 = highest priority!)
 const PRIORITY_LEVELS = [
@@ -74,7 +65,7 @@ const getPriorityInfo = (priority: number | null | undefined) => {
 };
 
 export default function SubjectProgressScreen({ route, navigation }: SubjectProgressScreenProps) {
-  const { subjectId, subjectName, subjectColor, examBoard, examType } = route.params;
+  const { subjectId, subjectName, subjectColor, examBoard, examType } = route?.params || {};
   const { user } = useAuth();
   const { colors, theme } = useTheme();
   const safeSubjectColor = subjectColor || '#6366F1'; // Fallback color if null

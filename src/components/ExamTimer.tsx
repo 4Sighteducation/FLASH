@@ -30,7 +30,8 @@ export default function ExamTimer({ questionMarks, questionKey, initialSeconds, 
   const [autoStart, setAutoStart] = useState(false); // Auto-start timer on typing
   const [autoStop, setAutoStop] = useState(true); // Auto-stop timer on submit
   
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // RN/Expo setInterval returns a number on some platforms; use a cross-platform type.
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load settings
   useEffect(() => {
