@@ -29,6 +29,58 @@ BEGIN
 END
 $$;
 
+-- If an older schema created paper_extraction_status as a 1-row-per-paper summary,
+-- it may have:
+--   - paper_id as PRIMARY KEY
+--   - paper_id REFERENCES exam_papers(id)
+-- That conflicts with the newer "job/status" model (multiple users can trigger extraction,
+-- and extraction can be initiated before exam_papers row exists).
+
+-- Drop FK from paper_id -> exam_papers if it exists (prevents inserts for staging paper ids)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.paper_extraction_status'::regclass
+      AND conname = 'paper_extraction_status_paper_id_fkey'
+  ) THEN
+    ALTER TABLE paper_extraction_status
+      DROP CONSTRAINT paper_extraction_status_paper_id_fkey;
+  END IF;
+END
+$$;
+
+-- Ensure we are not using paper_id as the primary key anymore (job model needs composite uniqueness)
+DO $$
+DECLARE
+  pk_name text;
+BEGIN
+  SELECT c.conname INTO pk_name
+  FROM pg_constraint c
+  WHERE c.conrelid = 'public.paper_extraction_status'::regclass
+    AND c.contype = 'p'
+  LIMIT 1;
+
+  IF pk_name IS NOT NULL THEN
+    -- If the existing PK is on paper_id (legacy schema), drop it.
+    IF EXISTS (
+      SELECT 1
+      FROM pg_constraint c
+      JOIN pg_attribute a
+        ON a.attrelid = c.conrelid
+       AND a.attnum = ANY (c.conkey)
+      WHERE c.conrelid = 'public.paper_extraction_status'::regclass
+        AND c.contype = 'p'
+      GROUP BY c.conname
+      HAVING array_agg(a.attname ORDER BY a.attname) = ARRAY['paper_id']
+    ) THEN
+      EXECUTE format('ALTER TABLE paper_extraction_status DROP CONSTRAINT %I', pk_name);
+    END IF;
+  END IF;
+END
+$$;
+
 -- Ensure expected columns exist (covers older schema versions)
 -- Some earlier versions may not have had a surrogate primary key. The app code expects `id`.
 ALTER TABLE paper_extraction_status
@@ -57,6 +109,10 @@ $$;
 
 ALTER TABLE paper_extraction_status
   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE paper_extraction_status
+  ADD COLUMN IF NOT EXISTS paper_id UUID;
+ALTER TABLE paper_extraction_status
+  ALTER COLUMN paper_id SET NOT NULL;
 ALTER TABLE paper_extraction_status
   ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
 ALTER TABLE paper_extraction_status
