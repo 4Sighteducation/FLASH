@@ -600,75 +600,6 @@ export default function QuestionPracticeScreen() {
     try {
       const currentQuestion = questions[currentIndex];
 
-      // If this is a tick-box/MCQ style question (especially diagram-based), AI marking is unreliable.
-      // Prefer explicit self-marking rather than guessing.
-      const isLikelyMultipleChoiceLocal = /tick\s*\(?.*?\)?\s*one\s*box|tick\s+one\s+box|multiple\s+choice/i.test(
-        currentQuestion.question_text || ''
-      );
-      const needsSelfMark =
-        isLikelyMultipleChoiceLocal ||
-        (currentQuestion.has_image && !currentQuestion.image_url);
-
-      if (needsSelfMark) {
-        setMarking(false);
-        Alert.alert(
-          'Self-mark required',
-          'This question is a tick-box/diagram style question. FLASH can’t mark this reliably yet. Please open the PDF/mark scheme and choose your score below.',
-          [
-            {
-              text: 'Open PDF',
-              onPress: async () => {
-                await openQuestionPaperPdf(currentQuestion.image_page ?? null);
-              },
-            },
-            { text: 'Mark Now', style: 'default' },
-          ]
-        );
-
-        // Show a lightweight in-app picker using the existing markingResult UI pattern:
-        // we’ll treat it as “self-marked” and store it immediately after user selects.
-        // For now, present a quick numeric picker via a second alert for small mark values.
-        const max = Math.max(0, Number(currentQuestion.marks) || 0);
-        if (max <= 5) {
-          Alert.alert(
-            'Select marks',
-            `How many marks did you get (0–${max})?`,
-            Array.from({ length: max + 1 }, (_, i) => ({
-              text: String(i),
-              onPress: async () => {
-                if (!user?.id) return;
-                await supabase.from('student_attempts').insert({
-                  user_id: user.id,
-                  question_id: currentQuestion.id,
-                  user_answer: userAnswer,
-                  marks_awarded: i,
-                  max_marks: max,
-                  ai_feedback: 'Self-marked (tick-box/diagram question)',
-                  strengths: [],
-                  improvements: [],
-                  time_taken_seconds: questionTime,
-                });
-                setMarkingResult({
-                  marks_awarded: i,
-                  max_marks: max,
-                  feedback: 'Self-marked (tick-box/diagram question).',
-                  strengths: [],
-                  improvements: [],
-                  matched_points: [],
-                });
-              },
-            }))
-          );
-        } else {
-          Alert.alert(
-            'Select marks',
-            `This question is worth ${max} marks. Please self-mark in the mark scheme and enter your score as your answer (e.g., "4/6"), then submit again.`,
-            [{ text: 'OK' }]
-          );
-        }
-        return;
-      }
-
       // Call AI marking service
       const response = await fetch(`${EXTRACTION_SERVICE_URL}/api/mark-answer`, {
         method: 'POST',
@@ -686,7 +617,59 @@ export default function QuestionPracticeScreen() {
       }
 
       const result = (await response.json()) as any;
-      setMarkingResult(result.marking);
+      const marking = result.marking;
+
+      // Fallback only: backend may explicitly request self-mark for MCQ/diagram cases it can't grade reliably
+      if (marking?.needs_self_mark) {
+        setMarking(false);
+        const max = Math.max(0, Number(currentQuestion.marks) || 0);
+        Alert.alert(
+          'Unable to mark accurately',
+          marking?.feedback ||
+            'FLASH can’t mark this question reliably yet. Please open the PDF/mark scheme and select your score.',
+          [
+            {
+              text: 'Open PDF',
+              onPress: async () => {
+                await openQuestionPaperPdf(currentQuestion.image_page ?? null);
+              },
+            },
+            { text: 'Select score', style: 'default' },
+          ]
+        );
+        Alert.alert(
+          'Select marks',
+          `How many marks did you get (0–${max})?`,
+          Array.from({ length: max + 1 }, (_, i) => ({
+            text: String(i),
+            onPress: async () => {
+              if (!user?.id) return;
+              await supabase.from('student_attempts').insert({
+                user_id: user.id,
+                question_id: currentQuestion.id,
+                user_answer: userAnswer,
+                marks_awarded: i,
+                max_marks: max,
+                ai_feedback: 'Self-marked (unable to mark accurately)',
+                strengths: [],
+                improvements: [],
+                time_taken_seconds: questionTime,
+              });
+              setMarkingResult({
+                marks_awarded: i,
+                max_marks: max,
+                feedback: 'Self-marked (unable to mark accurately).',
+                strengths: [],
+                improvements: [],
+                matched_points: [],
+              });
+            },
+          }))
+        );
+        return;
+      }
+
+      setMarkingResult(marking);
 
     } catch (error) {
       console.error('Marking error:', error);
