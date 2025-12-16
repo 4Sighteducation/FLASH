@@ -291,6 +291,13 @@ export default function QuestionPracticeScreen() {
         throw new Error('This paper is missing a question paper PDF URL.');
       }
 
+      // Ensure we have URLs available for retries (don’t rely on separate loadPaperUrls timing)
+      setPaperUrls({
+        question_paper_url: paperData.question_paper_url,
+        mark_scheme_url: paperData.mark_scheme_url,
+        examiner_report_url: paperData.examiner_report_url,
+      });
+
       // Quick connectivity check so we don't create "pending forever" rows
       setExtractionStep('Checking extraction service...');
       try {
@@ -316,6 +323,12 @@ export default function QuestionPracticeScreen() {
         .maybeSingle();
 
       if (existingStatus) {
+        // If we have a stale pending/extracting job, prompt a retry (this is the common “stuck at 0%” case).
+        const lastUpdate = existingStatus.updated_at || existingStatus.created_at;
+        const staleMs = lastUpdate ? Date.now() - new Date(lastUpdate).getTime() : 0;
+        const isStale = staleMs > 60_000; // 60s with no updates
+        const isPendingish = existingStatus.status === 'pending' || existingStatus.status === 'extracting';
+
         if (existingStatus.status === 'completed') {
           // Status says completed - reload questions from DB
           setLoading(true);
@@ -358,13 +371,31 @@ export default function QuestionPracticeScreen() {
           return;
         }
 
-        // pending / extracting - show modal and keep polling, don't re-trigger extraction
+        // pending / extracting - show modal and keep polling
         setExtractionStatusId(existingStatus.id);
         setShowExtractionModal(true);
         setExtractionProgress(existingStatus.progress_percentage || 0);
         setExtractionStep(existingStatus.current_step || 'Processing...');
         setLastExtractionUpdateAt(existingStatus.updated_at || existingStatus.created_at || null);
         startPollingExtractionStatus(existingStatus.id);
+
+        // If stale, offer to retry immediately (and actually re-trigger POST)
+        if (isPendingish && isStale) {
+          Alert.alert(
+            'Extraction looks stuck',
+            'No progress updates were received for over a minute. Would you like to retry sending the extraction request?',
+            [
+              { text: 'Keep Waiting', style: 'cancel' },
+              {
+                text: 'Retry Now',
+                onPress: () => {
+                  triggerExtractionRequest(existingStatus.id);
+                },
+              },
+            ]
+          );
+        }
+
         return;
       }
 
