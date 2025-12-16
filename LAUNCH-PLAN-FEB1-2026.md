@@ -14,12 +14,16 @@ Ship a stable v1 to **App Store + Google Play** by **Feb 1, 2026**, with:
 ### Week 1 (now → ~Dec 23): Stabilize + payments direction
 - **Decide payment rails** (see section “Payments”)
 - Freeze schema + migrations you need for launch (subscriptions + notifications)
+- **Database cleanup plan + migration list** (see section “Database cleanup + data refresh”)
 - Kill the last major UX bugs (Papers, extraction, keyboard, timers)
 - Add basic crash/error reporting (Sentry or Expo equivalent)
+- **Scraping + embeddings plan**: confirm exam boards scope, rerun pipeline, and validate vector search quality
 
 ### Week 2–3 (~Dec 24 → ~Jan 10): Store readiness + subscription implementation
 - Implement real purchase flow + restore
 - Implement tester entitlement flow (free Full subscription for beta cohort)
+- **Execute DB cleanup + ship required indexes** (so beta data stays sane)
+- **Finish remaining exam-board scrapers**, rerun scrapes, and **rebuild embeddings** used for vector search
 - Create store listings drafts (copy + screenshots + privacy labels)
 - Internal builds rolling (TestFlight internal + Play internal)
 
@@ -228,5 +232,43 @@ Optional before launch:
 - Ensure the app uses that env var everywhere it calls:
   - `POST /api/extract-paper`
   - `POST /api/mark-answer`
+
+---
+
+## H) Database cleanup + curriculum data refresh (scrapes + embeddings)
+### Why this matters
+By launch, data issues become user-facing quickly (missing/duplicated content, broken joins, poor search results). A short, deliberate cleanup + refresh prevents “death by a thousand cuts” during beta.
+
+### Database cleanup (recommended scope for v1)
+- **Consistency + constraints**
+  - Normalize/standardize identifiers for: exam boards, subjects, qualifications, paper codes.
+  - Add/verify key constraints (unique keys for “paper identity”), and foreign keys where safe.
+- **De-duplication + archival**
+  - Remove duplicates created by repeated scrapes.
+  - Archive or mark stale rows instead of hard-deleting where you need auditability.
+- **Performance**
+  - Add indexes needed for your most common queries (papers listing, question lookup, vector search joins).
+  - Vacuum/analyze (or Supabase equivalent maintenance) after large deletes/updates.
+
+### Scraping exam boards (finish + rerun)
+- **Define “done”**
+  - List target exam boards and confirm coverage (which subjects/papers/years).
+  - Confirm failure handling (retries, partial runs) and idempotent upserts.
+- **Run refresh**
+  - Rerun scrapes into staging/preview first (spot-check counts + spot-check a few papers end-to-end).
+  - Then promote to prod once counts and samples look right.
+
+### Embeddings refresh (vector search)
+- **Rebuild strategy**
+  - Decide the embedding unit (question-only vs question+markscheme vs chunked passages).
+  - Store embedding model/version metadata so future migrations are easier.
+- **Quality gates**
+  - Small “golden set” of representative queries with expected top results.
+  - Measure basic recall manually (top 5/10 contains what you expect) before beta.
+
+### Suggested timing (to protect Feb 1)
+- **Week 1**: finalize scope + write migrations/cleanup scripts + confirm exam board coverage list
+- **Week 2–3**: run cleanup + complete scrapers + run full scrape + rebuild embeddings + validate vector search
+- **Week 4**: only incremental fixes during beta (avoid big reshapes unless critical)
 
 

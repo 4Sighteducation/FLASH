@@ -65,7 +65,12 @@ interface ExaminerInsight {
   good_practice_examples: string[] | null;
 }
 
-const EXTRACTION_SERVICE_URL = process.env.EXTRACTION_SERVICE_URL || 'https://subjectsandtopics-production.up.railway.app';
+// Expo automatically exposes only EXPO_PUBLIC_* env vars to the JS bundle.
+// Keep a fallback for safety, and allow legacy EXTRACTION_SERVICE_URL for older builds/scripts.
+const EXTRACTION_SERVICE_URL =
+  process.env.EXPO_PUBLIC_PAPERS_API_URL ||
+  process.env.EXTRACTION_SERVICE_URL ||
+  'https://subjectsandtopics-production.up.railway.app';
 
 export default function QuestionPracticeScreen() {
   const route = useRoute();
