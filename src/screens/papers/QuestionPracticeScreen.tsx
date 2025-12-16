@@ -14,6 +14,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Linking,
+  findNodeHandle,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +48,17 @@ interface MarkingResult {
   strengths: string[];
   improvements: string[];
   matched_points: string[];
+  needs_self_mark?: boolean;
+}
+
+interface ExaminerInsight {
+  id: string;
+  question_id: string | null;
+  paper_id: string | null;
+  advice_for_students: string | null;
+  examiner_comments: string | null;
+  common_errors: string[] | null;
+  good_practice_examples: string[] | null;
 }
 
 const EXTRACTION_SERVICE_URL = process.env.EXTRACTION_SERVICE_URL || 'https://subjectsandtopics-production.up.railway.app';
@@ -99,6 +111,8 @@ export default function QuestionPracticeScreen() {
   const scrollViewRef = useRef<ScrollView | null>(null);
   const answerInputRef = useRef<TextInput | null>(null);
   const [maxIndexReached, setMaxIndexReached] = useState(0);
+  const [examinerInsight, setExaminerInsight] = useState<ExaminerInsight | null>(null);
+  const [showExaminerInsight, setShowExaminerInsight] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -110,10 +124,10 @@ export default function QuestionPracticeScreen() {
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardHeight(e.endCoordinates?.height || 0);
-      // Give layout a moment, then scroll to the input
+      // Give layout a moment, then scroll the focused input into view
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 50);
+        scrollAnswerIntoView();
+      }, 120);
     });
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardHeight(0);
@@ -123,6 +137,21 @@ export default function QuestionPracticeScreen() {
       hideSub.remove();
     };
   }, []);
+
+  const scrollAnswerIntoView = () => {
+    try {
+      const node = findNodeHandle(answerInputRef.current);
+      // @ts-ignore - these responder methods exist at runtime
+      const responder = scrollViewRef.current?.getScrollResponder?.();
+      // @ts-ignore
+      if (node && responder?.scrollResponderScrollNativeHandleToKeyboard) {
+        // @ts-ignore
+        responder.scrollResponderScrollNativeHandleToKeyboard(node, 140, true);
+      }
+    } catch {
+      // best-effort only
+    }
+  };
 
   const getQuestionPaperUrl = () =>
     paperUrlsRef.current?.question_paper_url ?? paperUrls?.question_paper_url ?? null;
@@ -819,9 +848,23 @@ export default function QuestionPracticeScreen() {
       timerControl.start();
     }
     // Scroll to ensure input is visible above keyboard
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 50);
+    setTimeout(() => scrollAnswerIntoView(), 120);
+  };
+
+  const loadExaminerInsight = async (questionId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('examiner_insights')
+        .select('*')
+        .eq('question_id', questionId)
+        .maybeSingle();
+      if (error) throw error;
+      setExaminerInsight((data as any) || null);
+      setShowExaminerInsight(false);
+    } catch (e) {
+      console.warn('[Papers] failed to load examiner insight', e);
+      setExaminerInsight(null);
+    }
   };
 
   const handleLeaveExtraction = () => {
@@ -896,6 +939,11 @@ export default function QuestionPracticeScreen() {
   const mcqOptions = isLikelyMultipleChoice ? parseMultipleChoiceOptions(currentQuestion.question_text || '') : [];
   const hasMcqOptions = mcqOptions.length >= 2;
 
+  useEffect(() => {
+    if (!currentQuestion?.id) return;
+    loadExaminerInsight(currentQuestion.id);
+  }, [currentQuestion?.id]);
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -914,8 +962,8 @@ export default function QuestionPracticeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Icon name="close" size={24} color="#00F5FF" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconButton}>
+            <Icon name="close" size={22} color="#00F5FF" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.paperName}>{paperName}</Text>
@@ -975,7 +1023,7 @@ export default function QuestionPracticeScreen() {
             onPress={pausePaper}
           >
             <Icon name="pause" size={18} color="#3B82F6" />
-            <Text style={[styles.actionButtonText, styles.pauseButtonText]}>Pause Paper</Text>
+            <Text style={[styles.actionButtonText, styles.pauseButtonText]}>Pause</Text>
           </TouchableOpacity>
         </View>
 
@@ -1206,6 +1254,48 @@ export default function QuestionPracticeScreen() {
               </View>
             )}
 
+            {/* Examiner Insight (from examiner report) */}
+            {!!examinerInsight && (
+              <View style={styles.feedbackCard}>
+                <TouchableOpacity
+                  onPress={() => setShowExaminerInsight((s) => !s)}
+                  style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <Text style={styles.feedbackTitle}>👩‍🏫 Examiner Insight</Text>
+                  <Icon name={showExaminerInsight ? 'chevron-up' : 'chevron-down'} size={18} color="#00F5FF" />
+                </TouchableOpacity>
+                {showExaminerInsight && (
+                  <View style={{ marginTop: 10 }}>
+                    {!!examinerInsight.examiner_comments && (
+                      <Text style={styles.feedbackText}>{examinerInsight.examiner_comments}</Text>
+                    )}
+                    {!!examinerInsight.advice_for_students && (
+                      <>
+                        <Text style={[styles.feedbackTitle, { marginTop: 12 }]}>💡 Advice</Text>
+                        <Text style={styles.feedbackText}>{examinerInsight.advice_for_students}</Text>
+                      </>
+                    )}
+                    {!!examinerInsight.common_errors?.length && (
+                      <>
+                        <Text style={[styles.feedbackTitle, { marginTop: 12 }]}>❌ Common errors</Text>
+                        {examinerInsight.common_errors.slice(0, 4).map((x, idx) => (
+                          <Text key={idx} style={styles.bulletPoint}>• {x}</Text>
+                        ))}
+                      </>
+                    )}
+                    {!!examinerInsight.good_practice_examples?.length && (
+                      <>
+                        <Text style={[styles.feedbackTitle, { marginTop: 12 }]}>✅ Good practice</Text>
+                        {examinerInsight.good_practice_examples.slice(0, 4).map((x, idx) => (
+                          <Text key={idx} style={styles.bulletPoint}>• {x}</Text>
+                        ))}
+                      </>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Next Button */}
             <TouchableOpacity style={styles.nextButton} onPress={nextQuestion}>
               <Text style={styles.nextButtonText}>
@@ -1263,6 +1353,14 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerIconButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.22)',
   },
   headerCenter: {
     flex: 1,
