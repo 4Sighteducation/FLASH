@@ -132,6 +132,31 @@ export default function QuestionPracticeScreen() {
     }
   };
 
+  const parseMultipleChoiceOptions = (text: string) => {
+    // Heuristic parser for options embedded in extracted question text.
+    // Supports:
+    //  A) option text
+    //  A. option text
+    //  A option text
+    //  (A) option text
+    //  A - option text
+    const lines = (text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const options: { key: string; text: string }[] = [];
+    for (const line of lines) {
+      const m = line.match(/^\(?([A-H])\)?\s*[\)\.\-:]?\s+(.*)$/i);
+      if (m) {
+        const key = m[1].toUpperCase();
+        const optText = m[2].trim();
+        if (optText.length > 0) options.push({ key, text: optText });
+      }
+    }
+    // If the text contains option markers without newlines (rare), try splitting by " A " patterns
+    if (options.length < 2) return [];
+    // Ensure unique by key, preserve first
+    const seen = new Set<string>();
+    return options.filter((o) => (seen.has(o.key) ? false : (seen.add(o.key), true)));
+  };
+
   // Track staleness of extraction updates to distinguish "slow" vs "stuck"
   useEffect(() => {
     if (!showExtractionModal) return;
@@ -779,6 +804,8 @@ export default function QuestionPracticeScreen() {
   const isLikelyMultipleChoice = /tick\s*\(?.*?\)?\s*one\s*box|tick\s+one\s+box|multiple\s+choice/i.test(
     currentQuestion.question_text || ''
   );
+  const mcqOptions = isLikelyMultipleChoice ? parseMultipleChoiceOptions(currentQuestion.question_text || '') : [];
+  const hasMcqOptions = mcqOptions.length >= 2;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -896,16 +923,51 @@ export default function QuestionPracticeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.missingImageTitle}>Multiple choice</Text>
                 <Text style={styles.missingImageText}>
-                  This looks like a “tick one box” question. The answer options aren’t rendered in-app yet —
-                  open the PDF to view the choices, then enter your selected letter/answer below.
+                  {hasMcqOptions
+                    ? 'Tap an option below to select it (you can still type your own answer if you prefer).'
+                    : 'This looks like a “tick one box” question. The answer options aren’t available in-app yet — open the PDF to view the choices, then enter your selected letter/answer below.'}
                 </Text>
               </View>
-              {!!getQuestionPaperUrl() && (
+              {!hasMcqOptions && !!getQuestionPaperUrl() && (
                 <TouchableOpacity
                   style={styles.openPdfButton}
                   onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
                 >
                   <Text style={styles.openPdfButtonText}>Open PDF</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Multiple choice options (when present in extracted text) */}
+          {hasMcqOptions && (
+            <View style={styles.mcqOptionsBox}>
+              {mcqOptions.map((opt) => {
+                const selected = userAnswer.trim().toUpperCase() === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.mcqOptionRow, selected && styles.mcqOptionRowSelected]}
+                    onPress={() => setUserAnswer(opt.key)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={[styles.mcqOptionKey, selected && styles.mcqOptionKeySelected]}>
+                      <Text style={[styles.mcqOptionKeyText, selected && styles.mcqOptionKeyTextSelected]}>
+                        {opt.key}
+                      </Text>
+                    </View>
+                    <Text style={[styles.mcqOptionText, selected && styles.mcqOptionTextSelected]}>
+                      {opt.text}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {!!getQuestionPaperUrl() && (
+                <TouchableOpacity
+                  style={[styles.openPdfButton, { alignSelf: 'flex-start', marginTop: 10 }]}
+                  onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
+                >
+                  <Text style={styles.openPdfButtonText}>Open PDF (full context)</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1400,6 +1462,55 @@ const styles = StyleSheet.create({
     color: '#00F5FF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  mcqOptionsBox: {
+    marginTop: -6,
+    marginBottom: 16,
+    gap: 10,
+  },
+  mcqOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    padding: 12,
+    borderRadius: 12,
+  },
+  mcqOptionRowSelected: {
+    backgroundColor: 'rgba(245, 158, 11, 0.10)',
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  mcqOptionKey: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  mcqOptionKeySelected: {
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: 'rgba(245, 158, 11, 0.55)',
+  },
+  mcqOptionKeyText: {
+    color: '#00F5FF',
+    fontWeight: '800',
+  },
+  mcqOptionKeyTextSelected: {
+    color: '#F59E0B',
+  },
+  mcqOptionText: {
+    flex: 1,
+    color: '#E2E8F0',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  mcqOptionTextSelected: {
+    color: '#FFFFFF',
   },
 });
 

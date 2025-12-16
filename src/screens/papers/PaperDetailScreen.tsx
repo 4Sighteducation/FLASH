@@ -69,7 +69,32 @@ export default function PaperDetailScreen() {
         questions_count: 0,
       }));
 
-      setPapers(papersWithQuality);
+      // Count extracted questions per paper so we can show "READY" indicators.
+      // This is a small N (per subject) so a per-paper count query is acceptable and avoids downloading all question rows.
+      const withCounts = await Promise.all(
+        papersWithQuality.map(async (paper: any) => {
+          try {
+            const { count, error: countError } = await supabase
+              .from('exam_questions')
+              .select('id', { count: 'exact', head: true })
+              .eq('paper_id', paper.id);
+
+            if (countError) throw countError;
+
+            const questions_count = count || 0;
+            return {
+              ...paper,
+              questions_count,
+              questions_extracted: questions_count > 0,
+            };
+          } catch (e) {
+            console.warn('[PaperDetail] Failed to count questions for paper:', paper.id, e);
+            return paper;
+          }
+        })
+      );
+
+      setPapers(withCounts as any);
     } catch (error) {
       console.error('Error loading papers:', error);
     } finally {
@@ -198,7 +223,18 @@ export default function PaperDetailScreen() {
                 {filteredByYear[parseInt(year)].map((paper) => {
                   const quality = getQualityBadge(paper.quality_tier);
                   return (
-                    <View key={paper.id} style={styles.paperCard}>
+                    <View
+                      key={paper.id}
+                      style={[
+                        styles.paperCard,
+                        paper.questions_extracted && styles.paperCardReady,
+                      ]}
+                    >
+                      {paper.questions_extracted && (
+                        <View style={styles.readyBadge}>
+                          <Text style={styles.readyBadgeText}>🏅 READY</Text>
+                        </View>
+                      )}
                       <View style={styles.paperHeader}>
                         <View>
                           <Text style={styles.paperTitle}>
@@ -210,6 +246,13 @@ export default function PaperDetailScreen() {
                                 {quality.emoji} {quality.text}
                               </Text>
                             </View>
+                            {paper.questions_extracted && (
+                              <View style={styles.questionsCountPill}>
+                                <Text style={styles.questionsCountText}>
+                                  {paper.questions_count} Qs
+                                </Text>
+                              </View>
+                            )}
                           </View>
                         </View>
                       </View>
@@ -245,11 +288,16 @@ export default function PaperDetailScreen() {
                       </View>
 
                       <TouchableOpacity
-                        style={styles.practiceButton}
+                        style={[
+                          styles.practiceButton,
+                          paper.questions_extracted && styles.practiceButtonReady,
+                        ]}
                         onPress={() => startPractice(paper)}
                       >
                         <Icon name="play-circle" size={20} color="#FFFFFF" />
-                        <Text style={styles.practiceButtonText}>Practice Questions</Text>
+                        <Text style={styles.practiceButtonText}>
+                          {paper.questions_extracted ? 'Practice (Ready)' : 'Practice Questions'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   );
@@ -280,6 +328,12 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.22)',
   },
   headerTextContainer: {
     flex: 1,
@@ -341,6 +395,29 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'relative',
+  },
+  paperCardReady: {
+    borderColor: 'rgba(245, 158, 11, 0.95)',
+    borderWidth: 2,
+    backgroundColor: 'rgba(245, 158, 11, 0.06)',
+  },
+  readyBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  readyBadgeText: {
+    color: '#F59E0B',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   paperHeader: {
     marginBottom: 12,
@@ -354,6 +431,8 @@ const styles = StyleSheet.create({
   paperMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
   },
   tierBadge: {
     paddingHorizontal: 10,
@@ -364,6 +443,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  questionsCountPill: {
+    backgroundColor: 'rgba(245, 158, 11, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  questionsCountText: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '800',
   },
   paperActions: {
     flexDirection: 'row',
@@ -392,6 +484,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     gap: 8,
+  },
+  practiceButtonReady: {
+    backgroundColor: '#F59E0B',
   },
   practiceButtonText: {
     color: '#0a0f1e',
