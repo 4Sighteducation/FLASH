@@ -27,6 +27,8 @@ import Icon from '../../components/Icon';
 import ExamTimer from '../../components/ExamTimer';
 import PaperExtractionModal from '../../components/PaperExtractionModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PointsAnimation from '../../components/PointsAnimation';
+import { gamificationService } from '../../services/gamificationService';
 
 interface Question {
   id: string;
@@ -117,6 +119,8 @@ export default function QuestionPracticeScreen() {
   const [showExaminerInsight, setShowExaminerInsight] = useState(false);
   const currentQuestionId = questions[currentIndex]?.id ?? null;
   const [showAnswerEditor, setShowAnswerEditor] = useState(false);
+  const [showPointsAnimation, setShowPointsAnimation] = useState(false);
+  const [animationPoints, setAnimationPoints] = useState(0);
 
   useEffect(() => {
     loadQuestions();
@@ -739,6 +743,20 @@ export default function QuestionPracticeScreen() {
 
       setMarkingResult(marking);
 
+      // Award per-question XP (first attempt only), based on marks awarded.
+      if (user?.id && marking?.marks_awarded && currentQuestion?.id) {
+        const award = await gamificationService.awardPaperQuestionXp({
+          userId: user.id,
+          paperId,
+          questionId: currentQuestion.id,
+          marksAwarded: Number(marking.marks_awarded) || 0,
+        });
+        if (award.awarded && award.points > 0) {
+          setAnimationPoints(award.points);
+          setShowPointsAnimation(true);
+        }
+      }
+
     } catch (error) {
       console.error('Marking error:', error);
       Alert.alert('Error', 'Failed to mark answer. Please try again.');
@@ -957,6 +975,11 @@ export default function QuestionPracticeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <PointsAnimation
+        points={animationPoints}
+        visible={showPointsAnimation}
+        onComplete={() => setShowPointsAnimation(false)}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1013,21 +1036,22 @@ export default function QuestionPracticeScreen() {
             style={[styles.actionButton, styles.skipOrNextButton]}
             onPress={() => {
               // If user navigated back, moving forward should be Next (not Skip).
-              // Only show skip semantics when at the furthest point reached.
-              if (currentIndex < maxIndexReached) {
-                nextQuestion();
-              } else {
-                skipQuestion();
-              }
+              // Also, if the question already has a previous attempt OR the user has typed something,
+              // treat this as Next to avoid repeated "Skip" confirmations deep into a paper.
+              const hasPrior = (previousAttempts?.length || 0) > 0;
+              const hasTyped = !!userAnswer.trim();
+              const canNextWithoutSkipping = currentIndex < maxIndexReached || hasPrior || hasTyped || !!markingResult;
+              if (canNextWithoutSkipping) nextQuestion();
+              else skipQuestion();
             }}
           >
             <Icon
-              name={currentIndex < maxIndexReached ? 'chevron-forward' : 'play-skip-forward'}
+              name={(currentIndex < maxIndexReached || (previousAttempts?.length || 0) > 0 || !!userAnswer.trim() || !!markingResult) ? 'chevron-forward' : 'play-skip-forward'}
               size={18}
               color="#F59E0B"
             />
             <Text style={styles.actionButtonText}>
-              {currentIndex < maxIndexReached ? 'Next' : 'Skip'}
+              {(currentIndex < maxIndexReached || (previousAttempts?.length || 0) > 0 || !!userAnswer.trim() || !!markingResult) ? 'Next' : 'Skip'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -1199,13 +1223,24 @@ export default function QuestionPracticeScreen() {
 
             <View style={styles.answerHeaderRow}>
               <Text style={styles.answerLabel}>Your Answer:</Text>
-              <TouchableOpacity
-                style={styles.expandButton}
-                onPress={() => setShowAnswerEditor(true)}
-              >
-                <Icon name="create-outline" size={16} color="#00F5FF" />
-                <Text style={styles.expandButtonText}>Expand</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                {!!getQuestionPaperUrl() && (
+                  <TouchableOpacity
+                    style={styles.expandButton}
+                    onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
+                  >
+                    <Icon name="document-text" size={16} color="#00F5FF" />
+                    <Text style={styles.expandButtonText}>Open PDF</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.expandButton}
+                  onPress={() => setShowAnswerEditor(true)}
+                >
+                  <Icon name="create-outline" size={16} color="#00F5FF" />
+                  <Text style={styles.expandButtonText}>Expand</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <TextInput
               ref={(r) => {

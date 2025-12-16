@@ -247,6 +247,53 @@ export const gamificationService = {
 
     return { awarded: true, points: totalPoints };
   },
+
+  async awardPaperQuestionXp(params: {
+    userId: string;
+    paperId: string;
+    questionId: string;
+    marksAwarded: number;
+  }): Promise<{ awarded: boolean; points: number; reason?: string }> {
+    const { userId, paperId, questionId } = params;
+    const marks = Math.max(0, Math.floor(Number(params.marksAwarded) || 0));
+    if (!userId || !paperId || !questionId || marks <= 0) {
+      return { awarded: false, points: 0, reason: 'no_points' };
+    }
+
+    // Dedupe once per user+question
+    const { data: existing, error: existingErr } = await supabase
+      .from('paper_question_xp_awards')
+      .select('id, points_awarded')
+      .eq('user_id', userId)
+      .eq('question_id', questionId)
+      .maybeSingle();
+
+    if (existingErr && String((existingErr as any)?.message || '').includes('paper_question_xp_awards')) {
+      console.warn('[Gamification] paper_question_xp_awards table missing; run migration create-paper-question-xp-awards-table.sql');
+      return { awarded: false, points: 0, reason: 'missing_table' };
+    }
+
+    if (existing?.id) {
+      return { awarded: false, points: Number((existing as any).points_awarded || 0), reason: 'already_awarded' };
+    }
+
+    const points = marks * gamificationConfig.paper.pointsPerMarkFirstAttempt;
+    const { error: insertErr } = await supabase.from('paper_question_xp_awards').insert({
+      user_id: userId,
+      paper_id: paperId,
+      question_id: questionId,
+      marks_awarded: marks,
+      points_awarded: points,
+    });
+
+    if (insertErr) {
+      console.warn('[Gamification] Failed to insert paper_question_xp_awards:', insertErr);
+      return { awarded: false, points: 0, reason: 'insert_failed' };
+    }
+
+    await this.upsertUserStatsDelta({ userId, pointsDelta: points });
+    return { awarded: true, points };
+  },
 };
 
 
