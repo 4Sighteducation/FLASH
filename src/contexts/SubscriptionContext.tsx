@@ -84,6 +84,51 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const unsubscribeRef = React.useRef<null | (() => void)>(null);
 
+  const TEST_EMAILS = new Set([
+    'appletester@fl4sh.cards',
+    'stu1@fl4sh.cards',
+    'stu2@fl4sh.cards',
+    'stu3@fl4sh.cards',
+  ]);
+
+  const isTesterAccount = () => {
+    const email = (user?.email || '').toLowerCase();
+    return TEST_EMAILS.has(email);
+  };
+
+  const tierRank = (t: SubscriptionTier) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+
+  const getDbTier = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('tier, expires_at')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error || !data?.tier) return null;
+      const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
+      const resolved = isExpired ? 'free' : normalizeTier(data.tier);
+      return { tier: resolved, expiresAt: data.expires_at ? new Date(data.expires_at).toISOString() : null };
+    } catch {
+      return null;
+    }
+  };
+
+  const applyTierWithTesterOverride = async (rcTier: SubscriptionTier, rcExpiresAt: string | null) => {
+    if (!isTesterAccount()) {
+      await applyTier(rcTier, rcExpiresAt);
+      return;
+    }
+
+    const db = await getDbTier();
+    if (db && tierRank(db.tier) > tierRank(rcTier)) {
+      await applyTier(db.tier, db.expiresAt);
+      return;
+    }
+    await applyTier(rcTier, rcExpiresAt);
+  };
+
   useEffect(() => {
     if (user) {
       initializeIAP();
@@ -192,14 +237,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       unsubscribeRef.current = addCustomerInfoListener(async (info) => {
         const next = resolveTierFromCustomerInfo(info);
         const exp = getExpirationIso(info);
-        await applyTier(next, exp);
+        await applyTierWithTesterOverride(next, exp);
       });
 
       const info = await getCustomerInfo();
       if (info) {
         const next = resolveTierFromCustomerInfo(info);
         const exp = getExpirationIso(info);
-        await applyTier(next, exp);
+        await applyTierWithTesterOverride(next, exp);
       } else {
         await checkSubscriptionStatus();
       }
