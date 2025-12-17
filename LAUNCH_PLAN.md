@@ -1,9 +1,32 @@
 Plan of action (now → Feb 1, 2026)
+
+Status (as of Dec 17, 2025)
+- [x] RevenueCat dashboard configured (iOS app, keys, entitlements, Offering `default`, packages)
+- [x] App Store Connect subscriptions created/configured (Premium/Pro monthly+annual; Ready to Submit)
+- [x] In-app paywall screen added (neon themed) + reachable from Profile
+- [x] Guardrails in-app:
+  - [x] Free limits enforced (subjects + flashcards) with upsell → Paywall
+  - [x] Past Papers gated to Pro (tab-level + screen-level defense)
+- [x] RevenueCat SDK integrated in app:
+  - [x] Tier auto-sync via entitlements (`free`/`premium`/`pro`)
+  - [x] Paywall purchases wired (monthly default, annual option)
+  - [x] Restore purchases wired
+- [x] iOS build pipeline working (EAS Build + EAS Submit → TestFlight)
+- [ ] Payment testing on-device (TestFlight + sandbox accounts):
+  - [ ] Premium monthly + annual (confirm Premium annual trial)
+  - [ ] Pro monthly + annual
+  - [ ] Upgrade/downgrade behavior
+  - [ ] Restore purchases on fresh install
+- [ ] Android: set up Play Console products + RevenueCat Android app + EAS build
+- [ ] Decide subscription “source of truth” (RevenueCat webhooks vs best-effort app sync only)
 0) This week (now → Dec 23): “Decisions + stability first”
 Payments decision (must unblock everything)
-Pick one for v1: RevenueCat (recommended) + single paid tier (Full) while keeping Lite limits.
-Confirm product model: subscription (monthly/yearly) or one-time (pick one for v1).
-Define your canonical product IDs + entitlement names now (so they don’t churn later).
+Pick one for v1: RevenueCat (recommended) + paid tiers (Premium/Pro) with a Free tier.
+Confirm product model: subscriptions (monthly + annual) for Premium and Pro.
+Define canonical IDs (keep stable):
+- Entitlements: `premium`, `pro`
+- Offering: `default`
+- Packages: `premium_monthly`, `premium_annual`, `pro_monthly`, `pro_annual`
 Schema + backend readiness freeze (minimum launch set)
 Confirm public.user_subscriptions fields/flows (tier, expires_at, source, status).
 Add a clean “tester entitlement” mechanism (e.g., full with far-future expires_at, or a distinct beta_full).

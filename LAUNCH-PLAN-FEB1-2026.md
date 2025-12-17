@@ -2,7 +2,7 @@
 
 ## Goal
 Ship a stable v1 to **App Store + Google Play** by **Feb 1, 2026**, with:
-- Working subscription purchase/restore (“Lite” vs “Full”)
+- Working subscription purchase/restore (**Free / Premium / Pro**)
 - Reliable push notifications + in-app notifications
 - Finished Settings screen (production-ready)
 - A managed beta cohort (10 students) with clear onboarding + feedback loop
@@ -42,26 +42,23 @@ Ship a stable v1 to **App Store + Google Play** by **Feb 1, 2026**, with:
 
 ## A) Subscription tiers (Lite vs Full)
 ### Current state (code)
-- `SubscriptionContext.tsx` defines `lite` + `full` limits.
-- Purchase and restore flows are **stubbed** (alerts only); Expo IAP calls are commented.
+- `SubscriptionContext.tsx` now uses **`free` / `premium` / `pro`** (with legacy `lite/full` mapped for compatibility).
+- RevenueCat SDK is integrated; purchase + restore are wired to RevenueCat packages (monthly/annual).
 - Backend expects `public.user_subscriptions` with `tier` and `expires_at`.
 
 ### What to ship for v1
-- **Lite**: 1 subject, 1 topic, 10 cards, no AI, no voice answers, no export.
-- **Full**: unlimited + all features.
-- Decide whether Full is:
-  - **One-time purchase** (“Full Version”), or
-  - **Subscription** (monthly/yearly), or
-  - **Both** (recommended later; v1 pick one to reduce risk)
+- **Free**: 1 subject, 1 topic, 10 cards (core AI card generation allowed).
+- **Premium**: unlimited study essentials (monthly + annual; Premium annual has 14-day trial).
+- **Pro**: everything in Premium + Past Papers + AI marking/voice/advanced features (monthly + annual).
 
 ### Tasks
 - Define products in:
   - **App Store Connect** (IAP product IDs)
   - **Google Play Console** (in-app products or subscriptions)
-- Ensure `SubscriptionProvider`:
-  - Checks entitlement on app start
-  - Updates Supabase `user_subscriptions`
-  - Handles restore reliably
+- Ensure `SubscriptionProvider` (RevenueCat):
+  - Checks entitlements on app start
+  - Handles purchase + restore reliably
+  - Syncs tier to Supabase (best-effort; webhooks can become source of truth later)
 - Add a “Paywall” screen/modal that’s consistent with your theme
 
 ---
