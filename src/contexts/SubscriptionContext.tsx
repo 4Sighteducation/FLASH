@@ -4,6 +4,17 @@ import { Platform, Alert } from 'react-native';
 // import * as InAppPurchases from 'expo-in-app-purchases';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
+import {
+  addCustomerInfoListener,
+  configureRevenueCat,
+  getCustomerInfo,
+  getExpirationIso,
+  purchaseFromOffering,
+  restorePurchases as rcRestorePurchases,
+  resolveTierFromCustomerInfo,
+  type BillingPeriod,
+  type Plan,
+} from '../services/revenueCatService';
 
 // v1 tiers: Free / Premium / Pro
 // NOTE: We keep backwards-compatibility with legacy values stored in DB/storage ('lite'/'full').
@@ -23,7 +34,7 @@ interface SubscriptionContextType {
   tier: SubscriptionTier;
   limits: SubscriptionLimits;
   isLoading: boolean;
-  purchaseFullVersion: () => Promise<void>; // TODO: replace with RevenueCat purchase flow (Premium/Pro)
+  purchasePlan: (plan: Plan, billing: BillingPeriod) => Promise<void>;
   restorePurchases: () => Promise<void>;
   checkLimits: (type: 'subject' | 'topic' | 'card', currentCount: number) => boolean;
 }
@@ -71,12 +82,18 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [tier, setTier] = useState<SubscriptionTier>('free');
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const unsubscribeRef = React.useRef<null | (() => void)>(null);
 
   useEffect(() => {
     if (user) {
       initializeIAP();
-      checkSubscriptionStatus();
+      // Prefer RevenueCat if available; fallback to DB/local for dev/web.
+      initializeRevenueCat();
     }
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    };
   }, [user]);
 
   const initializeIAP = async () => {
@@ -136,6 +153,61 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const applyTier = async (next: SubscriptionTier, expiresAtIso: string | null) => {
+    setTier(next);
+    await AsyncStorage.setItem('subscriptionTier', next);
+
+    // Best-effort sync to backend (source of truth will eventually be RevenueCat webhooks).
+    // This keeps your existing DB checks working during the transition.
+    try {
+      if (user?.id) {
+        await supabase.from('user_subscriptions').upsert({
+          user_id: user.id,
+          tier: next,
+          platform: Platform.OS,
+          expires_at: expiresAtIso,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const initializeRevenueCat = async () => {
+    try {
+      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      if (!apiKey || Platform.OS === 'web' || !user?.id) {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      const ok = await configureRevenueCat({ apiKey, appUserId: user.id });
+      if (!ok) {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      if (unsubscribeRef.current) unsubscribeRef.current();
+      unsubscribeRef.current = addCustomerInfoListener(async (info) => {
+        const next = resolveTierFromCustomerInfo(info);
+        const exp = getExpirationIso(info);
+        await applyTier(next, exp);
+      });
+
+      const info = await getCustomerInfo();
+      if (info) {
+        const next = resolveTierFromCustomerInfo(info);
+        const exp = getExpirationIso(info);
+        await applyTier(next, exp);
+      } else {
+        await checkSubscriptionStatus();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSuccessfulPurchase = async (purchase: any) => {
     try {
       // Verify purchase with your backend
@@ -163,51 +235,36 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const purchaseFullVersion = async () => {
+  const purchasePlan = async (plan: Plan, billing: BillingPeriod) => {
     try {
-      // Comment out all IAP functionality since we're using mock
-      Alert.alert('Info', 'In-app purchases are not available in this build.');
-      /*
-      const productId = Platform.OS === 'ios' ? PRODUCT_IDS.ios : PRODUCT_IDS.android;
-      
-      // Get available products
-      const { responseCode, results } = await InAppPurchases.getProductsAsync([productId]);
-      
-      if (responseCode === InAppPurchases.IAPResponseCode.OK && results?.length) {
-        // Initiate purchase
-        await InAppPurchases.purchaseItemAsync(productId);
-      } else {
-        Alert.alert('Error', 'Product not available. Please try again later.');
+      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      if (!apiKey || Platform.OS === 'web' || !user?.id) {
+        Alert.alert('Info', 'Purchases require a store build.');
+        return;
       }
-      */
+
+      // Purchase from the canonical offering configured in RevenueCat.
+      const info = await purchaseFromOffering({ offeringId: 'default', plan, billing });
+      const next = resolveTierFromCustomerInfo(info);
+      const exp = getExpirationIso(info);
+      await applyTier(next, exp);
     } catch (error) {
       console.error('Purchase error:', error);
-      Alert.alert('Error', 'Failed to initiate purchase.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to initiate purchase.');
     }
   };
 
   const restorePurchases = async () => {
     try {
-      // Comment out all IAP functionality since we're using mock
-      Alert.alert('Info', 'Purchase restoration is not available in this build.');
-      /*
-      const { responseCode, results } = await InAppPurchases.getPurchaseHistoryAsync();
-      
-      if (responseCode === InAppPurchases.IAPResponseCode.OK) {
-        const hasFullVersion = results?.some(purchase => 
-          purchase.productId === PRODUCT_IDS.ios || 
-          purchase.productId === PRODUCT_IDS.android
-        );
-
-        if (hasFullVersion) {
-          setTier('full');
-          await AsyncStorage.setItem('subscriptionTier', 'full');
-          Alert.alert('Success', 'Purchases restored successfully!');
-        } else {
-          Alert.alert('No Purchases', 'No previous purchases found.');
-        }
+      const info = await rcRestorePurchases();
+      if (info) {
+        const next = resolveTierFromCustomerInfo(info);
+        const exp = getExpirationIso(info);
+        await applyTier(next, exp);
+        Alert.alert('Success', 'Purchases restored.');
+      } else {
+        Alert.alert('Info', 'Purchase restoration requires a store build.');
       }
-      */
     } catch (error) {
       console.error('Restore error:', error);
       Alert.alert('Error', 'Failed to restore purchases.');
@@ -235,7 +292,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         tier, 
         limits: subscriptionLimits[tier], 
         isLoading,
-        purchaseFullVersion,
+        purchasePlan,
         restorePurchases,
         checkLimits
       }}

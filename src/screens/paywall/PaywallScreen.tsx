@@ -19,11 +19,12 @@ type BillingPeriod = 'monthly' | 'annual';
 export default function PaywallScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { tier, purchaseFullVersion, restorePurchases } = useSubscription();
-  const [billing, setBilling] = useState<BillingPeriod>('annual');
+  const { tier, purchasePlan, restorePurchases } = useSubscription();
+  const [billing, setBilling] = useState<BillingPeriod>('monthly');
 
   // For v1 screenshots + App Review metadata: avoid hardcoding prices (they vary by region/currency).
   const priceHint = billing === 'annual' ? 'Billed yearly' : 'Billed monthly';
+  const premiumCta = billing === 'annual' ? 'Start Premium Trial' : 'Start Premium';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -105,14 +106,17 @@ export default function PaywallScreen({ navigation }: any) {
                   <Feature text="Unlimited subjects" />
                   <Feature text="Unlimited flashcards" />
                   <Feature text="All topics" />
-                  <Feature text="Offline mode" />
+                  <Feature text="Smart revision scheduling" />
                   <Feature text="Priority support" />
                 </View>
 
                 {tier === 'free' ? (
-                  <TouchableOpacity style={styles.primaryBtn} onPress={purchaseFullVersion}>
+                  <TouchableOpacity
+                    style={styles.primaryBtn}
+                    onPress={() => purchasePlan('premium', billing)}
+                  >
                     <LinearGradient colors={colors.buttonGradient as any} style={styles.primaryBtnBg}>
-                      <Text style={styles.primaryBtnText}>Start Premium Trial</Text>
+                      <Text style={styles.primaryBtnText}>{premiumCta}</Text>
                       <Ionicons name="arrow-forward" size={18} color="#0B1220" />
                     </LinearGradient>
                   </TouchableOpacity>
@@ -145,7 +149,7 @@ export default function PaywallScreen({ navigation }: any) {
                   <Feature text="Advanced analytics" />
                 </View>
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={purchaseFullVersion}>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => purchasePlan('pro', billing)}>
                   <LinearGradient
                     colors={[colors.secondary, colors.primary] as any}
                     style={styles.primaryBtnBg}

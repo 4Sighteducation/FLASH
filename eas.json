@@ -11,6 +11,7 @@
         "simulator": true
       },
       "env": {
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_pVZmmQpunaCvcUFFrkVnTknXeyx",
         "EXPO_PUBLIC_PAPERS_API_URL": "https://subjectsandtopics-production.up.railway.app"
       }
     },
@@ -23,6 +24,7 @@
         "buildType": "apk"
       },
       "env": {
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_pVZmmQpunaCvcUFFrkVnTknXeyx",
         "EXPO_PUBLIC_PAPERS_API_URL": "https://subjectsandtopics-production.up.railway.app"
       }
     },
@@ -41,6 +43,7 @@
         "EXPO_DEBUG": "true",
         "CI": "false",
         "EXPO_NO_CAPABILITY_SYNC": "1",
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_pVZmmQpunaCvcUFFrkVnTknXeyx",
         "EXPO_PUBLIC_PAPERS_API_URL": "https://subjectsandtopics-production.up.railway.app"
       }
     }

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState } from 'react';
 import { Alert } from 'react-native';
 
 export type SubscriptionTier = 'free' | 'premium' | 'pro';
+export type BillingPeriod = 'monthly' | 'annual';
+export type Plan = 'premium' | 'pro';
 
 interface SubscriptionLimits {
   maxSubjects: number;
@@ -17,7 +19,7 @@ interface SubscriptionContextType {
   tier: SubscriptionTier;
   limits: SubscriptionLimits;
   isLoading: boolean;
-  purchaseFullVersion: () => Promise<void>;
+  purchasePlan: (plan: Plan, billing: BillingPeriod) => Promise<void>;
   restorePurchases: () => Promise<void>;
   checkLimits: (type: 'subject' | 'topic' | 'card', currentCount: number) => boolean;
 }
@@ -59,8 +61,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [tier] = useState<SubscriptionTier>('pro');
   const [isLoading] = useState(false);
 
-  const purchaseFullVersion = async () => {
-    console.log('MOCK: Purchase full version - requires custom build');
+  const purchasePlan = async () => {
+    console.log('MOCK: Purchase plan - requires custom build');
     Alert.alert('Development Mode', 'Purchases require a store build. Running in development mode with Pro access.');
   };
 
@@ -80,7 +82,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         tier, 
         limits: subscriptionLimits[tier], 
         isLoading,
-        purchaseFullVersion,
+        purchasePlan,
         restorePurchases,
         checkLimits
       }}

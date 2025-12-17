@@ -32,7 +32,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const { theme, toggleTheme } = useTheme();
-  const { tier, limits, purchaseFullVersion, restorePurchases } = useSubscription();
+  const { tier, limits, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
   const [cyberUnlocked, setCyberUnlocked] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
