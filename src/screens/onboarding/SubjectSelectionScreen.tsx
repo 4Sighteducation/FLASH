@@ -7,6 +7,7 @@ import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext.mock';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface ExamBoard {
   id: string;
@@ -161,8 +162,8 @@ export default function SubjectSelectionScreen() {
         setShowScrollHint(false); // Hide hint if deselecting last subject
       }
     } else {
-      // Check subscription limits for lite users
-      if (tier === 'lite') {
+      // Check subscription limits for Free users
+      if (tier === 'free') {
         // Get current active subjects count from database
         const checkAndToggle = async () => {
           const { data: userSubjects, error } = await supabase
@@ -173,14 +174,10 @@ export default function SubjectSelectionScreen() {
           const currentSubjectCount = (userSubjects?.length || 0) + selectedSubjects.length;
           
           if (!checkLimits('subject', currentSubjectCount + 1)) {
-            Alert.alert(
-              'Upgrade Required',
-              'The free version is limited to 1 subject. Upgrade to FLASH Full to add unlimited subjects!',
-              [
-                { text: 'Not Now', style: 'cancel' },
-                { text: 'Upgrade', onPress: () => navigation.navigate('Profile' as never) }
-              ]
-            );
+            showUpgradePrompt({
+              message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+              navigation,
+            });
             return;
           }
           

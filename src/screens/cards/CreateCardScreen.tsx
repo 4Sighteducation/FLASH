@@ -18,6 +18,7 @@ import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 
@@ -77,8 +78,8 @@ export default function CreateCardScreen() {
       return;
     }
 
-    // Check card limits for lite users
-    if (tier === 'lite') {
+    // Check card limits for Free users
+    if (tier === 'free') {
       const { data: userCards, error } = await supabase
         .from('flashcards')
         .select('id')
@@ -87,14 +88,11 @@ export default function CreateCardScreen() {
       const currentCardCount = userCards?.length || 0;
       
       if (!checkLimits('card', currentCardCount + 1)) {
-        Alert.alert(
-          'Upgrade Required',
-          `You've reached the 10 card limit for the free version. Upgrade to FLASH Full for unlimited cards!`,
-          [
-            { text: 'Not Now', style: 'cancel' },
-            { text: 'Upgrade', onPress: () => navigation.navigate('Profile' as never) }
-          ]
-        );
+        showUpgradePrompt({
+          message:
+            "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+          navigation,
+        });
         return;
       }
     }

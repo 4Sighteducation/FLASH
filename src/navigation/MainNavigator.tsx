@@ -16,6 +16,8 @@ import ManageTopicScreen from '../screens/cards/ManageTopicScreen';
 import ManageAllCardsScreen from '../screens/cards/ManageAllCardsScreen';
 import APISettingsScreen from '../screens/settings/APISettingsScreen';
 import PaywallScreen from '../screens/paywall/PaywallScreen';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { Alert } from 'react-native';
 import TopicEditModal from '../components/TopicEditModal';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
@@ -259,6 +261,8 @@ function ProfileStack() {
 }
 
 export default function MainNavigator() {
+  const { tier } = useSubscription();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }: any) => ({
@@ -286,7 +290,25 @@ export default function MainNavigator() {
     >
       <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Study" component={StudyStack} />
-      <Tab.Screen name="Papers" component={PapersStack} />
+      <Tab.Screen
+        name="Papers"
+        component={PapersStack}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            if (tier !== 'pro') {
+              e.preventDefault();
+              Alert.alert(
+                'Pro feature',
+                'Past Papers are available on Pro. Upgrade to unlock thousands of real exam questions with AI marking.',
+                [
+                  { text: 'Not now', style: 'cancel' },
+                  { text: 'View plans', onPress: () => navigation.navigate('Profile' as never, { screen: 'Paywall' } as never) },
+                ]
+              );
+            }
+          },
+        })}
+      />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );

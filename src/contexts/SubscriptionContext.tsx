@@ -5,7 +5,9 @@ import { Platform, Alert } from 'react-native';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
 
-type SubscriptionTier = 'lite' | 'full';
+// v1 tiers: Free / Premium / Pro
+// NOTE: We keep backwards-compatibility with legacy values stored in DB/storage ('lite'/'full').
+export type SubscriptionTier = 'free' | 'premium' | 'pro';
 
 interface SubscriptionLimits {
   maxSubjects: number;
@@ -14,33 +16,45 @@ interface SubscriptionLimits {
   canUseAI: boolean;
   canExportCards: boolean;
   canUseVoiceAnswers: boolean;
+  canAccessPapers: boolean;
 }
 
 interface SubscriptionContextType {
   tier: SubscriptionTier;
   limits: SubscriptionLimits;
   isLoading: boolean;
-  purchaseFullVersion: () => Promise<void>;
+  purchaseFullVersion: () => Promise<void>; // TODO: replace with RevenueCat purchase flow (Premium/Pro)
   restorePurchases: () => Promise<void>;
   checkLimits: (type: 'subject' | 'topic' | 'card', currentCount: number) => boolean;
 }
 
 const subscriptionLimits: Record<SubscriptionTier, SubscriptionLimits> = {
-  lite: {
+  free: {
     maxSubjects: 1,
     maxTopicsPerSubject: 1,
     maxCards: 10,
     canUseAI: false,
     canExportCards: false,
     canUseVoiceAnswers: false,
+    canAccessPapers: false,
   },
-  full: {
+  premium: {
     maxSubjects: -1, // Unlimited
+    maxTopicsPerSubject: -1,
+    maxCards: -1,
+    canUseAI: false,
+    canExportCards: true,
+    canUseVoiceAnswers: false,
+    canAccessPapers: false,
+  },
+  pro: {
+    maxSubjects: -1,
     maxTopicsPerSubject: -1,
     maxCards: -1,
     canUseAI: true,
     canExportCards: true,
     canUseVoiceAnswers: true,
+    canAccessPapers: true,
   },
 };
 
@@ -53,7 +67,7 @@ const PRODUCT_IDS = {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tier, setTier] = useState<SubscriptionTier>('lite');
+  const [tier, setTier] = useState<SubscriptionTier>('free');
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
@@ -83,10 +97,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const normalizeTier = (raw: any): SubscriptionTier => {
+    if (!raw) return 'free';
+    // Legacy values
+    if (raw === 'lite') return 'free';
+    if (raw === 'full') return 'pro';
+    // Current values
+    if (raw === 'free' || raw === 'premium' || raw === 'pro') return raw;
+    return 'free';
+  };
+
   const checkSubscriptionStatus = async () => {
     try {
       // Check local storage first
-      const localTier = await AsyncStorage.getItem('subscriptionTier');
+      const localTierRaw = await AsyncStorage.getItem('subscriptionTier');
+      const localTier = normalizeTier(localTierRaw);
       
       // Then verify with backend
       const { data, error } = await supabase
@@ -97,10 +122,11 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (data && !error) {
         const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
-        setTier(isExpired ? 'lite' : data.tier);
-        await AsyncStorage.setItem('subscriptionTier', isExpired ? 'lite' : data.tier);
+        const resolved = isExpired ? 'free' : normalizeTier(data.tier);
+        setTier(resolved);
+        await AsyncStorage.setItem('subscriptionTier', resolved);
       } else {
-        setTier(localTier as SubscriptionTier || 'lite');
+        setTier(localTier);
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -116,16 +142,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .from('user_subscriptions')
         .upsert({
           user_id: user?.id,
-          tier: 'full',
+          tier: 'pro',
           platform: Platform.OS,
           purchase_token: purchase.purchaseToken || purchase.transactionReceipt,
           purchased_at: new Date().toISOString(),
         });
 
       if (!error) {
-        setTier('full');
-        await AsyncStorage.setItem('subscriptionTier', 'full');
-        Alert.alert('Success!', 'You now have full access to FLASH!');
+        setTier('pro');
+        await AsyncStorage.setItem('subscriptionTier', 'pro');
+        Alert.alert('Success!', 'You now have Pro access to FLASH!');
       }
 
       // Acknowledge the purchase

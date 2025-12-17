@@ -109,7 +109,7 @@ export default function PaywallScreen({ navigation }: any) {
                   <Feature text="Priority support" />
                 </View>
 
-                {tier === 'lite' ? (
+                {tier === 'free' ? (
                   <TouchableOpacity style={styles.primaryBtn} onPress={purchaseFullVersion}>
                     <LinearGradient colors={colors.buttonGradient as any} style={styles.primaryBtnBg}>
                       <Text style={styles.primaryBtnText}>Start Premium Trial</Text>

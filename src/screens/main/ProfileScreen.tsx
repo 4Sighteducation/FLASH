@@ -327,9 +327,9 @@ export default function ProfileScreen() {
           <View style={styles.subscriptionStatus}>
             <View style={styles.subscriptionInfo}>
               <Text style={styles.subscriptionTier}>
-                {tier === 'lite' ? 'Free (Lite)' : 'Full Version'}
+                {tier === 'free' ? 'Free' : tier === 'premium' ? 'Premium' : 'Pro'}
               </Text>
-              {tier === 'lite' && (
+              {tier === 'free' && (
                 <Text style={styles.subscriptionLimits}>
                   • {limits.maxSubjects} Subject{'\n'}
                   • {limits.maxTopicsPerSubject} Topic{'\n'}
@@ -337,7 +337,7 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            {tier === 'lite' && (
+            {tier === 'free' && (
               <>
                 <TouchableOpacity
                   style={styles.upgradeButton}
