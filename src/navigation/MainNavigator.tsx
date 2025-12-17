@@ -15,6 +15,7 @@ import CardCreationChoice from '../screens/cards/CardCreationChoice';
 import ManageTopicScreen from '../screens/cards/ManageTopicScreen';
 import ManageAllCardsScreen from '../screens/cards/ManageAllCardsScreen';
 import APISettingsScreen from '../screens/settings/APISettingsScreen';
+import PaywallScreen from '../screens/paywall/PaywallScreen';
 import TopicEditModal from '../components/TopicEditModal';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
@@ -213,6 +214,14 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
       <Stack.Screen 
         name="APISettings" 
         component={APISettingsScreen}

@@ -339,12 +339,12 @@ export default function ProfileScreen() {
             </View>
             {tier === 'lite' && (
               <>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.upgradeButton}
-                  onPress={purchaseFullVersion}
+                  onPress={() => navigation.navigate('Paywall' as never)}
                 >
                   <Icon name="star" size={20} color="#fff" />
-                  <Text style={styles.upgradeButtonText}>Upgrade to Full</Text>
+                  <Text style={styles.upgradeButtonText}>View plans</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.restoreButton}
