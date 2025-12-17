@@ -72,6 +72,8 @@ Ship a stable v1 to **App Store + Google Play** by **Feb 1, 2026**, with:
 - App Store Connect:
   - Bundle ID, certificates, provisioning profiles
   - IAP/subscription products created and “Ready to Submit”
+  - App submitted to App Review with **Manual release**
+  - App Review account available (Pro): `appletester@fl4sh.cards` (password shared in App Review notes)
   - TestFlight internal + external groups set up
 - Play Console:
   - App signing, closed testing track, internal testing track

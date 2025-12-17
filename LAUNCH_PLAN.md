@@ -12,11 +12,17 @@ Status (as of Dec 17, 2025)
   - [x] Paywall purchases wired (monthly default, annual option)
   - [x] Restore purchases wired
 - [x] iOS build pipeline working (EAS Build + EAS Submit → TestFlight)
+- [x] App submitted to App Review (manual release)
+- [x] App Review + internal test accounts planned + SQL helper prepared:
+  - `appletester@fl4sh.cards` (Pro for Apple review)
+  - `stu1@fl4sh.cards` (Free), `stu2@fl4sh.cards` (Premium), `stu3@fl4sh.cards` (Pro)
+  - See `scripts/test-accounts-and-cleanup.sql`
 - [ ] Payment testing on-device (TestFlight + sandbox accounts):
   - [ ] Premium monthly + annual (confirm Premium annual trial)
   - [ ] Pro monthly + annual
   - [ ] Upgrade/downgrade behavior
   - [ ] Restore purchases on fresh install
+- [ ] Post-launch ops: build a minimal **Admin dashboard** (web) for user/subscription ops + curriculum/papers tooling (extend existing marketing admin + data viewer)
 - [ ] Android: set up Play Console products + RevenueCat Android app + EAS build
 - [ ] Decide subscription “source of truth” (RevenueCat webhooks vs best-effort app sync only)
 0) This week (now → Dec 23): “Decisions + stability first”
@@ -105,4 +111,4 @@ Quick clarifying questions (so I can tighten this into a concrete task board)
 Payments: Do you want RevenueCat for v1 (yes/no), and do you prefer subscription or one-time for Full?
 Backend: Are you already using Supabase exclusively for subscription state, or do you also want RevenueCat webhooks to be the source of truth?
 Notifications: Are you okay shipping only “extraction completed” + “cards due” for v1, skipping streak reminders if time gets tight?
-If you want, I can turn this into a week-by-week checklist in a new LAUNCH-CHECKLIST.md and (if you say so) add/commit/push it to your repo.
+If you want, I can turn this into a week-by-week checklist in a new LAUNCH-CHECKLIST.md and (if you say so) add/commit/push it to your repo.am used to us
