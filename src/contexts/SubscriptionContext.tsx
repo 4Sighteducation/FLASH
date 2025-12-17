@@ -33,7 +33,8 @@ const subscriptionLimits: Record<SubscriptionTier, SubscriptionLimits> = {
     maxSubjects: 1,
     maxTopicsPerSubject: 1,
     maxCards: 10,
-    canUseAI: false,
+    // Core AI card generation is available on all tiers (main value prop).
+    canUseAI: true,
     canExportCards: false,
     canUseVoiceAnswers: false,
     canAccessPapers: false,
@@ -42,7 +43,7 @@ const subscriptionLimits: Record<SubscriptionTier, SubscriptionLimits> = {
     maxSubjects: -1, // Unlimited
     maxTopicsPerSubject: -1,
     maxCards: -1,
-    canUseAI: false,
+    canUseAI: true,
     canExportCards: true,
     canUseVoiceAnswers: false,
     canAccessPapers: false,

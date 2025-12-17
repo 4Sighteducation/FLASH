@@ -18,6 +18,8 @@ import PastPapersTutorial from '../../components/PastPapersTutorial';
 import QualityTierInfo from '../../components/QualityTierInfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface UserSubject {
   id: string;
@@ -47,10 +49,24 @@ const adjustColor = (color: string, amount: number): string => {
 
 export default function PastPapersLibraryScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { tier } = useSubscription();
   const [subjects, setSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showQualityInfo, setShowQualityInfo] = useState(false);
+
+  // Defense-in-depth: if user reaches this screen via deep navigation, still gate to Pro.
+  useEffect(() => {
+    if (tier !== 'pro') {
+      showUpgradePrompt({
+        title: 'Pro feature',
+        message: 'Past Papers are available on Pro. Upgrade to unlock real exam questions with AI marking.',
+        navigation,
+      });
+      // Send them back to a safe tab (Profile) so they don't sit on a locked page.
+      navigation.navigate('Profile' as never);
+    }
+  }, [tier, navigation]);
 
   const checkExtractionNotifications = useCallback(async () => {
     if (!user?.id) return;
