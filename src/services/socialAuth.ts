@@ -2,6 +2,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from './supabase';
 import { Alert, Platform } from 'react-native';
+import { handleOAuthCallback } from '../utils/oauthHandler';
 
 // Ensure web browser sessions complete properly
 WebBrowser.maybeCompleteAuthSession();
@@ -115,13 +116,17 @@ export const socialAuth = {
         }
 
         if (result.type === 'success') {
-          // The deep link handler in App.tsx will process the tokens
-          // Just return success here
-          console.log('OAuth flow completed, waiting for deep link handler...');
+          // Prefer processing the returned redirect URL directly (more reliable than relying on the url event)
+          if (result.url) {
+            const handled = await handleOAuthCallback(result.url);
+            if (!handled.success) {
+              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+            }
+          }
           return { error: null };
         }
 
-        return { error: null };
+        return { error: new Error('Authentication did not complete. Please try again.') };
       }
 
       return { error: new Error('No authentication URL returned') };
@@ -167,11 +172,16 @@ export const socialAuth = {
         }
 
         if (result.type === 'success') {
-          console.log('OAuth flow completed, waiting for deep link handler...');
+          if (result.url) {
+            const handled = await handleOAuthCallback(result.url);
+            if (!handled.success) {
+              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+            }
+          }
           return { error: null };
         }
 
-        return { error: null };
+        return { error: new Error('Authentication did not complete. Please try again.') };
       }
 
       return { error: new Error('No authentication URL returned') };
@@ -266,11 +276,16 @@ export const socialAuth = {
         }
 
         if (result.type === 'success') {
-          console.log('OAuth flow completed, waiting for deep link handler...');
+          if (result.url) {
+            const handled = await handleOAuthCallback(result.url);
+            if (!handled.success) {
+              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+            }
+          }
           return { error: null };
         }
 
-        return { error: null };
+        return { error: new Error('Authentication did not complete. Please try again.') };
       }
 
       return { error: new Error('No authentication URL returned') };
