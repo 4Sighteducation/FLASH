@@ -6,13 +6,18 @@ import { Alert, Platform } from 'react-native';
 // Ensure web browser sessions complete properly
 WebBrowser.maybeCompleteAuthSession();
 
-// Get the redirect URI for OAuth - using bundle identifier for iOS
-const redirectUri = makeRedirectUri({
-  scheme: Platform.OS === 'ios' ? 'com.foursighteducation.flash' : 'flash',
-  path: 'auth/callback',
-  preferLocalhost: false,
-  isTripleSlashed: true,
-});
+// Get the redirect URI for OAuth.
+// - Web must use an https URL (current origin) so the browser can redirect back.
+// - Native uses a custom scheme deep link handled in App.tsx.
+const redirectUri =
+  Platform.OS === 'web'
+    ? makeRedirectUri({ path: 'auth/callback' })
+    : makeRedirectUri({
+        scheme: Platform.OS === 'ios' ? 'com.foursighteducation.flash' : 'flash',
+        path: 'auth/callback',
+        preferLocalhost: false,
+        isTripleSlashed: true,
+      });
 
 console.log('OAuth Redirect URI:', redirectUri);
 

@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Alert } from 'react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
-import { SubscriptionProvider } from './src/contexts/SubscriptionContext.mock';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
@@ -13,24 +14,32 @@ import { handleOAuthCallback } from './src/utils/oauthHandler';
 function AppContent() {
   useEffect(() => {
     // Handle deep links for OAuth
-    const handleDeepLink = (url: string) => {
+    const handleDeepLink = async (url: string) => {
       if (url && url.includes('auth/callback')) {
         console.log('OAuth callback received, processing...');
         // Let the oauthHandler process the URL.
         // It will call setSession, which triggers onAuthStateChange in AuthContext.
-        handleOAuthCallback(url);
+        const result = await handleOAuthCallback(url);
+        if (!result.success) {
+          const message =
+            typeof result.error === 'string'
+              ? result.error
+              : result.error?.message || 'Authentication failed. Please try again.';
+          console.error('OAuth callback processing failed:', result.error);
+          Alert.alert('Login Error', message);
+        }
       }
     };
 
     // Listen for deep links
     const urlSubscription = Linking.addEventListener('url', (event) => {
-      handleDeepLink(event.url);
+      void handleDeepLink(event.url);
     });
 
     // Check if app was opened with a deep link
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleDeepLink(url);
+        void handleDeepLink(url);
       }
     });
 

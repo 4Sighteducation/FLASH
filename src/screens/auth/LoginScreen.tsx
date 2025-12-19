@@ -282,8 +282,8 @@ export default function LoginScreen({ navigation }: any) {
                 )}
               </TouchableOpacity>
 
-              {/* Apple - iOS/Android only */}
-              {Platform.OS !== 'web' && (
+              {/* Apple - iOS only */}
+              {Platform.OS === 'ios' && (
                 <TouchableOpacity
                   style={[styles.socialButton, styles.socialButtonApple, socialLoading === 'apple' && styles.socialButtonActive]}
                   onPress={() => handleSocialLogin('apple')}
