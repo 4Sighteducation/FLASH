@@ -117,11 +117,18 @@ export const socialAuth = {
 
         if (result.type === 'success') {
           // Prefer processing the returned redirect URL directly (more reliable than relying on the url event)
-          if (result.url) {
-            const handled = await handleOAuthCallback(result.url);
-            if (!handled.success) {
-              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
-            }
+          if (!result.url) {
+            return { error: new Error('No redirect URL received. Please try again.') };
+          }
+
+          const handled = await handleOAuthCallback(result.url);
+          if (!handled.success) {
+            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+          }
+
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            return { error: new Error('Login completed but no session was created. Please try again.') };
           }
           return { error: null };
         }
@@ -172,11 +179,18 @@ export const socialAuth = {
         }
 
         if (result.type === 'success') {
-          if (result.url) {
-            const handled = await handleOAuthCallback(result.url);
-            if (!handled.success) {
-              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
-            }
+          if (!result.url) {
+            return { error: new Error('No redirect URL received. Please try again.') };
+          }
+
+          const handled = await handleOAuthCallback(result.url);
+          if (!handled.success) {
+            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+          }
+
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            return { error: new Error('Login completed but no session was created. Please try again.') };
           }
           return { error: null };
         }
@@ -276,11 +290,18 @@ export const socialAuth = {
         }
 
         if (result.type === 'success') {
-          if (result.url) {
-            const handled = await handleOAuthCallback(result.url);
-            if (!handled.success) {
-              return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
-            }
+          if (!result.url) {
+            return { error: new Error('No redirect URL received. Please try again.') };
+          }
+
+          const handled = await handleOAuthCallback(result.url);
+          if (!handled.success) {
+            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+          }
+
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            return { error: new Error('Login completed but no session was created. Please try again.') };
           }
           return { error: null };
         }
