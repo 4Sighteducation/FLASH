@@ -15,6 +15,14 @@
         "EXPO_PUBLIC_PAPERS_API_URL": "https://subjectsandtopics-production.up.railway.app"
       }
     },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_pVZmmQpunaCvcUFFrkVnTknXeyx",
+        "EXPO_PUBLIC_PAPERS_API_URL": "https://subjectsandtopics-production.up.railway.app"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "ios": {
