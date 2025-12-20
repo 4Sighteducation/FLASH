@@ -265,18 +265,24 @@ export const socialAuth = {
         return { error: new Error('Sign in with Apple is not available on this device') };
       }
 
-      // Use a nonce to protect against replay attacks. Apple will hash this internally.
+      // Use a nonce to protect against replay attacks.
+      // Apple expects the *hashed* nonce in the request, but Supabase expects the *raw* nonce for verification.
       const nonceBytes = await Crypto.getRandomBytesAsync(16);
-      const nonce = Array.from(nonceBytes)
+      const rawNonce = Array.from(nonceBytes)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
+
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce
+      );
 
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
-        nonce,
+        nonce: hashedNonce,
       });
 
       if (!credential.identityToken) {
@@ -287,7 +293,7 @@ export const socialAuth = {
       const { data, error } = await (supabase.auth as any).signInWithIdToken({
         provider: 'apple',
         token: credential.identityToken,
-        nonce,
+        nonce: rawNonce,
       });
 
       if (error) {
