@@ -13,6 +13,7 @@ import {
   Linking,
   Dimensions,
 } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -109,9 +110,8 @@ export default function LoginScreen({ navigation }: any) {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: Platform.OS === 'web' 
-          ? window.location.origin + '/reset-password'
-          : 'flash://reset-password',
+        // Linking.createURL works on web (uses current origin) and native (uses the configured scheme).
+        redirectTo: ExpoLinking.createURL('reset-password'),
       });
 
       if (error) {
@@ -252,35 +252,37 @@ export default function LoginScreen({ navigation }: any) {
             </View>
 
             <View style={styles.socialButtonsContainer}>
-              {/* Google - Works on all platforms */}
-              <TouchableOpacity
-                style={[styles.socialButton, socialLoading === 'google' && styles.socialButtonActive]}
-                onPress={() => handleSocialLogin('google')}
-                disabled={!!socialLoading || loading}
-              >
-                {socialLoading === 'google' ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : Platform.OS === 'web' ? (
-                  <Text style={styles.socialButtonTextWeb}>G</Text>
-                ) : (
-                  <Ionicons name="logo-google" size={24} color="#00F5FF" />
-                )}
-              </TouchableOpacity>
+              {/* Google - Android + Web only */}
+              {Platform.OS !== 'ios' && (
+                <TouchableOpacity
+                  style={[styles.socialButton, socialLoading === 'google' && styles.socialButtonActive]}
+                  onPress={() => handleSocialLogin('google')}
+                  disabled={!!socialLoading || loading}
+                >
+                  {socialLoading === 'google' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : Platform.OS === 'web' ? (
+                    <Text style={styles.socialButtonTextWeb}>G</Text>
+                  ) : (
+                    <Ionicons name="logo-google" size={24} color="#00F5FF" />
+                  )}
+                </TouchableOpacity>
+              )}
 
-              {/* Microsoft - Works on all platforms */}
-              <TouchableOpacity
-                style={[styles.socialButton, socialLoading === 'microsoft' && styles.socialButtonActive]}
-                onPress={() => handleSocialLogin('microsoft')}
-                disabled={!!socialLoading || loading}
-              >
-                {socialLoading === 'microsoft' ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : Platform.OS === 'web' ? (
-                  <Text style={styles.socialButtonTextWeb}>M</Text>
-                ) : (
-                  <Ionicons name="logo-microsoft" size={24} color="#00F5FF" />
-                )}
-              </TouchableOpacity>
+              {/* Microsoft - Web only */}
+              {Platform.OS === 'web' && (
+                <TouchableOpacity
+                  style={[styles.socialButton, socialLoading === 'microsoft' && styles.socialButtonActive]}
+                  onPress={() => handleSocialLogin('microsoft')}
+                  disabled={!!socialLoading || loading}
+                >
+                  {socialLoading === 'microsoft' ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.socialButtonTextWeb}>M</Text>
+                  )}
+                </TouchableOpacity>
+              )}
 
               {/* Apple - iOS only */}
               {Platform.OS === 'ios' && (
@@ -342,14 +344,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0f1e', // Dark navy-black with subtle blue tint
-    ...(Platform.OS === 'web' && {
+    ...(Platform.OS === 'web' && ({
       minHeight: '100vh',
       backgroundImage: `
         linear-gradient(rgba(255, 0, 110, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 0, 110, 0.03) 1px, transparent 1px)
       `,
       backgroundSize: '50px 50px',
-    }),
+    } as any)),
   },
   keyboardView: {
     flex: 1,
@@ -361,11 +363,11 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     width: '100%',
     alignSelf: 'center',
-    ...(Platform.OS === 'web' && {
+    ...(Platform.OS === 'web' && ({
       paddingTop: 20,
       paddingBottom: 60,
       minHeight: 'fit-content',
-    }),
+    } as any)),
   },
   logoContainer: {
     alignItems: 'center',

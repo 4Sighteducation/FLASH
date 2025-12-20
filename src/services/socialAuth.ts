@@ -81,6 +81,9 @@ export const socialAuth = {
   // Sign in with Google
   signInWithGoogle: async (): Promise<AuthResponse> => {
     try {
+      if (Platform.OS === 'ios') {
+        return { error: new Error('Google Sign-In is not enabled on iOS') };
+      }
       console.log('Starting Google OAuth with redirect URI:', redirectUri);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -148,6 +151,9 @@ export const socialAuth = {
   // Sign in with Microsoft (Azure AD)
   signInWithMicrosoft: async (): Promise<AuthResponse> => {
     try {
+      if (Platform.OS !== 'web') {
+        return { error: new Error('Microsoft Sign-In is only enabled on web') };
+      }
       console.log('Starting Microsoft OAuth with redirect URI:', redirectUri);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
