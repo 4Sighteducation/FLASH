@@ -13,6 +13,7 @@ dist/
 *.mobileprovision
 *.orig.*
 web-build/
+apple-client-secret.txt
 
 # Testing
 coverage/
