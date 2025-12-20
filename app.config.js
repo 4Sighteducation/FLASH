@@ -26,7 +26,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "16",
+      buildNumber: "17",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
