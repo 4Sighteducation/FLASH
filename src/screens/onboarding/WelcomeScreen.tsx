@@ -28,6 +28,9 @@ interface DailyStats {
 export default function WelcomeScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const windowHeight = Dimensions.get('window').height;
+  const isCompact = windowHeight < 760;
+  const isVeryCompact = windowHeight < 700;
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -377,18 +380,42 @@ export default function WelcomeScreen() {
 
             {/* Step content */}
             <View style={styles.wizardContent}>
-              <Text style={styles.stepIcon}>{currentWizardStep.icon}</Text>
-              <Text style={styles.stepTitle}>{currentWizardStep.title}</Text>
-              <Text style={styles.stepSubtitle}>{currentWizardStep.subtitle}</Text>
-              <Text style={styles.stepDescription}>{currentWizardStep.description}</Text>
+              <Text style={[styles.stepIcon, isCompact && { fontSize: 56, marginBottom: 10 }]}>
+                {currentWizardStep.icon}
+              </Text>
+              <Text style={[styles.stepTitle, isCompact && { fontSize: 26 }]}>
+                {currentWizardStep.title}
+              </Text>
+              <Text style={[styles.stepSubtitle, isCompact && { fontSize: 16, marginBottom: 12 }]}>
+                {currentWizardStep.subtitle}
+              </Text>
+              <Text
+                style={[
+                  styles.stepDescription,
+                  isCompact && { fontSize: 14, lineHeight: 20, marginBottom: 14 },
+                ]}
+              >
+                {currentWizardStep.description}
+              </Text>
 
               {/* Features list for step 2 */}
               {currentWizardStep.features && (
                 <View style={styles.featuresContainer}>
                   {currentWizardStep.features.map((feature, index) => (
-                    <View key={index} style={styles.featureItem}>
-                      <Text style={styles.featureIcon}>{feature.icon}</Text>
-                      <Text style={styles.featureText}>{feature.text}</Text>
+                    <View
+                      key={index}
+                      style={[
+                        styles.featureItem,
+                        isCompact && { width: '48%', padding: 12, marginBottom: 10 },
+                        isVeryCompact && { padding: 10 },
+                      ]}
+                    >
+                      <Text style={[styles.featureIcon, isCompact && { fontSize: 24, marginRight: 10 }]}>
+                        {feature.icon}
+                      </Text>
+                      <Text style={[styles.featureText, isCompact && { fontSize: 13 }]}>
+                        {feature.text}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -464,11 +491,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 20,
   },
   logo: {
-    width: 160,
-    height: 160,
+    width: 140,
+    height: 140,
   },
   
   // Progress indicator
@@ -502,14 +529,14 @@ const styles = StyleSheet.create({
   // Wizard content
   wizardContent: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
   },
   stepIcon: {
-    fontSize: 72,
-    marginBottom: 16,
+    fontSize: 64,
+    marginBottom: 12,
   },
   stepTitle: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -517,7 +544,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepSubtitle: {
-    fontSize: 18,
+    fontSize: 17,
     color: '#00F5FF',
     textAlign: 'center',
     marginBottom: 20,
@@ -528,11 +555,14 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   featuresContainer: {
     width: '100%',
     marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   featureItem: {
     flexDirection: 'row',
@@ -543,6 +573,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.1)',
+    width: '100%',
   },
   featureIcon: {
     fontSize: 32,

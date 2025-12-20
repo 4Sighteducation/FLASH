@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, TextInput, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSubscription } from '../../contexts/SubscriptionContext.mock';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface ExamBoard {
@@ -50,6 +50,7 @@ export default function SubjectSelectionScreen() {
   const { user } = useAuth();
   const { tier, checkLimits } = useSubscription();
   const { examType, isAddingSubjects } = route.params as { examType: string; isAddingSubjects?: boolean };
+  const insets = useSafeAreaInsets();
   
   const [examBoards, setExamBoards] = useState<ExamBoard[]>([]);
   const [selectedExamBoard, setSelectedExamBoard] = useState<ExamBoard | null>(null);
@@ -245,10 +246,10 @@ export default function SubjectSelectionScreen() {
         );
       } else {
         // If in onboarding flow, go to first topic wizard
-        navigation.navigate('FirstTopicWizard' as never, { 
+        (navigation as any).navigate('FirstTopicWizard', { 
           subjects: selectedSubjects,
           examType,
-        } as never);
+        });
       }
     } catch (error) {
       console.error('Error saving subjects:', error);
@@ -269,7 +270,12 @@ export default function SubjectSelectionScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 180 + insets.bottom }, // Space for sticky footer + home indicator
+          ]}
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -418,7 +424,7 @@ export default function SubjectSelectionScreen() {
 
           {/* Sticky floating continue button */}
           {selectedExamBoard && selectedSubjects.length > 0 && (
-            <View style={styles.stickyFooter}>
+            <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
               {showScrollHint && (
                 <View style={styles.scrollHintContainer}>
                   <Text style={styles.scrollHintText}>

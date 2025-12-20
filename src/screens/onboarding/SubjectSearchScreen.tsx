@@ -10,7 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,6 +44,7 @@ export default function SubjectSearchScreen() {
   const route = useRoute();
   const { user } = useAuth();
   const { examType } = route.params as { examType: string };
+  const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GroupedSubject[]>([]);
@@ -332,7 +333,13 @@ export default function SubjectSearchScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          // Ensure content isn't hidden behind the fixed bottom bar / home indicator
+          { paddingBottom: (selectedSubjects.length > 0 ? 140 : 20) + insets.bottom },
+        ]}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -537,13 +544,11 @@ export default function SubjectSearchScreen() {
           </View>
         )}
 
-        {/* Bottom spacing for button */}
-        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Floating Continue Button */}
       {selectedSubjects.length > 0 && (
-        <View style={styles.bottomBarContainer}>
+        <View style={[styles.bottomBarContainer, { paddingBottom: 12 + insets.bottom }]}>
           <LinearGradient
             colors={['#FF006E', '#00F5FF']}
             start={{ x: 0, y: 0 }}
