@@ -27,6 +27,7 @@ import { useAdminAccess } from '../../hooks/useAdminAccess';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
 import { getAvatarForXp } from '../../services/avatarService';
 import { supabase } from '../../services/supabase';
+import { pushNotificationService } from '../../services/pushNotificationService';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -104,11 +105,47 @@ export default function ProfileScreen() {
   };
 
   const handleNotificationToggle = async (value: boolean) => {
-    setNotificationsEnabled(value);
     try {
       await AsyncStorage.setItem('notificationsEnabled', value.toString());
+      if (user?.id) {
+        // Keep server-side prefs in sync for scheduled pushes
+        await pushNotificationService.upsertPreferences({
+          userId: user.id,
+          pushEnabled: value,
+        });
+      }
+
+      if (value) {
+        if (!user?.id) {
+          Alert.alert('Login Required', 'Please log in to enable push notifications.');
+          setNotificationsEnabled(false);
+          await AsyncStorage.setItem('notificationsEnabled', 'false');
+          return;
+        }
+
+        const reg = await pushNotificationService.registerForPushNotifications();
+        if (!reg.ok) {
+          Alert.alert('Notifications Disabled', reg.reason);
+          setNotificationsEnabled(false);
+          await AsyncStorage.setItem('notificationsEnabled', 'false');
+          await pushNotificationService.upsertPreferences({
+            userId: user.id,
+            pushEnabled: false,
+          });
+          return;
+        }
+
+        await pushNotificationService.upsertPushToken({
+          userId: user.id,
+          expoPushToken: reg.expoPushToken,
+          enabled: true,
+        });
+      }
+
+      setNotificationsEnabled(value);
     } catch (error) {
       console.error('Error saving notification preference:', error);
+      Alert.alert('Error', 'Failed to update notification settings. Please try again.');
     }
   };
 

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 import { cleanupOrphanedCards } from '../utils/databaseMaintenance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { pushNotificationService } from '../services/pushNotificationService';
 
 interface AuthContextType {
   user: User | null;
@@ -42,6 +44,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Error cleaning up orphaned cards:', error);
+      }
+
+      // Best-effort: register push token if user has enabled notifications
+      try {
+        const enabled = (await AsyncStorage.getItem('notificationsEnabled')) !== 'false';
+        if (enabled) {
+          await pushNotificationService.upsertPreferences({
+            userId: newSession.user.id,
+            pushEnabled: true,
+          });
+          const reg = await pushNotificationService.registerForPushNotifications();
+          if (reg.ok) {
+            await pushNotificationService.upsertPushToken({
+              userId: newSession.user.id,
+              expoPushToken: reg.expoPushToken,
+              enabled: true,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('[Auth] Push registration skipped:', e);
       }
     }
   };

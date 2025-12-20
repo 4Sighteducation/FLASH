@@ -1,0 +1,124 @@
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+import { supabase } from './supabase';
+
+export type PushRegistrationResult =
+  | { ok: true; expoPushToken: string }
+  | { ok: false; reason: string };
+
+// Show notifications when received (foreground)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
+
+function getEasProjectId(): string | undefined {
+  // For EAS builds, this is the correct project id for getExpoPushTokenAsync.
+  return (
+    // @ts-expect-error: expo-constants typing varies by SDK
+    Constants.easConfig?.projectId ||
+    // @ts-expect-error: expo-constants typing varies by SDK
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    // @ts-expect-error: expo-constants typing varies by SDK
+    Constants.expoConfig?.extra?.EXPO_PUBLIC_PUSH_NOTIFICATION_PROJECT_ID
+  );
+}
+
+export const pushNotificationService = {
+  async registerForPushNotifications(): Promise<PushRegistrationResult> {
+    try {
+      // Request permission
+      const existing = await Notifications.getPermissionsAsync();
+      let status = existing.status;
+
+      if (status !== 'granted') {
+        const requested = await Notifications.requestPermissionsAsync();
+        status = requested.status;
+      }
+
+      if (status !== 'granted') {
+        return { ok: false, reason: 'Notifications permission not granted' };
+      }
+
+      const projectId = getEasProjectId();
+      if (!projectId) {
+        return { ok: false, reason: 'Missing EAS projectId for push token registration' };
+      }
+
+      const token = await Notifications.getExpoPushTokenAsync({ projectId });
+
+      // Android requires a channel for proper display
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.DEFAULT,
+        });
+      }
+
+      return { ok: true, expoPushToken: token.data };
+    } catch (e: any) {
+      return { ok: false, reason: e?.message || 'Failed to register for push notifications' };
+    }
+  },
+
+  async upsertPushToken(params: {
+    userId: string;
+    expoPushToken: string;
+    enabled: boolean;
+  }): Promise<void> {
+    const { userId, expoPushToken, enabled } = params;
+
+    const { error } = await supabase
+      .from('user_push_tokens')
+      .upsert(
+        {
+          user_id: userId,
+          expo_push_token: expoPushToken,
+          enabled,
+          platform: Platform.OS,
+          last_seen_at: new Date().toISOString(),
+        },
+        { onConflict: 'expo_push_token' }
+      );
+
+    if (error) throw error;
+  },
+
+  async upsertPreferences(params: {
+    userId: string;
+    pushEnabled: boolean;
+    dailyDueCardsEnabled?: boolean;
+    dailyDueCardsHour?: number;
+    timezone?: string;
+  }): Promise<void> {
+    const { userId, pushEnabled, dailyDueCardsEnabled, dailyDueCardsHour, timezone } = params;
+
+    const tz =
+      timezone ||
+      (typeof Intl !== 'undefined'
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : undefined) ||
+      'UTC';
+
+    const { error } = await supabase
+      .from('user_notification_preferences')
+      .upsert(
+        {
+          user_id: userId,
+          push_enabled: pushEnabled,
+          daily_due_cards_enabled: dailyDueCardsEnabled ?? true,
+          daily_due_cards_hour: dailyDueCardsHour ?? 18,
+          timezone: tz,
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (error) throw error;
+  },
+};
+
+
