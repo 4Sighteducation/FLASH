@@ -3,6 +3,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { supabase } from './supabase';
 import { Alert, Platform } from 'react-native';
 import { handleOAuthCallback } from '../utils/oauthHandler';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 
 // Ensure web browser sessions complete properly
 WebBrowser.maybeCompleteAuthSession();
@@ -258,58 +260,46 @@ export const socialAuth = {
     }
 
     try {
-      console.log('Starting Apple OAuth with redirect URI:', redirectUri);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const available = await AppleAuthentication.isAvailableAsync();
+      if (!available) {
+        return { error: new Error('Sign in with Apple is not available on this device') };
+      }
+
+      // Use a nonce to protect against replay attacks. Apple will hash this internally.
+      const nonceBytes = await Crypto.getRandomBytesAsync(16);
+      const nonce = Array.from(nonceBytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce,
+      });
+
+      if (!credential.identityToken) {
+        return { error: new Error('No identity token returned from Apple') };
+      }
+
+      // Exchange the Apple identity token for a Supabase session (native flow, no web prompt)
+      const { data, error } = await (supabase.auth as any).signInWithIdToken({
         provider: 'apple',
-        options: {
-          redirectTo: redirectUri,
-        },
+        token: credential.identityToken,
+        nonce,
       });
 
       if (error) {
-        console.error('Apple auth error:', error);
+        console.error('Apple native sign-in error:', error);
         return { error };
       }
 
-      if (data?.url) {
-        console.log('Opening Apple OAuth URL...');
-        
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUri,
-          {
-            dismissButtonStyle: 'close',
-          }
-        );
-
-        console.log('WebBrowser result:', result);
-
-        if (result.type === 'cancel') {
-          return { error: new Error('Authentication cancelled') };
-        }
-
-        if (result.type === 'success') {
-          if (!result.url) {
-            return { error: new Error('No redirect URL received. Please try again.') };
-          }
-
-          const handled = await handleOAuthCallback(result.url);
-          if (!handled.success) {
-            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
-          }
-
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            return { error: new Error('Login completed but no session was created. Please try again.') };
-          }
-          return { error: null };
-        }
-
-        return { error: new Error('Authentication did not complete. Please try again.') };
+      if (!data?.session) {
+        return { error: new Error('Login completed but no session was created. Please try again.') };
       }
 
-      return { error: new Error('No authentication URL returned') };
+      return { error: null };
     } catch (error) {
       console.error('Apple sign in error:', error);
       return { error };
