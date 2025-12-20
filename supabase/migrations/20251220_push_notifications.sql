@@ -157,7 +157,7 @@ as $$
         and f.in_study_bank = true
         and coalesce(f.next_review_date, now()) <= now()
         and f.subject_name in (
-          select s.subject.subject_name
+          select s.subject_name
           from public.user_subjects us
           join public.exam_board_subjects s on s.id = us.subject_id
           where us.user_id = c.user_id
@@ -171,7 +171,7 @@ as $$
       and f.in_study_bank = true
       and coalesce(f.next_review_date, now()) <= now()
       and f.subject_name in (
-        select s.subject.subject_name
+        select s.subject_name
         from public.user_subjects us
         join public.exam_board_subjects s on s.id = us.subject_id
         where us.user_id = c.user_id
