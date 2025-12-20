@@ -214,6 +214,20 @@ export default function SubjectSelectionScreen() {
     if (selectedSubjects.length === 0) return;
 
     try {
+      if (!user?.id || !user?.email) {
+        throw new Error('Missing user session');
+      }
+
+      // Ensure a public.users profile exists (some social logins can lack it if DB trigger isn't installed)
+      const { error: ensureError } = await supabase.rpc('ensure_user_profile', {
+        p_user_id: user.id,
+        p_email: user.email,
+        p_username: user.user_metadata?.username ?? null,
+      });
+      if (ensureError) {
+        console.warn('[Onboarding] ensure_user_profile failed:', ensureError);
+      }
+
       // Update user's exam type
       const { error: userError } = await supabase
         .from('users')

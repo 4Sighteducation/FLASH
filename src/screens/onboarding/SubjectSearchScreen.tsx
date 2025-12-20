@@ -278,6 +278,20 @@ export default function SubjectSearchScreen() {
     setIsSaving(true);
 
     try {
+      if (!user?.id || !user?.email) {
+        throw new Error('Missing user session');
+      }
+
+      // Ensure a public.users profile exists (some social logins can lack it if DB trigger isn't installed)
+      const { error: ensureError } = await supabase.rpc('ensure_user_profile', {
+        p_user_id: user.id,
+        p_email: user.email,
+        p_username: user.user_metadata?.username ?? null,
+      });
+      if (ensureError) {
+        console.warn('[Onboarding] ensure_user_profile failed:', ensureError);
+      }
+
       console.log('💾 Saving subjects...', selectedSubjects);
       
       // Save all selected subjects to database
@@ -322,7 +336,25 @@ export default function SubjectSearchScreen() {
       navigation.navigate('OnboardingComplete' as never);
     } catch (error) {
       console.error('❌ Error saving subjects:', error);
-      Alert.alert('Error', 'Failed to save your subjects. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to save your subjects. Please try again.',
+        [
+          { text: 'OK' },
+          {
+            text: 'Sign out',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await supabase.auth.signOut();
+              } finally {
+                // @ts-expect-error navigation typing
+                navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              }
+            },
+          },
+        ]
+      );
       setIsSaving(false);
     }
   };
