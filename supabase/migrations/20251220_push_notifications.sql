@@ -159,7 +159,7 @@ as $$
         and f.subject_name in (
           select s.subject.subject_name
           from public.user_subjects us
-          join public.exam_board_subjects s on s.subject_id = us.subject_id
+          join public.exam_board_subjects s on s.id = us.subject_id
           where us.user_id = c.user_id
         )
     )::int as due_count
@@ -173,7 +173,7 @@ as $$
       and f.subject_name in (
         select s.subject.subject_name
         from public.user_subjects us
-        join public.exam_board_subjects s on s.subject_id = us.subject_id
+        join public.exam_board_subjects s on s.id = us.subject_id
         where us.user_id = c.user_id
       )
   ) > 0
