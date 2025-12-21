@@ -79,8 +79,12 @@ export const pushNotificationService = {
       p_platform: Platform.OS,
     });
     if (claimError) {
-      // If the RPC isn't installed yet, fall back to the upsert below.
+      // If the RPC isn't installed yet, don't attempt the upsert (it often triggers RLS errors
+      // when the same token exists for another user). We'll retry once the migration is applied.
       console.warn('[Push] claim_user_push_token failed:', claimError);
+      if ((claimError as any).code === 'PGRST202') {
+        return;
+      }
     }
 
     const { error } = await supabase
