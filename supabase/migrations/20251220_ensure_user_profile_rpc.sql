@@ -12,11 +12,12 @@ security definer
 as $$
 begin
   -- Create users row if missing
-  insert into public.users (id, email, username, created_at, updated_at)
+  insert into public.users (id, email, username, is_onboarded, created_at, updated_at)
   values (
     p_user_id,
     p_email,
     coalesce(nullif(p_username, ''), split_part(p_email, '@', 1)),
+    false,
     now(),
     now()
   )

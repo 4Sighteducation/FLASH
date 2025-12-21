@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
@@ -16,6 +16,7 @@ const examTypes = [
 export default function ExamTypeSelectionScreen() {
   const navigation = useNavigation();
   const [selectedExamType, setSelectedExamType] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const handleContinue = () => {
     if (selectedExamType) {
@@ -26,7 +27,12 @@ export default function ExamTypeSelectionScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 110 + insets.bottom },
+          ]}
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
@@ -77,7 +83,10 @@ export default function ExamTypeSelectionScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </ScrollView>
 
+        {/* Sticky CTA */}
+        <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity
             style={[
               styles.continueButton,
@@ -88,7 +97,7 @@ export default function ExamTypeSelectionScreen() {
           >
             <Text style={styles.continueButtonText}>Continue →</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </View>
   );
@@ -210,5 +219,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0a0f1e',
     letterSpacing: 0.5,
+  },
+  stickyFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 245, 255, 0.15)',
+    backgroundColor: '#0a0f1e',
+    paddingHorizontal: 24,
+    paddingTop: 12,
   },
 }); 

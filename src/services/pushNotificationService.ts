@@ -11,6 +11,9 @@ export type PushRegistrationResult =
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
+    // SDK 54+/iOS 17+ uses these fields
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),
@@ -19,12 +22,9 @@ Notifications.setNotificationHandler({
 function getEasProjectId(): string | undefined {
   // For EAS builds, this is the correct project id for getExpoPushTokenAsync.
   return (
-    // @ts-expect-error: expo-constants typing varies by SDK
-    Constants.easConfig?.projectId ||
-    // @ts-expect-error: expo-constants typing varies by SDK
-    Constants.expoConfig?.extra?.eas?.projectId ||
-    // @ts-expect-error: expo-constants typing varies by SDK
-    Constants.expoConfig?.extra?.EXPO_PUBLIC_PUSH_NOTIFICATION_PROJECT_ID
+    (Constants as any).easConfig?.projectId ||
+    (Constants as any).expoConfig?.extra?.eas?.projectId ||
+    (Constants as any).expoConfig?.extra?.EXPO_PUBLIC_PUSH_NOTIFICATION_PROJECT_ID
   );
 }
 
@@ -71,6 +71,16 @@ export const pushNotificationService = {
     enabled: boolean;
   }): Promise<void> {
     const { userId, expoPushToken, enabled } = params;
+
+    // Claim the token first (handles account switching / reinstall scenarios)
+    const { error: claimError } = await supabase.rpc('claim_user_push_token', {
+      p_expo_push_token: expoPushToken,
+      p_platform: Platform.OS,
+    });
+    if (claimError) {
+      // If the RPC isn't installed yet, fall back to the upsert below.
+      console.warn('[Push] claim_user_push_token failed:', claimError);
+    }
 
     const { error } = await supabase
       .from('user_push_tokens')

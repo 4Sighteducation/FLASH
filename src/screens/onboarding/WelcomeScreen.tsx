@@ -29,8 +29,8 @@ export default function WelcomeScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const windowHeight = Dimensions.get('window').height;
-  const isCompact = windowHeight < 760;
-  const isVeryCompact = windowHeight < 700;
+  const isCompact = windowHeight < 780;
+  const isVeryCompact = windowHeight < 720;
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [dailyStats, setDailyStats] = useState<DailyStats | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
@@ -308,19 +308,19 @@ export default function WelcomeScreen() {
       icon: '⚡',
       title: "Welcome to FLASH!",
       subtitle: "Where last-minute revision actually works",
-      description: "We're about to turn your exam prep from 'mild panic' to 'quietly confident' using AI, voice tech, and some genuinely clever algorithms. No nonsense, just results.",
+      description: "Turn exam prep from panic to confidence with smart flashcards and spaced repetition.",
       buttonText: "Right, Let's Go →",
     },
     {
       icon: '🧠',
       title: "How This Works",
       subtitle: "Surprisingly simple, actually",
-      description: "FLASH uses the Leitner Box system - a proven spaced repetition technique. Cards you know? See you later. Cards that trip you up? Back tomorrow. Think of it as a study buddy who actually remembers what you need to work on.",
+      description: "Cards you know reappear later. Cards you miss come back sooner. Your weak spots get more practice automatically.",
       features: [
         { icon: '🤖', text: 'AI creates cards from any topic' },
-        { icon: '🎤', text: 'Voice answers with instant feedback' },
-        { icon: '📸', text: 'Photo to flashcard in seconds' },
-        { icon: '📊', text: 'Track your progress properly' },
+        { icon: '🎤', text: 'Voice answers + feedback' },
+        { icon: '📸', text: 'Photo → flashcards' },
+        { icon: '📊', text: 'Progress tracking' },
       ],
       buttonText: "Brilliant →",
     },
@@ -328,7 +328,7 @@ export default function WelcomeScreen() {
       icon: '🎯',
       title: "Let's Get You Set Up",
       subtitle: "What are you studying?",
-      description: "Choose your exam type and subjects. Don't worry, you can change this anytime. We're quite flexible.",
+      description: "Pick your exam type + subjects. You can change this anytime.",
       buttonText: "Set My Subjects →",
     },
   ];
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 8,
   },
   content: {
     flex: 1,
@@ -494,15 +494,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logo: {
-    width: 140,
-    height: 140,
+    width: 120,
+    height: 120,
   },
   
   // Progress indicator
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: 16,
   },
   progressDot: {
     width: 12,
@@ -529,14 +529,14 @@ const styles = StyleSheet.create({
   // Wizard content
   wizardContent: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   stepIcon: {
-    fontSize: 64,
-    marginBottom: 12,
+    fontSize: 56,
+    marginBottom: 10,
   },
   stepTitle: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -544,22 +544,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepSubtitle: {
-    fontSize: 17,
+    fontSize: 15,
     color: '#00F5FF',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
     fontWeight: '600',
   },
   stepDescription: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 18,
+    lineHeight: 20,
+    marginBottom: 12,
   },
   featuresContainer: {
     width: '100%',
-    marginTop: 8,
+    marginTop: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -569,19 +569,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.1)',
-    width: '100%',
+    width: '48%',
   },
   featureIcon: {
-    fontSize: 32,
-    marginRight: 16,
+    fontSize: 22,
+    marginRight: 10,
   },
   featureText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 13,
     color: '#E2E8F0',
     fontWeight: '500',
   },
@@ -593,8 +593,8 @@ const styles = StyleSheet.create({
   nextButton: {
     backgroundColor: '#00F5FF',
     borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     alignItems: 'center',
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 0 20px rgba(0, 245, 255, 0.8)',
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     }),
   },
   nextButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0a0f1e',
     letterSpacing: 0.5,

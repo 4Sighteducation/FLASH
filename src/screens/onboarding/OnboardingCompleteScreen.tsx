@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function OnboardingCompleteScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     // Mark user as onboarded
@@ -40,40 +41,39 @@ export default function OnboardingCompleteScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 120 + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.iconContainer}>
             <View style={styles.successIcon}>
               {Platform.OS === 'web' ? (
-                <Text style={{ fontSize: 100 }}>✅</Text>
+                <Text style={{ fontSize: 84 }}>✅</Text>
               ) : (
-                <Ionicons name="checkmark-circle" size={100} color="#00F5FF" />
+                <Ionicons name="checkmark-circle" size={84} color="#00F5FF" />
               )}
             </View>
           </View>
 
           <View style={styles.textContainer}>
-            <Text style={styles.title}>You're All Set! 🎉</Text>
-            <Text style={styles.subtitle}>
-              Let's create your first flashcards
-            </Text>
+            <Text style={styles.title}>You're All Set!</Text>
+            <Text style={styles.subtitle}>Create your first flashcards</Text>
             <Text style={styles.description}>
-              You'll use our smart search to find topics as you learn. 
-              The more you study, the more your personalized topic list grows!
+              Search a topic → AI generates cards → you study with spaced repetition.
             </Text>
           </View>
 
           <View style={styles.howItWorksContainer}>
-            <Text style={styles.howItWorksTitle}>How FLASH works:</Text>
-            
             <View style={styles.step}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>1</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Search for a Topic</Text>
-                <Text style={styles.stepDescription}>
-                  Type what you're learning (e.g., "photosynthesis")
-                </Text>
+                <Text style={styles.stepTitle}>Search a topic</Text>
+                <Text style={styles.stepDescription}>e.g. “photosynthesis”</Text>
               </View>
             </View>
 
@@ -82,30 +82,26 @@ export default function OnboardingCompleteScreen() {
                 <Text style={styles.stepNumberText}>2</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>AI Generates Flashcards</Text>
-                <Text style={styles.stepDescription}>
-                  Get exam-focused cards instantly
-                </Text>
+                <Text style={styles.stepTitle}>AI generates cards</Text>
+                <Text style={styles.stepDescription}>exam-focused + instant</Text>
               </View>
             </View>
 
-            <View style={styles.step}>
+            <View style={styles.stepNoMargin}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
               <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Study & Master</Text>
-                <Text style={styles.stepDescription}>
-                  Cards move through 5 boxes as you learn
-                </Text>
+                <Text style={styles.stepTitle}>Study & master</Text>
+                <Text style={styles.stepDescription}>Leitner boxes handle timing</Text>
               </View>
             </View>
           </View>
+        </ScrollView>
 
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleGetStarted}
-          >
+        {/* Sticky CTA */}
+        <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
+          <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
             <Text style={styles.buttonText}>Create Your First Flashcards →</Text>
           </TouchableOpacity>
         </View>
@@ -130,15 +126,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 48,
+    paddingTop: 28,
   },
   iconContainer: {
-    marginTop: 40,
+    marginBottom: 16,
   },
   successIcon: {
     backgroundColor: 'rgba(0, 245, 255, 0.1)',
@@ -161,49 +156,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 40,
+    fontSize: 34,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 16,
-    letterSpacing: 1,
+    marginBottom: 8,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#00F5FF',
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: 'center',
     fontWeight: '600',
   },
   description: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 20,
   },
   howItWorksContainer: {
     width: '100%',
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
     borderRadius: 20,
-    padding: 24,
+    padding: 18,
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.2)',
-  },
-  howItWorksTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#00F5FF',
-    marginBottom: 20,
-    textAlign: 'center',
+    marginTop: 16,
   },
   step: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 20,
   },
+  stepNoMargin: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 0,
+  },
   stepNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FF006E',
     alignItems: 'center',
     justifyContent: 'center',
@@ -230,8 +224,8 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#00F5FF',
-    paddingHorizontal: 48,
-    paddingVertical: 18,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -246,9 +240,16 @@ const styles = StyleSheet.create({
     }),
   },
   buttonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#0a0f1e',
     letterSpacing: 0.5,
+  },
+  stickyFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 245, 255, 0.15)',
+    backgroundColor: '#0a0f1e',
+    paddingHorizontal: 24,
+    paddingTop: 12,
   },
 });
