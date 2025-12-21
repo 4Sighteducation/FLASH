@@ -13,6 +13,11 @@ type DueRow = {
   daily_due_cards_hour: number;
   last_daily_due_cards_sent_at: string | null;
   due_count: number;
+  due_box_1?: number;
+  due_box_2?: number;
+  due_box_3?: number;
+  due_box_4?: number;
+  due_box_5?: number;
 };
 
 function chunk<T>(arr: T[], size: number) {
@@ -39,14 +44,36 @@ serve(async (req) => {
       });
     }
 
-    const messages = rows.map((r) => ({
+    const messages = rows.map((r) => {
+      const b1 = r.due_box_1 ?? 0;
+      const b2 = r.due_box_2 ?? 0;
+      const b3 = r.due_box_3 ?? 0;
+      const b4 = r.due_box_4 ?? 0;
+      const b5 = r.due_box_5 ?? 0;
+
+      const breakdownParts = [
+        `B1 ${b1}`,
+        `B2 ${b2}`,
+        `B3 ${b3}`,
+        `B4 ${b4}`,
+        `B5 ${b5}`,
+      ].filter((p) => !p.endsWith(' 0'));
+
+      const breakdown = breakdownParts.length ? ` (${breakdownParts.join(' • ')})` : '';
+
+      return {
       to: r.expo_push_token,
       sound: 'default',
       title: 'FLASH',
-      body: `You have ${r.due_count} cards due for review today.`,
+      body: `You have ${r.due_count} cards due for review today.${breakdown}`,
       badge: r.due_count,
-      data: { type: 'daily_due_cards', dueCount: r.due_count },
-    }));
+      data: {
+        type: 'daily_due_cards',
+        dueCount: r.due_count,
+        dueByBox: { 1: b1, 2: b2, 3: b3, 4: b4, 5: b5 },
+      },
+    };
+    });
 
     // Expo recommends chunking
     const chunks = chunk(messages, 100);
