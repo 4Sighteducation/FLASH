@@ -60,6 +60,7 @@ export default function SubjectSearchScreen() {
     gcse: 'GCSE',
     alevel: 'A_LEVEL',
     aslevel: 'AS_LEVEL',
+    ialev: 'IA_LEVEL',
     btec: 'BTEC',
     ib: 'IB',
     igcse: 'IGCSE',

@@ -343,6 +343,29 @@ export default function WelcomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            {/* Small logo in top-right (keeps content above-the-fold) */}
+            <Animated.View
+              style={[
+                styles.logoFloating,
+                {
+                  transform: [
+                    {
+                      scale: glowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.98, 1.02],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Image
+                source={require('../../../assets/flash-logo-transparent.png')}
+                style={styles.logoSmall}
+                resizeMode="contain"
+              />
+            </Animated.View>
+
             {/* Progress indicator */}
             <View style={styles.progressContainer}>
               {Array.from({ length: STEP_COUNT }).map((_, index) => (
@@ -356,27 +379,6 @@ export default function WelcomeScreen() {
                 />
               ))}
             </View>
-
-            {/* Logo */}
-            <Animated.View 
-              style={[
-                styles.logoContainer,
-                {
-                  transform: [{
-                    scale: glowAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.98, 1.02],
-                    }),
-                  }],
-                }
-              ]}
-            >
-              <Image
-                source={require('../../../assets/flash-logo-transparent.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </Animated.View>
 
             {/* Step content */}
             <View style={styles.wizardContent}>
@@ -474,6 +476,7 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
+    paddingTop: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -489,13 +492,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 20,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
+  logoFloating: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 56,
+    height: 56,
+    opacity: 0.9,
+    zIndex: 10,
   },
-  logo: {
-    width: 120,
-    height: 120,
+  logoSmall: {
+    width: 56,
+    height: 56,
   },
   
   // Progress indicator
@@ -503,6 +511,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 16,
+    marginTop: 8,
   },
   progressDot: {
     width: 12,

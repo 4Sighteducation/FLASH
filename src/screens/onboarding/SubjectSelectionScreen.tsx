@@ -32,6 +32,7 @@ const examTypeToCode: { [key: string]: string } = {
   'gcse': 'GCSE',
   'alevel': 'A_LEVEL',
   'aslevel': 'AS_LEVEL',
+  'ialev': 'IA_LEVEL',
   'btec': 'BTEC',
   'ib': 'IB',
   'igcse': 'IGCSE',
@@ -39,6 +40,7 @@ const examTypeToCode: { [key: string]: string } = {
   'GCSE': 'GCSE',
   'A-Level': 'A_LEVEL',
   'AS-Level': 'AS_LEVEL',
+  'iA-Level': 'IA_LEVEL',
   'BTEC': 'BTEC',
   'IB': 'IB',
   'iGCSE': 'IGCSE'

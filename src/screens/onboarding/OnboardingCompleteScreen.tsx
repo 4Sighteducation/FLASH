@@ -41,25 +41,26 @@ export default function OnboardingCompleteScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <View style={styles.inner}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: 120 + insets.bottom },
+            { paddingBottom: 140 + insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.iconContainer}>
             <View style={styles.successIcon}>
               {Platform.OS === 'web' ? (
-                <Text style={{ fontSize: 84 }}>✅</Text>
+                <Text style={{ fontSize: 68 }}>✅</Text>
               ) : (
-                <Ionicons name="checkmark-circle" size={84} color="#00F5FF" />
+                <Ionicons name="checkmark-circle" size={68} color="#00F5FF" />
               )}
             </View>
           </View>
 
           <View style={styles.textContainer}>
-            <Text style={styles.title}>You're All Set!</Text>
+            <Text style={styles.title}>You're All Set! 🎉</Text>
             <Text style={styles.subtitle}>Create your first flashcards</Text>
             <Text style={styles.description}>
               Search a topic → AI generates cards → you study with spaced repetition.
@@ -99,11 +100,12 @@ export default function OnboardingCompleteScreen() {
           </View>
         </ScrollView>
 
-        {/* Sticky CTA */}
+        {/* Sticky CTA (absolute pinned so it's always tappable above home indicator) */}
         <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
             <Text style={styles.buttonText}>Create Your First Flashcards →</Text>
           </TouchableOpacity>
+        </View>
         </View>
       </SafeAreaView>
     </View>
@@ -124,6 +126,9 @@ const styles = StyleSheet.create({
     }),
   },
   safeArea: {
+    flex: 1,
+  },
+  inner: {
     flex: 1,
   },
   scrollContent: {
@@ -156,7 +161,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 8,
@@ -246,6 +251,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stickyFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0, 245, 255, 0.15)',
     backgroundColor: '#0a0f1e',
