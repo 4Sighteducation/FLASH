@@ -308,14 +308,18 @@ export default function WelcomeScreen() {
       icon: '⚡',
       title: "Welcome to FLASH!",
       subtitle: "Where last-minute revision actually works",
-      description: "Turn exam prep from panic to confidence with smart flashcards and spaced repetition.",
+      description: "Turn exam prep from panic to confidence with smart flashcards and spaced repetition. Set up once, then just study.",
+      features: [
+        { icon: '⏱️', text: '30‑second setup' },
+        { icon: '🎯', text: 'Exam‑focused revision' },
+      ],
       buttonText: "Right, Let's Go →",
     },
     {
       icon: '🧠',
       title: "How This Works",
       subtitle: "Surprisingly simple, actually",
-      description: "Cards you know reappear later. Cards you miss come back sooner. Your weak spots get more practice automatically.",
+      description: "Cards you know reappear later. Cards you miss come back sooner. Your weak spots get more practice automatically — without you thinking about it.",
       features: [
         { icon: '🤖', text: 'AI creates cards from any topic' },
         { icon: '🎤', text: 'Voice answers + feedback' },
@@ -329,6 +333,12 @@ export default function WelcomeScreen() {
       title: "Let's Get You Set Up",
       subtitle: "What are you studying?",
       description: "Pick your exam type + subjects. You can change this anytime.",
+      features: [
+        { icon: '🧾', text: 'Choose exam type' },
+        { icon: '📚', text: 'Select subjects' },
+        { icon: '✨', text: 'Personalised topics' },
+        { icon: '🔁', text: 'Change anytime' },
+      ],
       buttonText: "Set My Subjects →",
     },
   ];
@@ -545,7 +555,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   stepTitle: {
-    fontSize: 26,
+    fontSize: 27,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -553,7 +563,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepSubtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#00F5FF',
     textAlign: 'center',
     marginBottom: 10,
@@ -578,8 +588,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
+    padding: 13,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.1)',
     width: '48%',
