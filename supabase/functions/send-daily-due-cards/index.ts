@@ -44,6 +44,7 @@ serve(async (req) => {
       sound: 'default',
       title: 'FLASH',
       body: `You have ${r.due_count} cards due for review today.`,
+      badge: r.due_count,
       data: { type: 'daily_due_cards', dueCount: r.due_count },
     }));
 

@@ -15,7 +15,8 @@ Notifications.setNotificationHandler({
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: false,
-    shouldSetBadge: false,
+    // Show a badge count on the app icon when we send a badge number
+    shouldSetBadge: true,
   }),
 });
 

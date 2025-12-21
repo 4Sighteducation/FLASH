@@ -18,6 +18,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 
+const TOPIC_SEARCH_ENDPOINTS = [
+  process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
+  'https://www.fl4sh.cards/api/search-topics',
+  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/search-topics',
+].filter(Boolean) as string[];
+
 interface TopicSearchResult {
   topic_id: string;
   topic_name: string;
@@ -195,27 +201,36 @@ export default function SmartTopicDiscoveryScreen() {
       };
       
       console.log('🔍 Searching with params:', searchParams);
-      
-      // Generate embedding and search using your vector search API
-      const response = await fetch('https://www.fl4sh.cards/api/search-topics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(searchParams),
-      });
-      
-      console.log('📡 Response status:', response.status);
 
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
+      let lastError: any = null;
+      for (const endpoint of TOPIC_SEARCH_ENDPOINTS) {
+        try {
+          console.log('🌐 Topic search endpoint:', endpoint);
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(searchParams),
+          });
 
-      const data = await response.json();
-      
-      console.log('📊 Search results:', data);
-      
-      if (data.success) {
+          const rawText = await response.text();
+          console.log('📡 Response status:', response.status);
+
+          if (!response.ok) {
+            lastError = new Error(`HTTP ${response.status}: ${rawText.slice(0, 300)}`);
+            continue;
+          }
+
+          const data = rawText ? JSON.parse(rawText) : {};
+          console.log('📊 Search results:', data);
+
+          const success = typeof data?.success === 'boolean' ? data.success : true;
+          const results = data?.results || [];
+
+          if (!success) {
+            lastError = new Error(data?.message || 'Search failed');
+            continue;
+          }
+
         const rawResults = data.results || [];
         console.log(`✅ Found ${rawResults.length} raw topics`);
         
@@ -254,12 +269,21 @@ export default function SmartTopicDiscoveryScreen() {
         console.log(`🎯 After ranking: ${ranked.length} topics (specific topics boosted)`);
         
         setSearchResults(ranked as TopicSearchResult[]);
-      } else {
-        console.error('❌ Search failed:', data.message);
-        Alert.alert('Search Failed', data.message || 'No results found');
+          return;
+        } catch (e) {
+          lastError = e;
+          continue;
+        }
       }
+
+      console.warn('❌ Search failed across all endpoints:', lastError);
+      Alert.alert(
+        'Search Error',
+        'Topic search is temporarily unavailable. Please try again, or use Browse Curriculum.',
+        [{ text: 'OK' }]
+      );
     } catch (error) {
-      console.error('❌ Search error:', error);
+      console.warn('❌ Search error:', error);
       Alert.alert('Search Error', 'Failed to search topics. Please try again.');
     } finally {
       setIsSearching(false);
