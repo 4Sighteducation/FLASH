@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Supabase Edge Functions run on Deno. This repo's TS tooling is configured for RN/Node and
+// doesn't understand Deno URL imports or the global `Deno`, so we disable TS checking here.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
