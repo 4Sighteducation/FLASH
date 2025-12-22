@@ -21,7 +21,10 @@ import { getTopicLabel, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 const TOPIC_SEARCH_ENDPOINTS = [
   process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
   'https://www.fl4sh.cards/api/search-topics',
-  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/search-topics',
+  'https://www.fl4sh.cards/api/topics/search-topics',
+  // Legacy Vercel endpoint must include /api
+  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/search-topics',
+  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/topics/search-topics',
 ].filter(Boolean) as string[];
 
 interface TopicSearchResult {
@@ -153,7 +156,9 @@ export default function SmartTopicDiscoveryScreen() {
         const suggestions = data.map((item: any) => {
           const topicName = item.topic_name;
           // Remove leading numbers, periods, and spaces (e.g., "6.1 " or "3.4.5 ")
-          return topicName.replace(/^[\d.]+\s+/, '').trim();
+          const withoutCodes = topicName.replace(/^[\d.]+\s+/, '').trim();
+          // Never show spec blobs as "popular topics" chips
+          return sanitizeTopicLabel(withoutCodes, { maxLength: 64 });
         });
         console.log('✅ Smart suggestions loaded:', suggestions);
         setSmartSuggestions(suggestions);
@@ -172,19 +177,21 @@ export default function SmartTopicDiscoveryScreen() {
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
+    // Ensure suggestions / pasted text doesn't become a blob query
+    const cleanedQuery = sanitizeTopicLabel(query, { maxLength: 120 });
+    setSearchQuery(cleanedQuery);
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
 
-    if (query.trim().length < 2) {
+    if (cleanedQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
 
     searchDebounceRef.current = setTimeout(() => {
-      performSearch(query);
+      performSearch(cleanedQuery);
     }, 500);
   };
 
