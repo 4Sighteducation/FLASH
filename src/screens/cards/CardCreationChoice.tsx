@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 interface CardCreationChoiceProps {
   navigation: any;
@@ -26,6 +27,9 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
     searchQuery,
     subjectId
   } = route.params as any;
+
+  // Never show raw scraped/blobby topic strings in the UI
+  const displayTopicName = sanitizeTopicLabel(topicName, { maxLength: 140 });
 
   const handleAICreate = () => {
     console.log('🎨 Navigating to AIGenerator with params:', {
@@ -81,7 +85,7 @@ export default function CardCreationChoice({ navigation, route }: CardCreationCh
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.topicName}>{topicName}</Text>
+        <Text style={styles.topicName}>{displayTopicName}</Text>
         <Text style={styles.subtitle}>No flashcards exist for this topic yet</Text>
         <Text style={styles.question}>How would you like to create flashcards?</Text>
 
