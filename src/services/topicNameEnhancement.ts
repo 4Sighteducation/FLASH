@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getTopicLabel } from '../utils/topicNameUtils';
 
 export interface TopicNameEnhancementParams {
   topicId: string;
@@ -93,7 +94,9 @@ export class TopicNameEnhancementService {
     return (
       topicName.length <= 3 ||
       /^[0-9]+$/.test(topicName) ||
-      /^[0-9]+\.[0-9]+/.test(topicName)
+      /^[0-9]+\.[0-9]+/.test(topicName) ||
+      /<[^>]+>/.test(topicName) || // HTML blobs
+      topicName.length > 120 // overly long "content cells"
     );
   }
 
@@ -101,7 +104,8 @@ export class TopicNameEnhancementService {
    * Get display name with fallback
    */
   static getDisplayName(topic: { topic_name: string; display_name?: string }): string {
-    return topic.display_name || topic.topic_name;
+    return getTopicLabel(topic);
   }
 }
+
 

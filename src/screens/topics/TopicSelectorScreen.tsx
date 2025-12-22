@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTopicLabel } from '../../utils/topicNameUtils';
 
 interface ExamBoard {
   id: string;
@@ -29,6 +30,7 @@ interface Subject {
 interface Topic {
   id: string;
   topic_name: string;
+  display_name?: string | null;
   topic_code: string;
   topic_level: number;
   parent_topic_id: string | null;
@@ -262,7 +264,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
                       selectedTopics.has(topic.id) && styles.topicTextSelected,
                     ]}
                   >
-                    {topic.topic_name}
+                    {getTopicLabel(topic)}
                   </Text>
                   {topic.topic_code && (
                     <Text style={styles.topicCode}>{topic.topic_code}</Text>

@@ -13,10 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getTopicLabel } from '../../utils/topicNameUtils';
 
 interface CurriculumTopic {
   id: string;
   topic_name: string;
+  display_name?: string | null;
   topic_level: number;
   parent_topic_id: string | null;
   exam_board_subject_id: string;
@@ -25,7 +27,8 @@ interface CurriculumTopic {
 
 interface TopicNode {
   id: string;
-  name: string;
+  name: string; // raw key
+  displayLabel: string; // safe UI label
   level: number;
   children: TopicNode[];
   isCollapsed?: boolean;
@@ -105,6 +108,7 @@ export default function CardTopicSelector() {
       topicMap.set(topic.id, {
         id: topic.id,
         name: topic.topic_name,
+        displayLabel: getTopicLabel(topic),
         level: topic.topic_level,
         originalLevel: topic.topic_level,
         children: [],
@@ -238,7 +242,7 @@ export default function CardTopicSelector() {
               depth === 1 && styles.topicTitleText,
               depth === 2 && styles.subTopicTitle,
             ]}>
-              {node.name}
+              {node.displayLabel}
             </Text>
           </View>
           {!hasChildren && (

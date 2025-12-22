@@ -18,10 +18,12 @@ import { Alert } from 'react-native';
 import { notificationService } from '../../services/notificationService';
 import NotificationBadge from '../../components/NotificationBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getTopicLabel } from '../../utils/topicNameUtils';
 
 interface CurriculumTopic {
   id: string;
   topic_name: string;
+  display_name?: string | null;
   topic_level: number;
   parent_topic_id: string | null;
   exam_board_subject_id: string;
@@ -30,7 +32,8 @@ interface CurriculumTopic {
 
 interface TopicNode {
   id: string;
-  name: string;
+  name: string; // raw key (matches flashcards.topic usage)
+  displayLabel: string; // safe UI label (display_name preferred + sanitization)
   level: number;
   children: TopicNode[];
   isCollapsed?: boolean;
@@ -238,6 +241,7 @@ export default function TopicListScreen() {
       topicMap.set(topic.id, {
         id: topic.id,
         name: topic.topic_name,
+        displayLabel: getTopicLabel(topic),
         level: topic.topic_level,
         originalLevel: topic.topic_level,
         children: [],
@@ -514,7 +518,7 @@ export default function TopicListScreen() {
                   depth === 2 && styles.subTopicTitle,
                   { color: textColor },
                 ]}>
-                  {node.name}
+                  {node.displayLabel}
                 </Text>
               </View>
               <View style={styles.topicMeta}>

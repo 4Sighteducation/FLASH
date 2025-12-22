@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTopicSearch } from '../../hooks/useTopicSearch';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -272,7 +273,7 @@ export default function TopicSearchScreen() {
                     {/* Topic info */}
                     <View style={styles.resultContent}>
                       <View style={styles.resultHeader}>
-                        <Text style={styles.resultTitle}>{result.topic_name}</Text>
+                        <Text style={styles.resultTitle}>{sanitizeTopicLabel(result.topic_name)}</Text>
                         <View 
                           style={[
                             styles.difficultyBadge,

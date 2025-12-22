@@ -17,6 +17,7 @@ import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getTopicLabel } from '../../utils/topicNameUtils';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
 interface Topic {
@@ -372,7 +373,7 @@ export default function TopicHubScreen() {
                   depth === 1 && styles.topicNameText,
                   depth === 2 && styles.subTopicName,
                 ]}>
-                  {topic.topic_name}
+                  {getTopicLabel(topic)}
                 </Text>
                 <Text style={styles.levelLabel}>{levelName}</Text>
               </View>
@@ -467,7 +468,7 @@ export default function TopicHubScreen() {
           { borderLeftColor: priorityInfo?.color, borderLeftWidth: 4 }
         ]}>
           <View style={styles.priorityItemContent}>
-            <Text style={styles.priorityItemName}>{topic.topic_name}</Text>
+            <Text style={styles.priorityItemName}>{getTopicLabel(topic)}</Text>
             <View style={[styles.priorityBadge, { backgroundColor: priorityInfo?.color }]}>
               <Text style={styles.priorityEmoji}>{priorityInfo?.emoji}</Text>
               <Text style={styles.priorityText}>{priorityInfo?.label}</Text>

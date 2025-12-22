@@ -17,6 +17,7 @@ import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { SelectedSubject, Topic } from '../types';
+import { getTopicLabel } from '../utils/topicNameUtils';
 
 interface TopicEditModalProps {
   visible: boolean;
@@ -99,7 +100,7 @@ export default function TopicEditModal({
         // Convert to our Topic format
         const formattedTopics = curriculumTopics?.map((t: any, index: number) => ({
           id: t.id,
-          title: t.topic_name,
+          title: getTopicLabel(t),
           parentId: t.parent_topic_id,
           isCustom: false,
           sortOrder: t.sort_order || index,

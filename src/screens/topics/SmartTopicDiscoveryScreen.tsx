@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
-import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import { getTopicLabel, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 const TOPIC_SEARCH_ENDPOINTS = [
   process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
@@ -41,6 +41,7 @@ interface TopicSearchResult {
 interface RecentTopic {
   topic_id: string;
   topic_name: string;
+  display_name?: string | null;
   search_query: string;
   discovered_at: string;
 }
@@ -91,7 +92,7 @@ export default function SmartTopicDiscoveryScreen() {
           topic_id,
           search_query,
           discovered_at,
-          topic:curriculum_topics(topic_name)
+          topic:curriculum_topics(topic_name, display_name)
         `)
         .eq('user_id', user?.id)
         .eq('subject_id', subjectId)
@@ -103,6 +104,7 @@ export default function SmartTopicDiscoveryScreen() {
       const formatted = (data || []).map((item: any) => ({
         topic_id: item.topic_id,
         topic_name: item.topic?.topic_name || 'Unknown',
+        display_name: item.topic?.display_name || null,
         search_query: item.search_query || '',
         discovered_at: item.discovered_at,
       }));
@@ -465,7 +467,7 @@ export default function SmartTopicDiscoveryScreen() {
                   onPress={() => handleRecentTopicPress(topic)}
                 >
                   <View style={styles.recentTopicContent}>
-                    <Text style={styles.recentTopicName}>{abbreviateTopicName(topic.topic_name)}</Text>
+                    <Text style={styles.recentTopicName}>{getTopicLabel(topic)}</Text>
                     {topic.search_query && (
                       <Text style={styles.recentSearchQuery}>
                         Searched: "{topic.search_query}"
@@ -519,7 +521,7 @@ export default function SmartTopicDiscoveryScreen() {
 
                   <View style={styles.resultContent}>
                     {/* Topic Name - PROMINENT (Abbreviated for readability) */}
-                    <Text style={styles.resultTitle}>{abbreviateTopicName(result.topic_name)}</Text>
+                    <Text style={styles.resultTitle}>{sanitizeTopicLabel(result.topic_name)}</Text>
 
                     {/* Breadcrumb Path - SHOW CONTEXT */}
                     {result.full_path && result.full_path.length > 1 && (

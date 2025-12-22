@@ -60,6 +60,54 @@ export function abbreviateTopicName(topicName: string): string {
 }
 
 /**
+ * Canonical "safe display" label for any topic-like string.
+ * - Strips HTML tags / blob text
+ * - Normalizes whitespace
+ * - Truncates for UI
+ *
+ * Use this everywhere we render any topic name that may come from scraping or stored flashcards.
+ */
+export function sanitizeTopicLabel(
+  topicName?: string | null,
+  options: { maxLength?: number } = {}
+): string {
+  if (!topicName) return '';
+  const { maxLength = 120 } = options;
+
+  // Start from the existing abbreviation logic (already strips HTML and truncates to ~80)
+  let cleaned = abbreviateTopicName(topicName);
+
+  // Normalize whitespace/newlines further (defensive)
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+  // Optional longer/shorter truncation at callsite
+  if (maxLength && cleaned.length > maxLength) {
+    cleaned = cleaned.substring(0, Math.max(0, maxLength - 3)).trimEnd() + '...';
+  }
+
+  return cleaned;
+}
+
+/**
+ * Canonical topic label rule (everywhere):
+ * - display_name if present
+ * - else sanitized topic_name
+ * - else raw topic_name (last resort)
+ */
+export function getTopicLabel(topic: {
+  display_name?: string | null;
+  topic_name?: string | null;
+}): string {
+  const display = (topic.display_name || '').trim();
+  if (display) return display;
+
+  const sanitized = sanitizeTopicLabel(topic.topic_name);
+  if (sanitized) return sanitized;
+
+  return (topic.topic_name || 'Untitled topic').trim() || 'Untitled topic';
+}
+
+/**
  * Get the full topic name with context (for AI)
  */
 export function getFullTopicContext(topicName: string): string {
@@ -111,6 +159,7 @@ export function formatTopicForDisplay(
   
   return formatted;
 }
+
 
 
 

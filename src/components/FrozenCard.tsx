@@ -8,13 +8,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from './Icon';
+import { sanitizeTopicLabel } from '../utils/topicNameUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 // Helper function to strip exam type from subject name
 const stripExamType = (subjectName: string): string => {
+  const cleaned = sanitizeTopicLabel(subjectName, { maxLength: 140 });
   // Remove common exam type patterns like "(A-Level)", "(GCSE)", etc.
-  return subjectName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return cleaned.replace(/\s*\([^)]*\)\s*$/, '').trim();
 };
 
 interface FrozenCardProps {

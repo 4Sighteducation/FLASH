@@ -17,7 +17,7 @@ import DetailedAnswerModal from './DetailedAnswerModal';
 import VoiceAnswerModal from './VoiceAnswerModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { LeitnerSystem } from '../utils/leitnerSystem';
-import { abbreviateTopicName } from '../utils/topicNameUtils';
+import { sanitizeTopicLabel } from '../utils/topicNameUtils';
 
 interface FlashcardCardProps {
   card: {
@@ -86,8 +86,9 @@ const getOptionsFontSize = (options: string[], baseSize: number = 14): number =>
 
 // Helper function to strip exam type from subject name
 const stripExamType = (subjectName: string): string => {
+  const cleaned = sanitizeTopicLabel(subjectName, { maxLength: 140 });
   // Remove common exam type patterns like "(A-Level)", "(GCSE)", etc.
-  return subjectName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  return cleaned.replace(/\s*\([^)]*\)\s*$/, '').trim();
 };
 
 export default function FlashcardCard({

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import FlashcardCard from '../../components/FlashcardCard';
 import StudySlideshowModal from '../../components/StudySlideshowModal';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
@@ -210,7 +211,7 @@ export default function FlashcardsScreen() {
           <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {subjectName} {topicFilter ? `- ${topicFilter}` : ''} Flashcards
+          {subjectName} {topicFilter ? `- ${sanitizeTopicLabel(topicFilter, { maxLength: 60 })}` : ''} Flashcards
         </Text>
         <TouchableOpacity onPress={handlePlayPress}>
           <Icon name="play-circle" size={28} color={subjectColor} />

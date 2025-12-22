@@ -14,7 +14,7 @@ import Icon from './Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../services/supabase';
-import { abbreviateTopicName } from '../utils/topicNameUtils';
+import { getTopicLabel, sanitizeTopicLabel } from '../utils/topicNameUtils';
 import RevealContextTutorial from './RevealContextTutorial';
 import { TopicNameEnhancementService } from '../services/topicNameEnhancement';
 
@@ -205,11 +205,11 @@ export default function TopicContextModal({
       try {
         const { data: children, error } = await supabase
           .from('curriculum_topics')
-          .select('topic_name')
+          .select('topic_name, display_name')
           .eq('parent_topic_id', topic.id);
         
         if (error) throw error;
-        childrenNames = children?.map(c => c.topic_name) || [];
+        childrenNames = children?.map((c: any) => getTopicLabel(c)) || [];
       } catch (error) {
         console.error('Error fetching children for overview:', error);
       }
@@ -263,7 +263,7 @@ export default function TopicContextModal({
               ]}
               numberOfLines={2}
             >
-              {abbreviateTopicName(topic.name)}
+              {sanitizeTopicLabel(topic.name)}
             </Text>
             <Text style={styles.topicMeta}>
               Level {topic.level} • {topic.card_count || 0} cards
@@ -366,7 +366,7 @@ export default function TopicContextModal({
           )}
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>🗺️ Curriculum Map</Text>
-            <Text style={styles.headerSubtitle}>{abbreviateTopicName(topicName)}</Text>
+            <Text style={styles.headerSubtitle}>{sanitizeTopicLabel(topicName)}</Text>
           </View>
         </LinearGradient>
 
@@ -381,8 +381,8 @@ export default function TopicContextModal({
             {context.grandparent && (
               <View style={styles.breadcrumbContainer}>
                 <Text style={styles.breadcrumbText}>
-                  {abbreviateTopicName(context.grandparent.name)}
-                  {context.parent && ` › ${abbreviateTopicName(context.parent.name)}`}
+                  {sanitizeTopicLabel(context.grandparent.name)}
+                  {context.parent && ` › ${sanitizeTopicLabel(context.parent.name)}`}
                 </Text>
               </View>
             )}
@@ -407,10 +407,10 @@ export default function TopicContextModal({
               <>
                 <View style={styles.divider} />
                 <Text style={styles.sectionLabel}>
-                  ↔️ Related Topics ({abbreviateTopicName(context.parent.name)})
+                  ↔️ Related Topics ({sanitizeTopicLabel(context.parent.name)})
                 </Text>
                 {renderSection(
-                  abbreviateTopicName(context.parent.name),
+                  sanitizeTopicLabel(context.parent.name),
                   context.siblings,
                   'siblings',
                   context.parent.id
@@ -490,7 +490,7 @@ export default function TopicContextModal({
                     Explore Related Sections
                   </Text>
                   <Text style={[styles.exploreHint, { color: colors.textSecondary }]}>
-                    Find more topics in {abbreviateTopicName(context.parent.name)}
+                    Find more topics in {sanitizeTopicLabel(context.parent.name)}
                   </Text>
                   <Icon name="chevron-forward" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>

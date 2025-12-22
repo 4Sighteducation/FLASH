@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from './Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { LeitnerSystem } from '../utils/leitnerSystem';
-import { abbreviateTopicName } from '../utils/topicNameUtils';
+import { sanitizeTopicLabel } from '../utils/topicNameUtils';
 
 interface FlashcardCardProps {
   card: {
@@ -174,7 +174,7 @@ export default function FlashcardCard({
           >
             {card.topic && (
               <Text style={styles.topicLabel} numberOfLines={1}>
-                {abbreviateTopicName(card.topic).toUpperCase()}
+                {sanitizeTopicLabel(card.topic, { maxLength: 60 }).toUpperCase()}
               </Text>
             )}
             <View style={styles.headerBadges}>
@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
 });
+
 
 
 
