@@ -49,7 +49,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 8
+      versionCode: 9
     },
     web: {
       favicon: "./assets/icon.png"
