@@ -69,3 +69,8 @@ eas.json.local
 *.log
 tmp/
 temp/ android/
+
+# Local EAS debugging artifacts (do not commit)
+.eas_build_view.json
+.eas_log*.txt
+.eas_log_url.txt
