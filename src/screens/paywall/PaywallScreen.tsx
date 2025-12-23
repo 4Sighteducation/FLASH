@@ -157,7 +157,8 @@ export default function PaywallScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
             <Text style={styles.billingHint}>
-              {billing === 'annual' ? 'Billed yearly' : 'Billed monthly'} • Prices pulled from the App Store
+              {billing === 'annual' ? 'Billed yearly' : 'Billed monthly'} • Prices pulled from{' '}
+              {Platform.OS === 'ios' ? 'the App Store' : Platform.OS === 'android' ? 'Google Play' : 'the store'}
             </Text>
             {pricingLoading && (
               <View style={styles.pricingLoadingRow}>
@@ -283,7 +284,9 @@ export default function PaywallScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
             <Text style={styles.legal}>
-              Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel in your App Store settings.
+              Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period. Manage or
+              cancel in your {Platform.OS === 'ios' ? 'App Store' : Platform.OS === 'android' ? 'Google Play' : 'store'}{' '}
+              settings.
             </Text>
           </View>
         </ScrollView>
