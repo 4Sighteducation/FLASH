@@ -5,6 +5,7 @@ import { Alert, Platform } from 'react-native';
 import { handleOAuthCallback } from '../utils/oauthHandler';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
+import Constants from 'expo-constants';
 
 // Ensure web browser sessions complete properly
 WebBrowser.maybeCompleteAuthSession();
@@ -32,6 +33,40 @@ export type AuthProvider = SocialProvider | 'phone';
 interface AuthResponse {
   error: any;
   url?: string;
+}
+
+// Native Google Sign-In (Android)
+const extra = Constants.expoConfig?.extra || {};
+const GOOGLE_WEB_CLIENT_ID = extra.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID as string | undefined;
+let googleSigninConfigured = false;
+let GoogleSigninModule: any | null = null;
+
+async function getGoogleSigninModule() {
+  if (GoogleSigninModule) return GoogleSigninModule;
+  // Dynamic import so web bundles don't break on native-only modules.
+  GoogleSigninModule = await import('@react-native-google-signin/google-signin');
+  return GoogleSigninModule;
+}
+
+async function ensureGoogleSigninConfigured() {
+  if (googleSigninConfigured) return;
+  if (!GOOGLE_WEB_CLIENT_ID) {
+    throw new Error(
+      'Google Sign-In is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in EAS env (a Google OAuth "Web application" client ID).'
+    );
+  }
+  const mod = await getGoogleSigninModule();
+  const GoogleSignin = mod?.GoogleSignin;
+  if (!GoogleSignin) {
+    throw new Error('Google Sign-In module not available. Rebuild the Android app (EAS build) and try again.');
+  }
+
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: true,
+    forceCodeForRefreshToken: true,
+  });
+  googleSigninConfigured = true;
 }
 
 export const phoneAuth = {
@@ -86,6 +121,37 @@ export const socialAuth = {
       if (Platform.OS === 'ios') {
         return { error: new Error('Google Sign-In is not enabled on iOS') };
       }
+
+      // Prefer native Google sign-in on Android (no Supabase web page).
+      if (Platform.OS === 'android') {
+        await ensureGoogleSigninConfigured();
+        const { GoogleSignin } = await getGoogleSigninModule();
+
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const userInfo = await GoogleSignin.signIn();
+        const idToken = userInfo?.idToken;
+
+        if (!idToken) {
+          return { error: new Error('Google Sign-In did not return an idToken. Check your Google OAuth client ID setup.') };
+        }
+
+        const { data, error } = await (supabase.auth as any).signInWithIdToken({
+          provider: 'google',
+          token: idToken,
+        });
+
+        if (error) {
+          console.error('Google native sign-in (Supabase exchange) error:', error);
+          return { error };
+        }
+
+        if (!data?.session) {
+          return { error: new Error('Login completed but no session was created. Please try again.') };
+        }
+
+        return { error: null };
+      }
+
       console.log('Starting Google OAuth with redirect URI:', redirectUri);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
