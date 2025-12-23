@@ -13,7 +13,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
-  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
@@ -25,7 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAdminAccess } from '../../hooks/useAdminAccess';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
-import { getAvatarForXp } from '../../services/avatarService';
+import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { supabase } from '../../services/supabase';
 import { pushNotificationService } from '../../services/pushNotificationService';
 
@@ -222,7 +221,7 @@ export default function ProfileScreen() {
     setSendingMessage(true);
     
     // Create email link
-    const email = 'support@vespa.academy';
+    const email = 'support@fl4shcards.com';
     const subject = `FLASH App Support: ${contactSubject}`;
     const body = `From: ${user?.email || 'Unknown'}\nUsername: ${user?.user_metadata?.username || 'Not set'}\n\n${contactMessage}`;
     
@@ -237,10 +236,10 @@ export default function ProfileScreen() {
         setShowContactForm(false);
         Alert.alert('Success', 'Your email app has been opened with your support message.');
       } else {
-        Alert.alert('Error', 'Unable to open email app. Please email us directly at support@vespa.academy');
+        Alert.alert('Error', 'Unable to open email app. Please email us directly at support@fl4shcards.com');
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to send message. Please email us directly at support@vespa.academy');
+      Alert.alert('Error', 'Unable to send message. Please email us directly at support@fl4shcards.com');
     } finally {
       setSendingMessage(false);
     }
@@ -321,7 +320,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
             
             <Text style={styles.contactInfo}>
-              Or email us directly at: support@vespa.academy
+              Or email us directly at: support@fl4shcards.com
             </Text>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -335,10 +334,9 @@ export default function ProfileScreen() {
         <View style={styles.header}>
           {(() => {
             const rank = getRankForXp(totalPoints);
-            const avatar = getAvatarForXp(totalPoints);
             return (
               <View style={[styles.avatar, { borderColor: rank.current.color }]}>
-                <Image source={avatar.source} style={styles.avatarImage} resizeMode="contain" />
+                <SystemStatusRankIcon rankKey={rank.current.key} size={64} />
               </View>
             );
           })()}
@@ -374,23 +372,39 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            {tier === 'free' && (
-              <>
+            <>
+              <TouchableOpacity
+                style={styles.upgradeButton}
+                onPress={() => navigation.navigate('Paywall' as never)}
+              >
+                <Icon name="star" size={20} color="#fff" />
+                <Text style={styles.upgradeButtonText}>
+                  {tier === 'free' ? 'View plans' : 'Manage / View plans'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.restoreButton} onPress={restorePurchases}>
+                <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+              </TouchableOpacity>
+
+              {Platform.OS === 'ios' && (
                 <TouchableOpacity
-                  style={styles.upgradeButton}
-                  onPress={() => navigation.navigate('Paywall' as never)}
+                  style={styles.manageStoreButton}
+                  onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
                 >
-                  <Icon name="star" size={20} color="#fff" />
-                  <Text style={styles.upgradeButtonText}>View plans</Text>
+                  <Text style={styles.manageStoreButtonText}>Manage in App Store</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.restoreButton}
-                  onPress={restorePurchases}
+              )}
+
+              {Platform.OS === 'android' && (
+                <TouchableOpacity
+                  style={styles.manageStoreButton}
+                  onPress={() => Linking.openURL('https://play.google.com/store/account/subscriptions')}
                 >
-                  <Text style={styles.restoreButtonText}>Restore Purchase</Text>
+                  <Text style={styles.manageStoreButtonText}>Manage in Google Play</Text>
                 </TouchableOpacity>
-              </>
-            )}
+              )}
+            </>
           </View>
         </View>
 
@@ -448,6 +462,33 @@ export default function ProfileScreen() {
           >
             <Icon name="help-circle-outline" size={24} color="#666" />
             <Text style={styles.settingText}>Help & Support</Text>
+            <Icon name="chevron-forward" size={24} color="#ccc" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Linking.openURL('https://www.fl4shcards.com/privacy/')}
+          >
+            <Icon name="document-text-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Privacy Policy</Text>
+            <Icon name="open-outline" size={22} color="#ccc" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Linking.openURL('https://www.fl4shcards.com/terms/')}
+          >
+            <Icon name="document-outline" size={24} color="#666" />
+            <Text style={styles.settingText}>Terms of Use (EULA)</Text>
+            <Icon name="open-outline" size={22} color="#ccc" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('DeleteAccount' as never)}
+          >
+            <Icon name="trash-outline" size={24} color="#DC2626" />
+            <Text style={[styles.settingText, { color: '#DC2626', fontWeight: '600' }]}>Delete Account</Text>
             <Icon name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
           
@@ -517,12 +558,19 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#00D4FF',
+    // Dark "stage" so neon status icon pops
+    backgroundColor: '#0B1220',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+    // Mobile-first: make the status icon feel "powered on"
+    shadowColor: '#14b8a6',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
   },
   avatarImage: {
     width: 92,
@@ -735,5 +783,13 @@ const styles = StyleSheet.create({
     color: '#00D4FF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  manageStoreButton: {
+    paddingVertical: 8,
+  },
+  manageStoreButtonText: {
+    color: '#6B7280',
+    fontSize: 13,
+    fontWeight: '600',
   },
 }); 
