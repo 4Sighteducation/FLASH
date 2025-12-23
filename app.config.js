@@ -49,12 +49,28 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 9
+      versionCode: 9,
+      // Ensure OAuth redirects can deep-link back into the app on Android.
+      // We support both the canonical scheme and the legacy "flash" scheme for safety.
+      intentFilters: [
+        {
+          action: "VIEW",
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [{ scheme: "com.foursighteducation.flash" }]
+        },
+        {
+          action: "VIEW",
+          category: ["BROWSABLE", "DEFAULT"],
+          data: [{ scheme: "flash" }]
+        }
+      ]
     },
     web: {
       favicon: "./assets/icon.png"
     },
-    scheme: "flash",
+    // Canonical scheme used across iOS + Android for OAuth callbacks.
+    // iOS also includes "flash" in CFBundleURLTypes for backward compatibility.
+    scheme: "com.foursighteducation.flash",
     plugins: [
       [
         "expo-build-properties",

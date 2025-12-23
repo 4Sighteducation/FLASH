@@ -16,7 +16,9 @@ const redirectUri =
   Platform.OS === 'web'
     ? makeRedirectUri({ path: 'auth/callback' })
     : makeRedirectUri({
-        scheme: Platform.OS === 'ios' ? 'com.foursighteducation.flash' : 'flash',
+        // Use ONE canonical scheme across iOS + Android so Supabase redirect allow-list is stable.
+        // (Using different schemes per platform often results in "redirect not allowed" or web auth sessions that never resolve.)
+        scheme: 'com.foursighteducation.flash',
         path: 'auth/callback',
         preferLocalhost: false,
         isTripleSlashed: true,
