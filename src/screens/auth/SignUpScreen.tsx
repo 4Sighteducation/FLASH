@@ -133,7 +133,7 @@ export default function SignUpScreen({ navigation }: any) {
                   style={styles.termsLink}
                   onPress={(e) => {
                     e.stopPropagation();
-                    Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy');
+                    Linking.openURL('https://www.fl4shcards.com/terms/');
                   }}
                 >
                   Terms & Conditions
@@ -143,7 +143,7 @@ export default function SignUpScreen({ navigation }: any) {
                   style={styles.termsLink}
                   onPress={(e) => {
                     e.stopPropagation();
-                    Linking.openURL('https://4sighteducation.github.io/FLASH/privacy-policy');
+                    Linking.openURL('https://www.fl4shcards.com/privacy/');
                   }}
                 >
                   Privacy Policy

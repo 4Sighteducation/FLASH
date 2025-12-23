@@ -24,6 +24,17 @@ export type Plan = 'premium' | 'pro';
 
 export type RevenueCatTier = 'free' | 'premium' | 'pro';
 
+export type OfferingPackagePricing = {
+  identifier: string;
+  plan: Plan;
+  billing: BillingPeriod;
+  priceString: string;
+  price: number | null;
+  currencyCode: string | null;
+  // Common RevenueCat shape: { unit: 'MONTH'|'YEAR'|..., value: number }
+  subscriptionPeriod?: { unit?: string; value?: number } | null;
+};
+
 export function resolveTierFromCustomerInfo(info: any): RevenueCatTier {
   const active = info?.entitlements?.active ?? {};
   if (active.pro) return 'pro';
@@ -38,23 +49,22 @@ export function getExpirationIso(info: any): string | null {
   return exp ? new Date(exp).toISOString() : null;
 }
 
-export async function configureRevenueCat(params: { apiKey: string; appUserId: string }): Promise<boolean> {
+export async function configureRevenueCat(params: { apiKey: string; appUserId?: string }): Promise<boolean> {
   const Purchases = getPurchases();
   if (!Purchases) return false;
 
   try {
-    // Configure once per app launch. If called repeatedly, Purchases will no-op.
-    await Purchases.configure({ apiKey: params.apiKey });
+    // Configure once per app launch. Prefer setting appUserID at configure-time.
+    // NOTE: For showing prices on the paywall, we may configure without an appUserID (anonymous user),
+    // so Apple review can see prices even before account creation/sign-in.
     if (params.appUserId) {
-      // Tie RevenueCat identity to Supabase user id (stable across devices).
-      if (typeof Purchases.logIn === 'function') {
-        await Purchases.logIn(params.appUserId);
-      } else if (typeof Purchases.setAttributes === 'function') {
-        await Purchases.setAttributes({ app_user_id: params.appUserId });
-      }
+      await Purchases.configure({ apiKey: params.apiKey, appUserID: params.appUserId });
+    } else {
+      await Purchases.configure({ apiKey: params.apiKey });
     }
     return true;
-  } catch {
+  } catch (e) {
+    console.warn('[RevenueCat] configure failed', e);
     return false;
   }
 }
@@ -102,6 +112,45 @@ export async function purchaseFromOffering(params: {
   return res?.customerInfo ?? res;
 }
 
+export async function getOfferingPackagePricing(offeringId: string): Promise<Record<string, OfferingPackagePricing>> {
+  const Purchases = getPurchases();
+  if (!Purchases) return {};
+
+  try {
+    const offerings = await Purchases.getOfferings();
+    const offering = offerings?.all?.[offeringId] ?? offerings?.current;
+    const available = offering?.availablePackages ?? [];
+
+    const out: Record<string, OfferingPackagePricing> = {};
+
+    for (const p of available) {
+      const identifier = p?.identifier as string | undefined;
+      if (!identifier) continue;
+
+      const [planRaw, billingRaw] = identifier.split('_');
+      const plan = (planRaw === 'premium' || planRaw === 'pro' ? planRaw : null) as Plan | null;
+      const billing = (billingRaw === 'monthly' || billingRaw === 'annual' ? billingRaw : null) as BillingPeriod | null;
+      if (!plan || !billing) continue;
+
+      const product = p?.product ?? {};
+
+      out[identifier] = {
+        identifier,
+        plan,
+        billing,
+        priceString: product?.priceString ?? '',
+        price: typeof product?.price === 'number' ? product.price : null,
+        currencyCode: typeof product?.currencyCode === 'string' ? product.currencyCode : null,
+        subscriptionPeriod: product?.subscriptionPeriod ?? null,
+      };
+    }
+
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export function addCustomerInfoListener(cb: (info: any) => void): (() => void) | null {
   const Purchases = getPurchases();
   if (!Purchases) return null;
@@ -116,5 +165,6 @@ export function addCustomerInfoListener(cb: (info: any) => void): (() => void) |
     }
   };
 }
+
 
 

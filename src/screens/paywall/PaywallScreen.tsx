@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,114 @@ import {
   Image,
   SafeAreaView,
   Platform,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { configureRevenueCat, getOfferingPackagePricing, type OfferingPackagePricing } from '../../services/revenueCatService';
 
 type BillingPeriod = 'monthly' | 'annual';
+
+const PRIVACY_URL = 'https://www.fl4shcards.com/privacy/';
+const TERMS_URL = 'https://www.fl4shcards.com/terms/';
+const CONTACT_URL = 'https://www.fl4shcards.com/contact/';
 
 export default function PaywallScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuth();
   const { tier, purchasePlan, restorePurchases } = useSubscription();
   const [billing, setBilling] = useState<BillingPeriod>('monthly');
+  const [pricing, setPricing] = useState<Record<string, OfferingPackagePricing>>({});
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingNote, setPricingNote] = useState<string | null>(null);
 
-  // For v1 screenshots + App Review metadata: avoid hardcoding prices (they vary by region/currency).
-  const priceHint = billing === 'annual' ? 'Billed yearly' : 'Billed monthly';
   const premiumCta = billing === 'annual' ? 'Start Premium Trial' : 'Start Premium';
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setPricingLoading(true);
+      setPricingNote(null);
+
+      // Prices require a store build (TestFlight/App Store) because they come from StoreKit via RevenueCat.
+      if (Platform.OS === 'web') {
+        if (mounted) {
+          setPricing({});
+          setPricingNote('Prices are available in the App Store build.');
+        }
+        setPricingLoading(false);
+        return;
+      }
+
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
+
+      if (!apiKey) {
+        if (mounted) {
+          setPricing({});
+          setPricingNote('Prices are available in the store build.');
+        }
+        setPricingLoading(false);
+        return;
+      }
+
+      // Ensure RevenueCat is configured before attempting to fetch offerings/prices.
+      await configureRevenueCat({ apiKey, appUserId: user?.id });
+
+      const map = await getOfferingPackagePricing('default');
+      if (mounted) {
+        setPricing(map);
+        if (!map || Object.keys(map).length === 0) {
+          setPricingNote('Prices unavailable. Please try again in a moment, or restore purchases.');
+        }
+      }
+      setPricingLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  const formatCurrency = (amount: number, currencyCode: string): string => {
+    try {
+      // RN Hermes supports Intl in modern Expo builds; fall back gracefully if unavailable.
+      // eslint-disable-next-line no-undef
+      if (typeof Intl !== 'undefined' && typeof Intl.NumberFormat === 'function') {
+        return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode }).format(amount);
+      }
+    } catch {
+      // ignore
+    }
+    return `${amount.toFixed(2)} ${currencyCode}`;
+  };
+
+  const getPriceLine = (plan: 'premium' | 'pro', bill: BillingPeriod): string => {
+    const key = `${plan}_${bill}`;
+    const p = pricing[key];
+    if (!p?.priceString) return pricingLoading ? 'Loading price…' : 'Price unavailable';
+
+    if (bill === 'monthly') {
+      return `${p.priceString} / month`;
+    }
+
+    // Annual: show per-unit equivalent if possible (Apple guideline 3.1.2).
+    if (typeof p.price === 'number' && p.currencyCode) {
+      const perMonth = p.price / 12;
+      const perMonthStr = formatCurrency(perMonth, p.currencyCode);
+      return `${p.priceString} / year (≈ ${perMonthStr} / month)`;
+    }
+
+    return `${p.priceString} / year`;
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -65,7 +156,16 @@ export default function PaywallScreen({ navigation }: any) {
                 </Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.billingHint}>{priceHint} • Price shown at checkout</Text>
+            <Text style={styles.billingHint}>
+              {billing === 'annual' ? 'Billed yearly' : 'Billed monthly'} • Prices pulled from the App Store
+            </Text>
+            {pricingLoading && (
+              <View style={styles.pricingLoadingRow}>
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+                <Text style={styles.pricingLoadingText}>Fetching current prices…</Text>
+              </View>
+            )}
+            {!!pricingNote && <Text style={styles.pricingNote}>{pricingNote}</Text>}
           </View>
 
           <View style={styles.cards}>
@@ -102,6 +202,7 @@ export default function PaywallScreen({ navigation }: any) {
                   <Text style={styles.priceBig}>Premium</Text>
                   <Text style={styles.priceSmall}> • Unlimited study essentials</Text>
                 </Text>
+                <Text style={styles.planPrice}>{getPriceLine('premium', billing)}</Text>
                 <View style={styles.featureList}>
                   <Feature text="Unlimited subjects" />
                   <Feature text="Unlimited flashcards" />
@@ -141,6 +242,7 @@ export default function PaywallScreen({ navigation }: any) {
                   <Text style={styles.priceBig}>Pro</Text>
                   <Text style={styles.priceSmall}> • Everything in Premium + Papers + AI</Text>
                 </Text>
+                <Text style={styles.planPrice}>{getPriceLine('pro', billing)}</Text>
                 <View style={styles.featureList}>
                   <Feature text="Everything in Premium" />
                   <Feature text="Past Papers & mark schemes" />
@@ -167,8 +269,21 @@ export default function PaywallScreen({ navigation }: any) {
               <Ionicons name="refresh" size={18} color={colors.textSecondary} />
               <Text style={styles.restoreText}>Restore purchases</Text>
             </TouchableOpacity>
+            <View style={styles.linksRow}>
+              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)}>
+                <Text style={styles.linkText}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <Text style={styles.linkSep}>•</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)}>
+                <Text style={styles.linkText}>Terms of Use (EULA)</Text>
+              </TouchableOpacity>
+              <Text style={styles.linkSep}>•</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(CONTACT_URL)}>
+                <Text style={styles.linkText}>Contact</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={styles.legal}>
-              Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period.
+              Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period. Manage or cancel in your App Store settings.
             </Text>
           </View>
         </ScrollView>
@@ -241,6 +356,9 @@ function createStyles(colors: any) {
     billingText: { color: colors.textSecondary, fontWeight: '700', fontSize: 13 },
     billingTextActive: { color: colors.text },
     billingHint: { marginTop: 8, color: colors.textSecondary, fontSize: 12 },
+    pricingLoadingRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
+    pricingLoadingText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+    pricingNote: { marginTop: 8, color: 'rgba(148,163,184,0.85)', fontSize: 12, textAlign: 'center', maxWidth: 360 },
 
     cards: { paddingHorizontal: 18, marginTop: 16, gap: 14 },
     cardOuter: {
@@ -286,6 +404,7 @@ function createStyles(colors: any) {
     priceLine: { marginTop: 10, marginBottom: 12 },
     priceBig: { color: colors.text, fontSize: 26, fontWeight: '900' },
     priceSmall: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+    planPrice: { color: colors.text, fontSize: 14, fontWeight: '800', marginTop: -6, marginBottom: 10 },
     featureList: { marginTop: 4, marginBottom: 14 },
 
     primaryBtn: { borderRadius: 14, overflow: 'hidden' },
@@ -319,6 +438,9 @@ function createStyles(colors: any) {
     footer: { paddingHorizontal: 18, marginTop: 16, alignItems: 'center' },
     restoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 },
     restoreText: { color: colors.textSecondary, fontWeight: '700' },
+    linksRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+    linkText: { color: 'rgba(0,245,255,0.95)', fontSize: 12, fontWeight: '800' },
+    linkSep: { color: 'rgba(148,163,184,0.85)', fontSize: 12, fontWeight: '800' },
     legal: { marginTop: 6, color: 'rgba(148,163,184,0.85)', fontSize: 11, textAlign: 'center', maxWidth: 360 },
   });
 }
