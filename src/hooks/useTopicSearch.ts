@@ -139,6 +139,9 @@ export function useTopicSearchDirect({
           p_exam_board: examBoard,
           p_qualification_level: qualificationLevel,
           p_subject_name: subjectName,
+          // Disambiguate overloaded match_topics() functions (with/without p_match_threshold)
+          // Use 0.0 so we don't filter out anything by default.
+          p_match_threshold: 0.0,
           p_limit: 20,
         });
 

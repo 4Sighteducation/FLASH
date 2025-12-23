@@ -285,12 +285,53 @@ export default function SmartTopicDiscoveryScreen() {
         }
       }
 
-      console.warn('❌ Search failed across all endpoints:', lastError);
-      Alert.alert(
-        'Search Error',
-        'Topic search is temporarily unavailable. Please try again, or use Browse Curriculum.',
-        [{ text: 'OK' }]
-      );
+      console.warn('❌ Search failed across all HTTP endpoints:', lastError);
+
+      // Fallback: Supabase Edge Function (already exists in this repo: supabase/functions/search-topics)
+      // This avoids depending on fl4sh.cards / Vercel when those endpoints are down.
+      try {
+        console.log('🛟 Falling back to Supabase Edge Function: search-topics');
+        const { data: fnData, error: fnError } = await supabase.functions.invoke('search-topics', {
+          body: searchParams,
+        });
+
+        if (fnError) {
+          throw fnError;
+        }
+
+        const fnResults = (fnData?.results || []) as any[];
+        const mapped: TopicSearchResult[] = fnResults.map((r: any) => {
+          const confidence = typeof r.confidence === 'number' ? r.confidence : 0;
+          // Existing UI expects "similarity" where lower = better, and uses (1 - similarity) as match%.
+          // Map confidence -> similarity in that same convention.
+          const similarity = 1 - Math.max(0, Math.min(1, confidence));
+
+          return {
+            topic_id: r.id || r.topic_id,
+            topic_name: r.topic_name || 'Unknown Topic',
+            plain_english_summary: r.plain_english_summary || '',
+            difficulty_band: r.difficulty_band || '',
+            exam_importance: typeof r.exam_importance === 'number' ? r.exam_importance : 0,
+            full_path: Array.isArray(r.full_path) ? r.full_path : [],
+            similarity,
+            subject_name: r.subject_name || subjectName || '',
+            exam_board: examBoard || '',
+            qualification_level: qualificationLevel,
+            topic_level: typeof r.topic_level === 'number' ? r.topic_level : 0,
+          };
+        });
+
+        console.log(`✅ Edge Function search returned ${mapped.length} results`);
+        setSearchResults(mapped);
+        return;
+      } catch (fnErr) {
+        console.warn('❌ Edge Function fallback failed:', fnErr);
+        Alert.alert(
+          'Search Error',
+          'Topic search is temporarily unavailable. Please try again, or use Browse Curriculum.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
       console.warn('❌ Search error:', error);
       Alert.alert('Search Error', 'Failed to search topics. Please try again.');

@@ -15,6 +15,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../services/supabase';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 interface SelectedSubject {
   subjectId: string;
@@ -32,6 +34,15 @@ interface TopicSearchResult {
   subject_name: string;
   similarity: number;
 }
+
+const TOPIC_SEARCH_ENDPOINTS = [
+  process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
+  'https://www.fl4sh.cards/api/search-topics',
+  'https://www.fl4sh.cards/api/topics/search-topics',
+  // Legacy Vercel endpoint must include /api
+  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/search-topics',
+  'https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/topics/search-topics',
+].filter(Boolean) as string[];
 
 export default function FirstTopicWizardScreen() {
   const navigation = useNavigation();
@@ -61,13 +72,14 @@ export default function FirstTopicWizardScreen() {
   }, [currentStep]);
 
   const handleSearch = async (query: string) => {
-    setSearchQuery(query);
+    const cleanedQuery = sanitizeTopicLabel(query, { maxLength: 120 });
+    setSearchQuery(cleanedQuery);
 
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
 
-    if (query.trim().length < 2) {
+    if (cleanedQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
@@ -88,36 +100,71 @@ export default function FirstTopicWizardScreen() {
           ? currentSubject.subjectName
           : `${currentSubject.subjectName} (${qualLevel})`;
 
-        // Call backend API endpoint for search
-        const response = await fetch('https://flash-mw9kep9bm-tony-dennis-projects.vercel.app/api/search-topics', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query,
-            examBoard: currentSubject.examBoard,
-            qualificationLevel: examType.toUpperCase(),
-            subjectName: formattedSubjectName,
-            limit: 10,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Search request failed');
-        }
-
-        const data = (await response.json()) as {
-          success: boolean;
-          message?: string;
-          results?: TopicSearchResult[];
+        const searchParams = {
+          query: cleanedQuery,
+          examBoard: currentSubject.examBoard,
+          qualificationLevel: examType.toUpperCase(),
+          subjectName: formattedSubjectName,
+          limit: 10,
         };
-        
-        if (!data.success) {
-          throw new Error(data.message || 'Search failed');
+
+        let lastError: any = null;
+        for (const endpoint of TOPIC_SEARCH_ENDPOINTS) {
+          try {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(searchParams),
+            });
+
+            if (!response.ok) {
+              const raw = await response.text();
+              lastError = new Error(`HTTP ${response.status}: ${raw.slice(0, 200)}`);
+              continue;
+            }
+
+            const data = (await response.json()) as {
+              success?: boolean;
+              message?: string;
+              results?: TopicSearchResult[];
+            };
+
+            const success = typeof data?.success === 'boolean' ? data.success : true;
+            if (!success) {
+              lastError = new Error(data.message || 'Search failed');
+              continue;
+            }
+
+            setSearchResults(data.results || []);
+            lastError = null;
+            break;
+          } catch (e) {
+            lastError = e;
+            continue;
+          }
         }
 
-        setSearchResults(data.results || []);
+        if (lastError) {
+          // Fallback: Supabase Edge Function (search-topics)
+          const { data: fnData, error: fnError } = await supabase.functions.invoke('search-topics', {
+            body: searchParams,
+          });
+          if (fnError) throw fnError;
+
+          const fnResults = (fnData?.results || []) as any[];
+          const mapped: TopicSearchResult[] = fnResults.map((r: any) => ({
+            topic_id: r.id || r.topic_id,
+            topic_name: r.topic_name || 'Unknown Topic',
+            plain_english_summary: r.plain_english_summary || '',
+            difficulty_band: r.difficulty_band || '',
+            exam_importance: typeof r.exam_importance === 'number' ? r.exam_importance : 0,
+            full_path: Array.isArray(r.full_path) ? r.full_path : [],
+            subject_name: r.subject_name || formattedSubjectName,
+            similarity: typeof r.confidence === 'number' ? 1 - Math.max(0, Math.min(1, r.confidence)) : 0.5,
+          }));
+
+          setSearchResults(mapped);
+        }
       } catch (error) {
         console.error('Search error:', error);
         setSearchResults([]);
