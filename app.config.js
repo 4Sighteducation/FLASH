@@ -49,7 +49,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 9,
+      versionCode: 10,
       // Ensure OAuth redirects can deep-link back into the app on Android.
       // We support both the canonical scheme and the legacy "flash" scheme for safety.
       intentFilters: [
