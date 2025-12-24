@@ -6,6 +6,43 @@ export const supabase = createClient(
   config.supabase.serviceKey
 );
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableNetworkError(err) {
+  const msg = (err?.message || '').toLowerCase();
+  const details = (err?.details || '').toLowerCase();
+  // Supabase client uses fetch/undici. These are typically transient (pooler/IO spikes).
+  return (
+    msg.includes('fetch failed') ||
+    msg.includes('network') ||
+    msg.includes('socket') ||
+    details.includes('fetch failed') ||
+    details.includes('und_err_socket') ||
+    details.includes('other side closed') ||
+    details.includes('connection') ||
+    details.includes('ssl')
+  );
+}
+
+async function withRetries(fn, { retries = 6, baseDelayMs = 750, maxDelayMs = 15_000 } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn(attempt);
+    } catch (err) {
+      lastErr = err;
+      const retryable = isRetryableNetworkError(err) || err?.code === '57014' || (err?.message || '').includes('timeout');
+      if (!retryable || attempt === retries) break;
+      const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt));
+      console.warn(`\n  ⚠️ Transient error (attempt ${attempt + 1}/${retries + 1}). Retrying in ${Math.round(delay / 1000)}s...`);
+      await sleep(delay);
+    }
+  }
+  throw lastErr;
+}
+
 /**
  * Fetch all topics needing metadata - WITH PAGINATION
  * Handles Supabase row limits by fetching in chunks
@@ -103,7 +140,7 @@ export async function getExistingMetadataIds() {
  */
 export async function upsertTopicMetadata(metadataArray) {
   // Much smaller chunks to avoid Supabase timeouts with large embeddings
-  const CHUNK_SIZE = 20; // Reduced from 100 to avoid timeouts
+  const CHUNK_SIZE = Math.max(1, Math.min(200, config.batch.upsertChunkSize || 20));
   
   if (metadataArray.length > CHUNK_SIZE) {
     console.log(`  Saving ${metadataArray.length} topics in chunks of ${CHUNK_SIZE}...`);
@@ -114,30 +151,41 @@ export async function upsertTopicMetadata(metadataArray) {
       const totalChunks = Math.ceil(metadataArray.length / CHUNK_SIZE);
       
       process.stdout.write(`  Chunk ${chunkNum}/${totalChunks}... `);
-      
-      const { error } = await supabase
-        .from('topic_ai_metadata')
-        .upsert(chunk, { onConflict: 'topic_id' });
+      const { error } = await withRetries(
+        async () =>
+          supabase
+            .from('topic_ai_metadata')
+            .upsert(chunk, { onConflict: 'topic_id' }),
+        { retries: 6 }
+      );
       
       if (error) {
         console.error(`\n  ⚠️ Error in chunk ${chunkNum}:`, error.message);
         
         // If timeout, try even smaller batches
-        if (error.code === '57014' || error.message.includes('timeout')) {
+        if (error.code === '57014' || error.message.includes('timeout') || isRetryableNetworkError(error)) {
           console.log('  Retrying with tiny batches...');
           for (let j = 0; j < chunk.length; j += 5) {
             const miniChunk = chunk.slice(j, Math.min(j + 5, chunk.length));
-            const { error: retryError } = await supabase
-              .from('topic_ai_metadata')
-              .upsert(miniChunk, { onConflict: 'topic_id' });
+            const { error: retryError } = await withRetries(
+              async () =>
+                supabase
+                  .from('topic_ai_metadata')
+                  .upsert(miniChunk, { onConflict: 'topic_id' }),
+              { retries: 6 }
+            );
             
             if (retryError) {
               // Try one by one as last resort
               console.log('  Trying one by one...');
               for (const item of miniChunk) {
-                const { error: singleError } = await supabase
-                  .from('topic_ai_metadata')
-                  .upsert([item], { onConflict: 'topic_id' });
+                const { error: singleError } = await withRetries(
+                  async () =>
+                    supabase
+                      .from('topic_ai_metadata')
+                      .upsert([item], { onConflict: 'topic_id' }),
+                  { retries: 6 }
+                );
                 
                 if (singleError) {
                   console.error(`  Single item failed:`, singleError.message);
@@ -156,9 +204,13 @@ export async function upsertTopicMetadata(metadataArray) {
     }
   } else {
     // Small batch, save directly
-    const { error } = await supabase
-      .from('topic_ai_metadata')
-      .upsert(metadataArray, { onConflict: 'topic_id' });
+    const { error } = await withRetries(
+      async () =>
+        supabase
+          .from('topic_ai_metadata')
+          .upsert(metadataArray, { onConflict: 'topic_id' }),
+      { retries: 6 }
+    );
     
     if (error) {
       console.error('Upsert error:', error);

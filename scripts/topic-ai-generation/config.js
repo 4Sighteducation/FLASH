@@ -16,6 +16,10 @@ export const config = {
     windowSize: 2000,           // Process 2000 topics per window (memory management)
     maxConcurrency: 5,          // Max parallel API calls
     upsertBatchSize: 500,       // Upsert 500 rows at a time to Supabase
+    // Chunk size for each actual Supabase upsert() call. Smaller is more reliable on Supabase,
+    // larger is faster if your instance/pooler is stable. Can be overridden at runtime:
+    //   $env:TOPIC_AI_UPSERT_CHUNK_SIZE="50"
+    upsertChunkSize: Number(process.env.TOPIC_AI_UPSERT_CHUNK_SIZE || 20),
     retryAttempts: 3,
     retryDelayMs: 1000,
   },

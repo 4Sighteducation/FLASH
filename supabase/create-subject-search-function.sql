@@ -15,8 +15,16 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   RETURN QUERY
-  SELECT 
-    ebs.subject_name::TEXT,
+  SELECT
+    -- Normalize only trailing qualification tags so buckets merge:
+    -- "Physics" + "Physics (GCSE)" → "Physics"
+    -- Keeps legitimate variants like "Physics A (Gateway Science)" distinct.
+    regexp_replace(
+      ebs.subject_name,
+      '\s*\((GCSE|A-?Level|AS-?Level|International GCSE|International A-?Level|National 5|Higher|Advanced Higher|Level 3 Extended Project)\)\s*$',
+      '',
+      'i'
+    )::TEXT AS subject_name,
     qt.code::TEXT as qualification_level,
     jsonb_agg(
       jsonb_build_object(
@@ -38,8 +46,15 @@ BEGIN
   WHERE ebs.subject_name ILIKE '%' || p_search_term || '%'
     AND qt.code = p_qualification_code
     AND ebs.is_current = true
-  GROUP BY ebs.subject_name, qt.code
-  ORDER BY ebs.subject_name;
+  GROUP BY
+    regexp_replace(
+      ebs.subject_name,
+      '\s*\((GCSE|A-?Level|AS-?Level|International GCSE|International A-?Level|National 5|Higher|Advanced Higher|Level 3 Extended Project)\)\s*$',
+      '',
+      'i'
+    ),
+    qt.code
+  ORDER BY subject_name;
 END;
 $$;
 

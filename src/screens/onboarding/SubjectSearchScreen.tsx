@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { normalizeSubjectName } from '../../utils/subjectName';
+import { ExamTrackId, normalizeExamTrackId, trackToQualificationCodes } from '../../utils/examTracks';
 
 interface SubjectOption {
   subject_id: string;
@@ -43,7 +45,10 @@ export default function SubjectSearchScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { examType } = route.params as { examType: string };
+  const { primaryTrack, secondaryTrack } = route.params as {
+    primaryTrack: ExamTrackId | string;
+    secondaryTrack?: ExamTrackId | string | null;
+  };
   const insets = useSafeAreaInsets();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,16 +60,8 @@ export default function SubjectSearchScreen() {
 
   const searchDebounceRef = useRef<NodeJS.Timeout>();
 
-  // Map exam type display names to database codes
-  const examTypeToCode: { [key: string]: string } = {
-    gcse: 'GCSE',
-    alevel: 'A_LEVEL',
-    aslevel: 'AS_LEVEL',
-    ialev: 'IA_LEVEL',
-    btec: 'BTEC',
-    ib: 'IB',
-    igcse: 'IGCSE',
-  };
+  const resolvedPrimary = normalizeExamTrackId(primaryTrack) || 'GCSE';
+  const resolvedSecondary = normalizeExamTrackId(secondaryTrack || null);
 
   // Subject abbreviation/synonym mapping
   const subjectSynonyms: { [key: string]: string } = {
@@ -156,22 +153,58 @@ export default function SubjectSearchScreen() {
     setIsSearching(true);
 
     try {
-      const qualificationCode = examTypeToCode[examType] || examType;
+      const qualificationCodes = [
+        ...trackToQualificationCodes(resolvedPrimary as ExamTrackId),
+        ...(resolvedSecondary ? trackToQualificationCodes(resolvedSecondary) : []),
+      ].filter(Boolean);
 
       // Query database for subjects matching search term
-      const { data, error } = await supabase.rpc('search_subjects_with_boards', {
-        p_search_term: query,
-        p_qualification_code: qualificationCode,
-      });
-
-      if (error) {
-        console.error('Search error:', error);
-        // Fallback to direct query if RPC doesn't exist
-        await performDirectSearch(query, qualificationCode);
-        return;
+      const allGroups: any[] = [];
+      for (const qc of qualificationCodes) {
+        const { data, error } = await supabase.rpc('search_subjects_with_boards', {
+          p_search_term: query,
+          p_qualification_code: qc,
+        });
+        if (error) {
+          console.error('Search error:', error);
+          // Fallback to direct query if RPC doesn't exist
+          await performDirectSearch(query, qualificationCodes);
+          return;
+        }
+        if (data) allGroups.push(...data);
       }
 
-      setSearchResults(data || []);
+      // Normalize + merge buckets so "Physics" and "Physics (GCSE)" appear together
+      const raw = allGroups as any[];
+      const merged: Record<string, GroupedSubject> = {};
+
+      raw.forEach((group: any) => {
+        const baseName = normalizeSubjectName(group.subject_name || '');
+        const key = `${baseName}__${group.qualification_level || ''}`;
+        if (!merged[key]) {
+          merged[key] = {
+            subject_name: baseName || (group.subject_name || ''),
+            qualification_level: group.qualification_level || '',
+            exam_board_options: [],
+          };
+        }
+        const options = Array.isArray(group.exam_board_options) ? group.exam_board_options : [];
+        merged[key].exam_board_options.push(...options);
+      });
+
+      // Deduplicate options by subject_id (some RPCs can return duplicates)
+      const results = Object.values(merged).map((g) => {
+        const seen = new Set<string>();
+        const deduped = g.exam_board_options.filter((o) => {
+          if (!o?.subject_id) return false;
+          if (seen.has(o.subject_id)) return false;
+          seen.add(o.subject_id);
+          return true;
+        });
+        return { ...g, exam_board_options: deduped };
+      });
+
+      setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
       Alert.alert('Error', 'Failed to search subjects');
@@ -180,33 +213,36 @@ export default function SubjectSearchScreen() {
     }
   };
 
-  const performDirectSearch = async (query: string, qualificationCode: string) => {
+  const performDirectSearch = async (query: string, qualificationCodes: string[]) => {
     try {
-      // Direct SQL query fallback
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('exam_board_subjects')
-        .select(`
-          id,
-          subject_name,
-          subject_code,
-          exam_boards!inner(code, full_name),
-          qualification_types!inner(code)
-        `)
-        .ilike('subject_name', `%${query}%`)
-        .eq('qualification_types.code', qualificationCode)
-        .eq('is_current', true);
+      let subjectsData: any[] = [];
+      for (const qc of qualificationCodes) {
+        const { data, error: subjectsError } = await supabase
+          .from('exam_board_subjects')
+          .select(`
+            id,
+            subject_name,
+            subject_code,
+            exam_boards!inner(code, full_name),
+            qualification_types!inner(code)
+          `)
+          .ilike('subject_name', `%${query}%`)
+          .eq('qualification_types.code', qc)
+          .eq('is_current', true);
 
-      if (subjectsError) throw subjectsError;
+        if (subjectsError) throw subjectsError;
+        subjectsData = subjectsData.concat(data || []);
+      }
 
       // Group by subject name
       const grouped: { [key: string]: GroupedSubject } = {};
 
       (subjectsData || []).forEach((subject: any) => {
-        const key = subject.subject_name;
+        const key = normalizeSubjectName(subject.subject_name);
         if (!grouped[key]) {
           grouped[key] = {
-            subject_name: subject.subject_name,
-            qualification_level: qualificationCode,
+            subject_name: key,
+            qualification_level: subject.qualification_types.code,
             exam_board_options: [],
           };
         }

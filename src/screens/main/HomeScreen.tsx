@@ -222,12 +222,21 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const getExamTypeDisplay = (examType: string) => {
+    // Backward compatible: older values were stored as gcse/alevel/igcse/ialev.
+    // New values use stable track ids / qualification codes.
     const types: { [key: string]: string } = {
       gcse: 'GCSE',
-      alevel: 'A-Level',
-      btec: 'BTEC / Vocational',
-      ib: 'International Baccalaureate',
       igcse: 'iGCSE',
+      alevel: 'A-Level',
+      ialev: 'iA-Level',
+      GCSE: 'GCSE',
+      INTERNATIONAL_GCSE: 'iGCSE',
+      A_LEVEL: 'A-Level',
+      INTERNATIONAL_A_LEVEL: 'iA-Level',
+      VOCATIONAL_L2: 'Vocational Level 2',
+      VOCATIONAL_L3: 'Vocational Level 3',
+      SQA_NATIONALS: 'Scottish Nationals',
+      IB: 'International Baccalaureate',
     };
     return types[examType] || examType;
   };

@@ -4,35 +4,30 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
-
-type ExamType = {
-  id: string;
-  name: string;
-  description: string;
-  disabled?: boolean;
-  comingSoon?: boolean;
-};
+import { ExamTrack, ExamTrackId, getExamTracks } from '../../utils/examTracks';
 
 export default function ExamTypeSelectionScreen() {
   const navigation = useNavigation();
-  const [selectedExamType, setSelectedExamType] = useState<string | null>(null);
+  const [step, setStep] = useState<0 | 1>(0);
+  const [primaryTrack, setPrimaryTrack] = useState<ExamTrackId | null>(null);
+  const [secondaryTrack, setSecondaryTrack] = useState<ExamTrackId | null>(null);
   const insets = useSafeAreaInsets();
   const windowHeight = Dimensions.get('window').height;
   const isCompact = windowHeight < 860;
 
-  const examTypes: ExamType[] = useMemo(() => ([
-    { id: 'gcse', name: 'GCSE', description: 'Secondary Education' },
-    { id: 'igcse', name: 'iGCSE', description: 'International GCSE' },
-    { id: 'alevel', name: 'A‑Level', description: 'Advanced Level' },
-    { id: 'ialev', name: 'iA‑Level', description: 'International A‑Level' },
-    { id: 'btec', name: 'BTEC / Vocational', description: 'Coming soon', disabled: true, comingSoon: true },
-    { id: 'ib', name: 'International Baccalaureate', description: 'Coming soon', disabled: true, comingSoon: true },
-  ]), []);
+  const examTypes: ExamTrack[] = useMemo(() => getExamTracks(), []);
 
   const handleContinue = () => {
-    if (selectedExamType) {
-      navigation.navigate('SubjectSearch' as never, { examType: selectedExamType } as never);
+    if (step === 0) {
+      if (!primaryTrack) return;
+      setStep(1);
+      return;
     }
+    if (!primaryTrack) return;
+    navigation.navigate(
+      'SubjectSearch' as never,
+      { primaryTrack, secondaryTrack: secondaryTrack || null } as never
+    );
   };
 
   return (
@@ -56,8 +51,14 @@ export default function ExamTypeSelectionScreen() {
           </TouchableOpacity>
 
           <View style={styles.header}>
-            <Text style={styles.title}>What are you studying for?</Text>
-            <Text style={styles.subtitle}>Select your exam type</Text>
+            <Text style={styles.title}>
+              {step === 0 ? 'What are you studying for?' : 'Add a second track?'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {step === 0
+                ? 'Select your main study track'
+                : 'Optional — you can skip this and add it later in your profile'}
+            </Text>
           </View>
 
           <View style={styles.optionsContainer}>
@@ -66,7 +67,7 @@ export default function ExamTypeSelectionScreen() {
                 key={exam.id}
                 style={[
                   styles.optionCard,
-                  selectedExamType === exam.id && styles.selectedCard,
+                  (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedCard,
                   isCompact && styles.optionCardCompact,
                   isCompact && { width: '48%' },
                   exam.disabled && styles.disabledCard,
@@ -76,21 +77,31 @@ export default function ExamTypeSelectionScreen() {
                     Alert.alert('Coming soon', `${exam.name} is coming soon. Please pick another option for now.`);
                     return;
                   }
-                  setSelectedExamType(exam.id);
+                  if (step === 0) {
+                    setPrimaryTrack(exam.id);
+                    // Reset secondary if it matches primary
+                    if (secondaryTrack === exam.id) setSecondaryTrack(null);
+                  } else {
+                    if (primaryTrack === exam.id) {
+                      Alert.alert('Pick a different track', 'Your second track must be different from your main track.');
+                      return;
+                    }
+                    setSecondaryTrack(exam.id);
+                  }
                 }}
                 activeOpacity={exam.disabled ? 1 : 0.85}
               >
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.optionTitle,
-                    selectedExamType === exam.id && styles.selectedText,
+                    (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedText,
                     exam.disabled && styles.disabledText,
                   ]}>
                     {exam.name}
                   </Text>
                   <Text style={[
                     styles.optionDescription,
-                    selectedExamType === exam.id && styles.selectedDescription,
+                    (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedDescription,
                     exam.disabled && styles.disabledDescription,
                   ]}>
                     {exam.description}
@@ -101,7 +112,7 @@ export default function ExamTypeSelectionScreen() {
                     </View>
                   )}
                 </View>
-                {selectedExamType === exam.id && (
+                {(step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && (
                   Platform.OS === 'web' ? (
                     <Text style={{ fontSize: 28 }}>✅</Text>
                   ) : (
@@ -115,15 +126,31 @@ export default function ExamTypeSelectionScreen() {
 
         {/* Sticky CTA */}
         <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
+          {step === 1 ? (
+            <TouchableOpacity
+              style={[styles.skipButton]}
+              onPress={() => {
+                if (!primaryTrack) return;
+                navigation.navigate(
+                  'SubjectSearch' as never,
+                  { primaryTrack, secondaryTrack: null } as never
+                );
+              }}
+            >
+              <Text style={styles.skipButtonText}>Skip for now</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             style={[
               styles.continueButton,
-              !selectedExamType && styles.disabledButton,
+              (step === 0 ? !primaryTrack : !primaryTrack) && styles.disabledButton,
             ]}
             onPress={handleContinue}
-            disabled={!selectedExamType}
+            disabled={!primaryTrack}
           >
-            <Text style={styles.continueButtonText}>Continue →</Text>
+            <Text style={styles.continueButtonText}>
+              {step === 0 ? 'Continue →' : 'Continue →'}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -264,6 +291,17 @@ const styles = StyleSheet.create({
       shadowRadius: 20,
       elevation: 8,
     }),
+  },
+  skipButton: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  skipButtonText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
   },
   disabledButton: {
     opacity: 0.3,
