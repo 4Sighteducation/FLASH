@@ -75,3 +75,4 @@ do update set total_points = excluded.total_points,
 - **Cyber unlock copy**: Profile still contains Cyber Mode unlock messaging. Decide whether to keep Cyber as a separate “theme unlock” or merge it into Skins Vault.
 
 
+

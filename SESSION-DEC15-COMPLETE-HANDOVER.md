@@ -266,9 +266,9 @@ EXTRACTION_SERVICE_URL = https://subjectsandtopics-production.up.railway.app
 
 ### **Railway (Python Service):**
 ```
-OPENAI_API_KEY = sk-...
+OPENAI_API_KEY = <YOUR_OPENAI_API_KEY>
 SUPABASE_URL = https://qkapwhyxcpgzahuemucg.supabase.co
-SUPABASE_SERVICE_KEY = eyJ... (service role key)
+SUPABASE_SERVICE_KEY = <YOUR_SUPABASE_SERVICE_ROLE_KEY>  (service role key)
 ```
 
 **Status:** ✅ All configured and working
@@ -660,4 +660,5 @@ This is a MASSIVE feature - full exam paper practice with AI marking. We've buil
 ---
 
 **End of Session - December 15, 2025 - 10:00 PM**
+
 
