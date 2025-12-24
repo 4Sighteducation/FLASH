@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -62,6 +63,7 @@ export default function SmartTopicDiscoveryScreen() {
   const [recentTopics, setRecentTopics] = useState<RecentTopic[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicSearchResult | null>(null);
+  const [detailsTopic, setDetailsTopic] = useState<TopicSearchResult | null>(null);
   const [showAllResults, setShowAllResults] = useState(false);
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
@@ -193,6 +195,14 @@ export default function SmartTopicDiscoveryScreen() {
     searchDebounceRef.current = setTimeout(() => {
       performSearch(cleanedQuery);
     }, 500);
+  };
+
+  const openDetails = (topic: TopicSearchResult) => {
+    setDetailsTopic(topic);
+  };
+
+  const closeDetails = () => {
+    setDetailsTopic(null);
   };
 
   const performSearch = async (query: string) => {
@@ -593,9 +603,19 @@ export default function SmartTopicDiscoveryScreen() {
 
                     {/* AI Summary - SHORTER */}
                     {result.plain_english_summary && (
-                      <Text style={styles.resultSummary} numberOfLines={3}>
-                        {result.plain_english_summary}
-                      </Text>
+                      <>
+                        <Text style={styles.resultSummary} numberOfLines={3}>
+                          {result.plain_english_summary}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.readMoreButton}
+                          onPress={() => openDetails(result)}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.readMoreText}>Read full summary</Text>
+                          <Ionicons name="chevron-forward" size={14} color="#00F5FF" />
+                        </TouchableOpacity>
+                      </>
                     )}
 
                     {/* Metadata Row */}
@@ -724,6 +744,83 @@ export default function SmartTopicDiscoveryScreen() {
           )}
         </ScrollView>
       ) : null}
+
+      {/* Full details modal (view full summary/path without selecting the topic) */}
+      <Modal
+        visible={!!detailsTopic}
+        animationType="slide"
+        transparent
+        onRequestClose={closeDetails}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Topic details</Text>
+                <Text style={styles.modalSubtitle}>{subjectName}</Text>
+              </View>
+              <TouchableOpacity onPress={closeDetails} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={22} color="#E2E8F0" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
+              <Text style={styles.modalTopicTitle}>
+                {sanitizeTopicLabel(detailsTopic?.topic_name || '', { maxLength: 240 })}
+              </Text>
+
+              {detailsTopic?.full_path && detailsTopic.full_path.length > 1 ? (
+                <Text style={styles.modalLocation}>
+                  Location: {detailsTopic.full_path.slice(0, -1).join(' › ')}
+                </Text>
+              ) : null}
+
+              <View style={styles.modalMetaRow}>
+                <Text style={styles.modalMetaPill}>Level {detailsTopic?.topic_level ?? 0}</Text>
+                {detailsTopic?.difficulty_band ? (
+                  <Text style={styles.modalMetaPill}>{detailsTopic.difficulty_band}</Text>
+                ) : null}
+                {typeof detailsTopic?.exam_importance === 'number' ? (
+                  <Text style={styles.modalMetaPill}>⭐ {Math.round(detailsTopic.exam_importance * 100)}%</Text>
+                ) : null}
+                {typeof detailsTopic?.similarity === 'number' ? (
+                  <Text style={styles.modalMetaPill}>
+                    {Math.round((1 - detailsTopic.similarity) * 100)}% match
+                  </Text>
+                ) : null}
+              </View>
+
+              {detailsTopic?.plain_english_summary ? (
+                <>
+                  <Text style={styles.modalSectionTitle}>Summary</Text>
+                  <Text style={styles.modalSummary}>{detailsTopic.plain_english_summary}</Text>
+                </>
+              ) : null}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalAddButton}
+                onPress={() => {
+                  if (!detailsTopic) return;
+                  const t = detailsTopic;
+                  closeDetails();
+                  handleSelectTopic(t);
+                }}
+              >
+                <LinearGradient
+                  colors={['#FF006E', '#00F5FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalAddButtonInner}
+                >
+                  <Text style={styles.modalAddButtonText}>Add this topic</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -922,6 +1019,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
+  readMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 2,
+  },
+  readMoreText: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   breadcrumbContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -944,6 +1053,106 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#0A0A0A',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    maxHeight: '82%',
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A1A1A',
+  },
+  modalTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  modalSubtitle: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  modalCloseButton: {
+    padding: 6,
+  },
+  modalBody: {
+    paddingHorizontal: 16,
+  },
+  modalBodyContent: {
+    paddingTop: 14,
+    paddingBottom: 16,
+  },
+  modalTopicTitle: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  modalLocation: {
+    color: '#AAA',
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  modalMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 14,
+  },
+  modalMetaPill: {
+    color: '#E2E8F0',
+    fontSize: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#111',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    overflow: 'hidden',
+  },
+  modalSectionTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  modalSummary: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  modalFooter: {
+    padding: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A1A',
+  },
+  modalAddButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  modalAddButtonInner: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalAddButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '900',
   },
   difficultyBadge: {
     paddingHorizontal: 10,
