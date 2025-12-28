@@ -11,11 +11,13 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import FlashcardCard from '../../components/FlashcardCard';
 import CompactLeitnerBoxes from '../../components/CompactLeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
@@ -23,6 +25,8 @@ import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { gamificationService } from '../../services/gamificationService';
+import { getOrCreateUserSettings, UserSettings } from '../../services/userSettingsService';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -51,6 +55,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   }, [navigation]);
   const { topicName, subjectName, subjectColor, boxNumber } = route.params;
   const { user } = useAuth();
+  const { tier } = useSubscription();
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentIndexRef = useRef(0);
@@ -72,7 +77,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const cardRef = useRef<View>(null);
   const [showAllCaughtUp, setShowAllCaughtUp] = useState(false);
   const [showAnswerFeedback, setShowAnswerFeedback] = useState(false);
-  const [answerFeedback, setAnswerFeedback] = useState({ correct: false, message: '' });
+  const [answerFeedback, setAnswerFeedback] = useState<{ correct: boolean; message: string; correctAnswer?: string | null }>({
+    correct: false,
+    message: '',
+    correctAnswer: null,
+  });
   const feedbackScale = useRef(new Animated.Value(0)).current;
   
   // Track session statistics
@@ -99,6 +108,15 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const cardScale = useRef(new Animated.Value(1)).current;
   const animatingRef = useRef(false);
 
+  // Difficulty mode (System Load) settings (Pro only)
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const canUseDifficultyMode = tier === 'pro';
+  const cardShownAtMsRef = useRef<number>(Date.now());
+  const timeoutTriggeredRef = useRef<string | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const answeredCardIdsRef = useRef<Set<string>>(new Set());
+  const [timerUi, setTimerUi] = useState<{ label: string; color: string } | null>(null);
+
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
@@ -106,6 +124,108 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   useEffect(() => {
     fetchFlashcards();
   }, []);
+
+  // Load per-user settings (Pro only)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSettings() {
+      if (!user?.id) return;
+      // We only apply the settings if Pro; still fetch so we can show “locked” messaging consistently.
+      const s = await getOrCreateUserSettings(user.id);
+      if (cancelled) return;
+      setUserSettings(s);
+    }
+    loadSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
+  const difficultyFromSettings = (s: UserSettings | null): DifficultyKey => {
+    if (!s) return 'safe';
+    const shuffle = !!s.shuffle_mcq_enabled;
+    const timer = Number(s.answer_timer_seconds || 0);
+    if (!shuffle && timer === 0) return 'safe';
+    if (shuffle && timer === 0) return 'standard';
+    if (shuffle && timer === 30) return 'turbo';
+    if (shuffle && timer === 15) return 'overdrive';
+    if (shuffle && timer === 5) return 'beast';
+    return 'standard';
+  };
+
+  const difficultyKey = canUseDifficultyMode ? difficultyFromSettings(userSettings) : 'safe';
+
+  const xpMultiplierFromDifficulty = (d: DifficultyKey) => {
+    switch (d) {
+      case 'standard':
+        return 1.1;
+      case 'turbo':
+        return 1.5;
+      case 'overdrive':
+        return 2.0;
+      case 'beast':
+        return 3.0;
+      case 'safe':
+      default:
+        return 1.0;
+    }
+  };
+
+  // Timer + per-card measurement for Difficulty mode (Pro only)
+  useEffect(() => {
+    const card = flashcards[currentIndex];
+
+    // Clear previous interval
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setTimerUi(null);
+    timeoutTriggeredRef.current = null;
+
+    if (!canUseDifficultyMode) return;
+    if (!card || card.isFrozen || previewMode) return;
+
+    cardShownAtMsRef.current = Date.now();
+
+    const timerSeconds = Number(userSettings?.answer_timer_seconds || 0);
+    const graceSeconds = Number(userSettings?.grace_seconds || 3);
+
+    if (!timerSeconds || timerSeconds <= 0) return;
+
+    timerIntervalRef.current = setInterval(() => {
+      const elapsedMs = Date.now() - cardShownAtMsRef.current;
+      const remainingMs = timerSeconds * 1000 - elapsedMs;
+      if (remainingMs > 0) {
+        const s = Math.ceil(remainingMs / 1000);
+        setTimerUi({ label: `⏱️ ${s}s`, color: '#00F5FF' });
+        return;
+      }
+
+      // Grace window
+      const graceRemainingMs = timerSeconds * 1000 + graceSeconds * 1000 - elapsedMs;
+      if (graceRemainingMs > 0) {
+        const s = Math.ceil(graceRemainingMs / 1000);
+        setTimerUi({ label: `⏱️ GRACE ${s}s`, color: '#FF006E' });
+        return;
+      }
+
+      // Timeout: auto-mark incorrect once (but never interrupt an animation)
+      if (!animatingRef.current && timeoutTriggeredRef.current !== card.id) {
+        timeoutTriggeredRef.current = card.id;
+        setTimerUi({ label: `⏱️ TIME`, color: '#FF006E' });
+        handleCardAnswer(card.id, false, { timedOut: true });
+      }
+    }, 250);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [canUseDifficultyMode, currentIndex, flashcards, previewMode, userSettings]);
 
   const fetchFlashcards = async () => {
     try {
@@ -413,7 +533,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     })
   ).current;
 
-  const handleCardAnswer = async (cardId: string, correct: boolean) => {
+  const handleCardAnswer = async (cardId: string, correct: boolean, meta?: { timedOut?: boolean }) => {
     const card = flashcards.find(c => c.id === cardId);
     if (!card || card.isFrozen || animatingRef.current) {
       console.log('⚠️ Answer blocked:', { 
@@ -423,6 +543,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       });
       return;
     }
+
+    // Extra guard: prevent double-answer from timer + tap
+    if (answeredCardIdsRef.current.has(cardId)) return;
+    answeredCardIdsRef.current.add(cardId);
 
     console.log('✅ Processing answer:', { cardId, correct, currentBox: card.box_number });
     animatingRef.current = true; // Lock animations during the process
@@ -456,8 +580,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     });
     setShowAnswerFeedback(true);
     
-    // Show points animation
-    const pointsForAnswer = user?.id
+    // Show points animation (+ Pro multipliers)
+    const basePointsForAnswer = user?.id
       ? await gamificationService.computeStudyPointsForReview({
           userId: user.id,
           flashcardId: cardId,
@@ -465,6 +589,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           wasCorrect: correct,
         })
       : 0;
+
+    const xpMultiplier = canUseDifficultyMode ? xpMultiplierFromDifficulty(difficultyKey) : 1.0;
+    const pointsForAnswer = Math.max(0, Math.round(basePointsForAnswer * xpMultiplier));
     setAnimationPoints(pointsForAnswer);
     setShowPointsAnimation(true);
     setSessionPoints((p) => p + pointsForAnswer);
@@ -513,7 +640,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         // Continue anyway - don't block the UI
       }
 
-      // Record the review
+      // Record the review (with optional difficulty metadata)
+      const answeredInMs = Math.max(0, Date.now() - cardShownAtMsRef.current);
       const { error: reviewError } = await supabase
         .from('card_reviews')
         .insert({
@@ -522,6 +650,12 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           was_correct: correct,
           quality: correct ? 5 : 1,
           reviewed_at: new Date().toISOString(),
+          answered_in_ms: answeredInMs,
+          answer_timer_seconds: canUseDifficultyMode ? Number(userSettings?.answer_timer_seconds || 0) : 0,
+          grace_seconds: canUseDifficultyMode ? Number(userSettings?.grace_seconds || 3) : 0,
+          shuffle_mcq_enabled: canUseDifficultyMode ? !!userSettings?.shuffle_mcq_enabled : false,
+          xp_multiplier: xpMultiplier,
+          xp_awarded: pointsForAnswer,
         });
 
       if (reviewError) {
@@ -739,6 +873,28 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           </View>
         </View>
 
+        {/* Pro: Difficulty + timer pills (display only; configuration happens in Profile) */}
+        {!previewMode && canUseDifficultyMode && !currentCard?.isFrozen ? (
+          <View style={styles.difficultyRow}>
+            <TouchableOpacity
+              style={styles.systemLoadPill}
+              onPress={() =>
+                Alert.alert(
+                  'System Load',
+                  'Difficulty Mode is configured from your Profile.\n\nGo to Profile → Difficulty Mode to change timer/shuffle presets.'
+                )
+              }
+            >
+              <Text style={styles.systemLoadText}>⚙️ {difficultyKey.toUpperCase()} • x{xpMultiplierFromDifficulty(difficultyKey).toFixed(1)}</Text>
+            </TouchableOpacity>
+            {timerUi ? (
+              <View style={[styles.timerPill, { borderColor: timerUi.color }]}>
+                <Text style={[styles.timerText, { color: timerUi.color }]}>{timerUi.label}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Leitner Boxes Visualization */}
         <View style={styles.leitnerContainer}>
           <CompactLeitnerBoxes 
@@ -771,6 +927,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   <FlashcardCard
                     card={currentCard}
                     color={subjectColor}
+                    shuffleOptions={canUseDifficultyMode ? !!userSettings?.shuffle_mcq_enabled : false}
                     onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
                   />
                 )}
@@ -1520,6 +1677,41 @@ const styles = StyleSheet.create({
   },
   progressInfo: {
     alignItems: 'flex-end',
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 6,
+    marginBottom: 6,
+    paddingHorizontal: 14,
+  },
+  systemLoadPill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.35)',
+    backgroundColor: 'rgba(0,245,255,0.08)',
+  },
+  systemLoadText: {
+    color: '#00F5FF',
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+  timerPill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,0,110,0.06)',
+  },
+  timerText: {
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
   deferredCount: {
     fontSize: 11,

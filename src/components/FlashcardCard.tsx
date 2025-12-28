@@ -38,6 +38,8 @@ interface FlashcardCardProps {
   onAnswer?: (correct: boolean) => void;
   showDeleteButton?: boolean;
   onDelete?: () => void;
+  // Pro feature: randomize multiple choice option order per review attempt.
+  shuffleOptions?: boolean;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -97,10 +99,12 @@ export default function FlashcardCard({
   onAnswer,
   showDeleteButton,
   onDelete,
+  shuffleOptions = false,
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [orderedOptions, setOrderedOptions] = useState<string[] | null>(null);
   const [showDetailedModal, setShowDetailedModal] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [userAnswerCorrect, setUserAnswerCorrect] = useState<boolean | null>(null);
@@ -118,7 +122,24 @@ export default function FlashcardCard({
     setUserAnswerCorrect(null);
     setShowFeedback(false);
     flipAnimation.setValue(0);
+    setOrderedOptions(null);
   }, [card.id]);
+
+  // Shuffle options per card appearance (prevents muscle-memory)
+  useEffect(() => {
+    if (card.card_type !== 'multiple_choice' || !Array.isArray(card.options)) return;
+    const opts = [...card.options];
+    if (!shuffleOptions) {
+      setOrderedOptions(opts);
+      return;
+    }
+    // Fisher–Yates shuffle
+    for (let i = opts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [opts[i], opts[j]] = [opts[j], opts[i]];
+    }
+    setOrderedOptions(opts);
+  }, [card.id, shuffleOptions]);
 
   const flipCard = () => {
     if (isFlipped) {
@@ -278,7 +299,7 @@ export default function FlashcardCard({
 
             {isMultipleChoice && card.options && (
               <View style={[styles.optionsContainer, hasLongContent && styles.compactOptionsContainer]}>
-                {card.options.map((option, index) => {
+                {(orderedOptions || card.options).map((option, index) => {
                   // Check if option already has a letter prefix (e.g., "A) ", "a) ", "A. ", "a. ")
                   const letterPrefixMatch = option.match(/^[A-Za-z][\)\.]\s*/);
                   const hasLetterPrefix = letterPrefixMatch !== null;
