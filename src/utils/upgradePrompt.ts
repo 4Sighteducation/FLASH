@@ -1,11 +1,40 @@
 import { Alert } from 'react-native';
+import { navigate as rootNavigate } from '../navigation/RootNavigation';
 
 type Params = {
   title?: string;
   message: string;
-  navigation: any;
+  navigation?: any;
   ctaLabel?: string;
 };
+
+export function navigateToPaywall(navigation?: any) {
+  // Prefer the root modal paywall so it can appear immediately above any modal stack.
+  try {
+    rootNavigate('PaywallModal');
+    return;
+  } catch {
+    // fall back to nested navigation below
+  }
+
+  // Paywall lives inside the Profile tab stack, so callers inside nested stacks
+  // (HomeStack, modals, etc) often need to navigate via a parent navigator.
+  const tryNavigate = (nav: any) => {
+    try {
+      if (!nav?.navigate) return false;
+      nav.navigate('Profile' as never, { screen: 'Paywall' } as never);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  let nav = navigation;
+  for (let i = 0; i < 6; i++) {
+    if (tryNavigate(nav)) return;
+    nav = nav?.getParent?.();
+  }
+}
 
 export function showUpgradePrompt({ title = 'Upgrade Required', message, navigation, ctaLabel = 'View plans' }: Params) {
   Alert.alert(title, message, [
@@ -13,11 +42,13 @@ export function showUpgradePrompt({ title = 'Upgrade Required', message, navigat
     {
       text: ctaLabel,
       onPress: () => {
-        // Paywall lives inside the Profile stack
-        navigation.navigate('Profile' as never, { screen: 'Paywall' } as never);
+        navigateToPaywall(navigation);
       },
     },
   ]);
 }
+
+
+
 
 
