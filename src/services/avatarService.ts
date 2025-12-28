@@ -55,7 +55,7 @@ const avatarsByRankKey: Record<string, AvatarDef> = {
     subtitle: '“Seated. Serious. Slightly unstoppable.”',
     source: require('../../assets/office-chair.png'),
   },
-  legend: {
+  singularity: {
     key: 'printer',
     label: 'Printer',
     subtitle: '“The final boss machine. Paper fear you.”',

@@ -40,7 +40,7 @@ function rankIndexFromKey(rankKey: string) {
       return 4;
     case 'elite':
       return 5;
-    case 'legend':
+    case 'singularity':
       return 6;
     default:
       return 0;

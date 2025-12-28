@@ -41,9 +41,15 @@ export const gamificationConfig = {
   // Generic actions (wizard complete, first card, prioritise topic etc.)
   genericActionPoints: 25,
 
-  // Theme unlocks (minimal v1)
+  // Theme unlocks
   themeUnlocks: {
-    cyber: 2000, // unlock Cyber Mode at 2,000 XP
+    // Back-compat (older builds referenced "cyber")
+    cyber: 2000,
+
+    // New XP theme unlock ladder
+    pulse: 1000,
+    aurora: 20000,
+    singularity: 200000,
   },
 };
 
@@ -55,13 +61,14 @@ export type Rank = {
 };
 
 export const ranks: Rank[] = [
-  { key: 'rookie', name: 'Rookie', minXp: 0, color: '#94A3B8' },
-  { key: 'learner', name: 'Learner', minXp: 250, color: '#3B82F6' },
-  { key: 'scholar', name: 'Scholar', minXp: 1000, color: '#10B981' },
-  { key: 'contender', name: 'Contender', minXp: 5000, color: '#F59E0B' },
-  { key: 'ace', name: 'Ace', minXp: 20000, color: '#A855F7' },
-  { key: 'elite', name: 'Elite', minXp: 75000, color: '#FF006E' },
-  { key: 'legend', name: 'Legend', minXp: 200000, color: '#FFD700' },
+  // 7-tier "System Status" ladder
+  { key: 'rookie', name: 'Standby', minXp: 0, color: '#9CA3AF' },
+  { key: 'learner', name: 'Waking Up', minXp: 250, color: '#14B8A6' },
+  { key: 'scholar', name: 'Booting', minXp: 1000, color: '#22D3EE' },
+  { key: 'contender', name: 'Online', minXp: 5000, color: '#EC4899' },
+  { key: 'ace', name: 'Overclocked', minXp: 20000, color: '#14B8A6' },
+  { key: 'elite', name: 'Neural Net', minXp: 75000, color: '#A855F7' },
+  { key: 'singularity', name: 'Singularity', minXp: 200000, color: '#00F5FF' },
 ];
 
 export function getRankForXp(totalPoints: number) {

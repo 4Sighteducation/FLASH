@@ -6,12 +6,11 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from './Icon';
-import { getAvatarLadder } from '../services/avatarService';
 import { getRankForXp } from '../services/gamificationService';
+import SystemStatusRankIcon from './SystemStatusRankIcon';
 
 type Props = {
   visible: boolean;
@@ -20,8 +19,19 @@ type Props = {
 };
 
 export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: Props) {
-  const ladder = useMemo(() => getAvatarLadder(), []);
   const { current } = getRankForXp(totalPoints);
+  const ranks = useMemo(
+    () => [
+      { key: 'rookie', name: 'Standby', minXp: 0, tagline: '“Boot sequence pending.”' },
+      { key: 'learner', name: 'Waking Up', minXp: 250, tagline: '“Signal detected. Eyes open.”' },
+      { key: 'scholar', name: 'Booting', minXp: 1000, tagline: '“Systems online. Learning engaged.”' },
+      { key: 'contender', name: 'Online', minXp: 5000, tagline: '“Connected. Consistent. Dangerous.”' },
+      { key: 'ace', name: 'Overclocked', minXp: 20000, tagline: '“Faster recall. Higher stakes.”' },
+      { key: 'elite', name: 'Neural Net', minXp: 75000, tagline: '“Patterns mastered. Flow state.”' },
+      { key: 'singularity', name: 'Singularity', minXp: 200000, tagline: '“Beyond human. Beyond limits.”' },
+    ],
+    []
+  );
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -43,11 +53,11 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
             <View style={styles.introCard}>
               <Text style={styles.introTitle}>How it works</Text>
               <Text style={styles.introText}>
-                Earn XP → rank up → unlock the next “desk item” skin. No store, no grind traps — just progress.
+                Earn XP → rank up → unlock your next System Status. No store, no grind traps — just progress.
               </Text>
             </View>
 
-            {ladder.map(({ rank, avatar }) => {
+            {ranks.map((rank) => {
               const unlocked = totalPoints >= rank.minXp;
               const isCurrent = rank.key === current.key;
               return (
@@ -55,12 +65,12 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
                   key={rank.key}
                   style={[
                     styles.row,
-                    { borderColor: unlocked ? rank.color : 'rgba(255,255,255,0.10)' },
+                    { borderColor: unlocked ? '#00F5FF' : 'rgba(255,255,255,0.10)' },
                     isCurrent && styles.rowCurrent,
                   ]}
                 >
-                  <View style={[styles.iconWrap, { borderColor: unlocked ? rank.color : 'rgba(255,255,255,0.14)' }]}>
-                    <Image source={avatar.source} style={[styles.icon, !unlocked && styles.iconLocked]} resizeMode="contain" />
+                  <View style={[styles.iconWrap, { borderColor: unlocked ? 'rgba(0,245,255,0.40)' : 'rgba(255,255,255,0.14)' }]}>
+                    <SystemStatusRankIcon rankKey={rank.key} size={44} withContainerGlow />
                   </View>
 
                   <View style={styles.rowText}>
@@ -83,8 +93,7 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
                       )}
                     </View>
 
-                    <Text style={styles.avatarLabel}>{avatar.label}</Text>
-                    {avatar.subtitle ? <Text style={styles.avatarSubtitle}>{avatar.subtitle}</Text> : null}
+                    <Text style={styles.avatarLabel}>{rank.tagline}</Text>
                   </View>
                 </View>
               );
