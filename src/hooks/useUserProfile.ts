@@ -57,7 +57,7 @@ export function useUserProfile() {
             exam_boards!inner(
               id,
               code,
-              name
+              full_name
             ),
             qualification_types!inner(
               id,
@@ -90,7 +90,7 @@ export function useUserProfile() {
         return {
           subject_id: us.subject_id,
           subject_name: ebs.subject_name,
-          exam_board: examBoard.name,
+          exam_board: examBoard.full_name || examBoard.code,
           exam_board_code: examBoard.code,
           qualification_level: qualType.name, // e.g., "A-Level", "GCSE"
           qualification_code: qualType.code, // e.g., "A_LEVEL", "GCSE"
@@ -111,7 +111,8 @@ export function useUserProfile() {
       });
 
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      // Avoid spamming LogBox/toasts with noisy objects; surface a short message.
+      console.warn('Error fetching user profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to load profile');
     } finally {
       setLoading(false);
