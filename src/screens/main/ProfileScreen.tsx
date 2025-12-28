@@ -236,16 +236,19 @@ export default function ProfileScreen() {
     timerSeconds: number;
     xpMultiplier: number;
     // gating
-    minTier: 'free' | 'premium' | 'pro';
+    minTier: 'pro';
   }> = [
-    { key: 'safe', name: 'Safe Mode', tagline: 'Training wheels. No judgement.', shuffle: false, timerSeconds: 0, xpMultiplier: 1.0, minTier: 'free' },
-    { key: 'standard', name: 'Standard', tagline: 'Normal operating conditions.', shuffle: true, timerSeconds: 0, xpMultiplier: 1.1, minTier: 'premium' },
-    { key: 'turbo', name: 'Turbo', tagline: 'Picking up the pace.', shuffle: true, timerSeconds: 30, xpMultiplier: 1.5, minTier: 'premium' },
+    // Per your request: Difficulty Mode is a Pro-only feature.
+    // Safe Mode equals the current behavior (no shuffle, no timer).
+    { key: 'safe', name: 'Safe Mode', tagline: 'Training wheels. No judgement.', shuffle: false, timerSeconds: 0, xpMultiplier: 1.0, minTier: 'pro' },
+    { key: 'standard', name: 'Standard', tagline: 'Normal operating conditions.', shuffle: true, timerSeconds: 0, xpMultiplier: 1.1, minTier: 'pro' },
+    { key: 'turbo', name: 'Turbo', tagline: 'Picking up the pace.', shuffle: true, timerSeconds: 30, xpMultiplier: 1.5, minTier: 'pro' },
     { key: 'overdrive', name: 'Overdrive', tagline: 'For the ambitious.', shuffle: true, timerSeconds: 15, xpMultiplier: 2.0, minTier: 'pro' },
     { key: 'beast', name: 'Beast Mode', tagline: 'No mercy. No hints. No excuses.', shuffle: true, timerSeconds: 5, xpMultiplier: 3.0, minTier: 'pro' },
   ];
 
   const tierRank = (t: string) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+  const canUseDifficultyMode = tier === 'pro';
   const currentDifficulty: DifficultyKey = (() => {
     const s = userSettings;
     if (!s) return 'safe';
@@ -265,7 +268,7 @@ export default function ProfileScreen() {
     const preset = DIFFICULTY_PRESETS.find((p) => p.key === key);
     if (!preset) return;
 
-    const allowed = tierRank(tier) >= tierRank(preset.minTier);
+    const allowed = canUseDifficultyMode && tierRank(tier) >= tierRank(preset.minTier);
     if (!allowed) {
       showUpgradePrompt({
         title: 'Upgrade required',
@@ -483,27 +486,29 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Settings</Text>
           
           {/* Difficulty Mode */}
-          <TouchableOpacity style={styles.settingRow} onPress={() => setDifficultyVisible(true)}>
-            <Icon name="rocket-outline" size={22} color={colors.textSecondary} />
-            <View style={{ flex: 1, marginLeft: 15 }}>
-              <Text style={styles.settingText}>Difficulty mode</Text>
-              <Text style={styles.settingHintBelow}>
-                {DIFFICULTY_PRESETS.find((p) => p.key === currentDifficulty)?.name || 'Safe Mode'} • System Load
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert(
-                  'Difficulty mode (System Load)',
-                  'Safe: no shuffle, no timer (normal XP).\nStandard: shuffle only (+10% XP).\nTurbo: shuffle + 30s timer (+50% XP).\nOverdrive: shuffle + 15s timer (x2 XP).\nBeast: shuffle + 5s timer (x3 XP).\n\nA 3-second grace window applies after the timer hits zero.'
-                );
-              }}
-              style={{ paddingHorizontal: 8, paddingVertical: 6 }}
-            >
-              <Icon name="information-circle-outline" size={20} color={colors.textSecondary} />
+          {canUseDifficultyMode ? (
+            <TouchableOpacity style={styles.settingRow} onPress={() => setDifficultyVisible(true)}>
+              <Icon name="rocket-outline" size={22} color={colors.textSecondary} />
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={styles.settingText}>Difficulty mode</Text>
+                <Text style={styles.settingHintBelow}>
+                  {DIFFICULTY_PRESETS.find((p) => p.key === currentDifficulty)?.name || 'Safe Mode'} • System Load
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    'Difficulty mode (System Load)',
+                    'Safe: no shuffle, no timer (normal XP).\nStandard: shuffle only (+10% XP).\nTurbo: shuffle + 30s timer (+50% XP).\nOverdrive: shuffle + 15s timer (x2 XP).\nBeast: shuffle + 5s timer (x3 XP).\n\nA 3-second grace window applies after the timer hits zero.'
+                  );
+                }}
+                style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+              >
+                <Icon name="information-circle-outline" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
-            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
+          ) : null}
 
           <View style={styles.themesBlock}>
             <View style={styles.themesHeaderRow}>
