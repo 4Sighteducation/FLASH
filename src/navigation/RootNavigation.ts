@@ -1,15 +1,6 @@
 import { createNavigationContainerRef } from '@react-navigation/native';
 
 // A global navigation ref so we can navigate from non-screen code (e.g. upgradePrompt).
-export const navigationRef = createNavigationContainerRef();
-
-export function navigate(name: string, params?: object) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.navigate(name as never, params as never);
-}
-
-import { createNavigationContainerRef } from '@react-navigation/native';
-
 export const navigationRef = createNavigationContainerRef<any>();
 
 export function navigate(name: string, params?: any) {
