@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { gamificationConfig } from '../../services/gamificationService';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 const COLORS = [
   // Primary Colors
@@ -36,6 +39,20 @@ const COLORS = [
   '#DC2626', // Red-600
   '#7C3AED', // Violet-600
   '#0891B2', // Cyan-600
+  // Neutrals + deep tones
+  '#0F172A', // Slate-900
+  '#111827', // Gray-900
+  '#1F2937', // Gray-800
+  '#334155', // Slate-700
+  '#475569', // Slate-600
+  '#94A3B8', // Slate-400
+  // Extra accents
+  '#00F5FF', // Neon cyan (brand)
+  '#FF006E', // Neon pink (brand)
+  '#22D3EE', // Cyan-400
+  '#60A5FA', // Blue-400
+  '#34D399', // Emerald-400
+  '#F472B6', // Pink-400
 ];
 
 const GRADIENT_PRESETS = [
@@ -47,12 +64,39 @@ const GRADIENT_PRESETS = [
   { name: 'Sky', colors: ['#45B7D1', '#2196F3'] },
   { name: 'Lavender', colors: ['#DDA0DD', '#9C27B0'] },
   { name: 'Mint', colors: ['#84CC16', '#10B981'] },
+  { name: 'Neon Wave', colors: ['#00F5FF', '#FF006E'] },
+  { name: 'Cyber Ice', colors: ['#0EA5E9', '#22D3EE'] },
+  { name: 'Midnight', colors: ['#0a0f1e', '#1E293B'] },
+  { name: 'Steel', colors: ['#475569', '#0F172A'] },
+  { name: 'Lava', colors: ['#FF006E', '#F97316'] },
+];
+
+const THEME_GRADIENTS = [
+  {
+    key: 'pulse' as const,
+    name: 'Pulse (Theme)',
+    requiredXp: gamificationConfig.themeUnlocks.pulse,
+    colors: ['#FF006E', '#00F5FF'],
+  },
+  {
+    key: 'aurora' as const,
+    name: 'Aurora (Theme)',
+    requiredXp: gamificationConfig.themeUnlocks.aurora,
+    colors: ['#A855F7', '#00F5FF'],
+  },
+  {
+    key: 'singularity' as const,
+    name: 'Singularity (Theme)',
+    requiredXp: gamificationConfig.themeUnlocks.singularity,
+    colors: ['#000000', '#00F5FF'],
+  },
 ];
 
 export default function ColorPickerScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { tier } = useSubscription();
   const { subjectId, subjectName, currentColor, currentGradient, useGradient } = route.params as any;
   
   const [selectedColor, setSelectedColor] = useState(currentColor || '#6366F1');
@@ -61,6 +105,41 @@ export default function ColorPickerScreen() {
   );
   const [saving, setSaving] = useState(false);
   const [colorMode, setColorMode] = useState<'solid' | 'gradient'>(useGradient ? 'gradient' : 'solid');
+  const [totalPoints, setTotalPoints] = useState(0);
+
+  const canUseGradients = tier !== 'free';
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUserPoints() {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('user_stats')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        console.warn('[ColorPicker] Failed to load user_stats.total_points', error);
+        return;
+      }
+      setTotalPoints(data?.total_points ?? 0);
+    }
+    loadUserPoints();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const unlockedThemeGradients = useMemo(() => {
+    const xp = Number(totalPoints || 0);
+    return {
+      pulse: xp >= gamificationConfig.themeUnlocks.pulse,
+      aurora: xp >= gamificationConfig.themeUnlocks.aurora,
+      singularity: xp >= gamificationConfig.themeUnlocks.singularity,
+    };
+  }, [totalPoints]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -68,6 +147,13 @@ export default function ColorPickerScreen() {
       let updateData: any;
       
       if (colorMode === 'gradient' && selectedGradient) {
+        if (!canUseGradients) {
+          showUpgradePrompt({
+            title: 'Premium feature',
+            message: 'Gradients are available on Premium and Pro plans.',
+          });
+          return;
+        }
         // Save gradient colors
         updateData = {
           gradient_color_1: selectedGradient.color1,
@@ -140,8 +226,21 @@ export default function ColorPickerScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.modeButton, colorMode === 'gradient' && styles.activeModeButton]}
-            onPress={() => setColorMode('gradient')}
+            style={[
+              styles.modeButton,
+              colorMode === 'gradient' && styles.activeModeButton,
+              !canUseGradients && styles.disabledModeButton,
+            ]}
+            onPress={() => {
+              if (!canUseGradients) {
+                showUpgradePrompt({
+                  title: 'Premium feature',
+                  message: 'Gradients are available on Premium and Pro plans.',
+                });
+                return;
+              }
+              setColorMode('gradient');
+            }}
           >
             <Text style={[styles.modeButtonText, colorMode === 'gradient' && styles.activeModeButtonText]}>
               Gradients
@@ -197,6 +296,50 @@ export default function ColorPickerScreen() {
                       )}
                     </LinearGradient>
                     <Text style={styles.gradientName}>{gradient.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Theme gradients (XP unlocks):</Text>
+            <View style={styles.gradientGrid}>
+              {THEME_GRADIENTS.map((g) => {
+                const unlocked = unlockedThemeGradients[g.key];
+                const isSelected =
+                  selectedGradient?.color1 === g.colors[0] && selectedGradient?.color2 === g.colors[1];
+
+                return (
+                  <TouchableOpacity
+                    key={g.key}
+                    style={styles.gradientOption}
+                    onPress={() => {
+                      if (!unlocked) {
+                        Alert.alert('Locked', `Unlock at ${g.requiredXp.toLocaleString()} XP.`);
+                        return;
+                      }
+                      setSelectedGradient({ color1: g.colors[0], color2: g.colors[1] });
+                    }}
+                  >
+                    <LinearGradient
+                      colors={g.colors as any}
+                      style={[
+                        styles.gradientPreview,
+                        isSelected && styles.selectedGradient,
+                        !unlocked && styles.lockedGradient,
+                      ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      {!unlocked ? (
+                        <Ionicons name="lock-closed" size={20} color="#FFFFFF" />
+                      ) : isSelected ? (
+                        <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+                      ) : null}
+                    </LinearGradient>
+                    <Text style={styles.gradientName}>{g.name}</Text>
+                    {!unlocked ? (
+                      <Text style={styles.lockedText}>{g.requiredXp.toLocaleString()} XP</Text>
+                    ) : null}
                   </TouchableOpacity>
                 );
               })}
@@ -311,6 +454,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
   },
+  disabledModeButton: {
+    opacity: 0.55,
+  },
   activeModeButtonText: {
     color: '#FFFFFF',
   },
@@ -345,5 +491,15 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginTop: 8,
     textAlign: 'center',
+  },
+  lockedGradient: {
+    opacity: 0.55,
+  },
+  lockedText: {
+    fontSize: 11,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 2,
+    fontWeight: '600',
   },
 }); 
