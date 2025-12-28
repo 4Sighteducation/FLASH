@@ -28,6 +28,8 @@ import { pushNotificationService } from '../../services/pushNotificationService'
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { navigateToPaywall } from '../../utils/upgradePrompt';
 import { getTrackDisplayName, normalizeExamTrackId } from '../../utils/examTracks';
+import { getOrCreateUserSettings, updateUserSettings, UserSettings } from '../../services/userSettingsService';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -49,6 +51,8 @@ export default function ProfileScreen() {
   const [editVisible, setEditVisible] = useState(false);
   const [draftUsername, setDraftUsername] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [difficultyVisible, setDifficultyVisible] = useState(false);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +102,20 @@ export default function ProfileScreen() {
   React.useEffect(() => {
     loadNotificationPreferences();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSettings() {
+      if (!user?.id) return;
+      const s = await getOrCreateUserSettings(user.id);
+      if (cancelled) return;
+      setUserSettings(s);
+    }
+    loadSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const themeUnlocks = gamificationConfig.themeUnlocks;
   const canUsePulse = totalPoints >= themeUnlocks.pulse;
@@ -207,6 +225,64 @@ export default function ProfileScreen() {
       return;
     }
     setTheme(next);
+  };
+
+  type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
+  const DIFFICULTY_PRESETS: Array<{
+    key: DifficultyKey;
+    name: string;
+    tagline: string;
+    shuffle: boolean;
+    timerSeconds: number;
+    xpMultiplier: number;
+    // gating
+    minTier: 'free' | 'premium' | 'pro';
+  }> = [
+    { key: 'safe', name: 'Safe Mode', tagline: 'Training wheels. No judgement.', shuffle: false, timerSeconds: 0, xpMultiplier: 1.0, minTier: 'free' },
+    { key: 'standard', name: 'Standard', tagline: 'Normal operating conditions.', shuffle: true, timerSeconds: 0, xpMultiplier: 1.1, minTier: 'premium' },
+    { key: 'turbo', name: 'Turbo', tagline: 'Picking up the pace.', shuffle: true, timerSeconds: 30, xpMultiplier: 1.5, minTier: 'premium' },
+    { key: 'overdrive', name: 'Overdrive', tagline: 'For the ambitious.', shuffle: true, timerSeconds: 15, xpMultiplier: 2.0, minTier: 'pro' },
+    { key: 'beast', name: 'Beast Mode', tagline: 'No mercy. No hints. No excuses.', shuffle: true, timerSeconds: 5, xpMultiplier: 3.0, minTier: 'pro' },
+  ];
+
+  const tierRank = (t: string) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+  const currentDifficulty: DifficultyKey = (() => {
+    const s = userSettings;
+    if (!s) return 'safe';
+    const timer = Number(s.answer_timer_seconds || 0);
+    const shuffle = !!s.shuffle_mcq_enabled;
+    if (!shuffle && timer === 0) return 'safe';
+    if (shuffle && timer === 0) return 'standard';
+    if (shuffle && timer === 30) return 'turbo';
+    if (shuffle && timer === 15) return 'overdrive';
+    if (shuffle && timer === 5) return 'beast';
+    // fallback
+    return 'standard';
+  })();
+
+  const applyDifficulty = async (key: DifficultyKey) => {
+    if (!user?.id) return;
+    const preset = DIFFICULTY_PRESETS.find((p) => p.key === key);
+    if (!preset) return;
+
+    const allowed = tierRank(tier) >= tierRank(preset.minTier);
+    if (!allowed) {
+      showUpgradePrompt({
+        title: 'Upgrade required',
+        message: `Upgrade to unlock ${preset.name}.`,
+        ctaLabel: 'View plans',
+      });
+      return;
+    }
+
+    const next = await updateUserSettings(user.id, {
+      shuffle_mcq_enabled: preset.shuffle,
+      answer_timer_seconds: preset.timerSeconds,
+      grace_seconds: 3,
+      time_bank_seconds: 0,
+    });
+    setUserSettings(next);
+    setDifficultyVisible(false);
   };
 
   const getExamTypeDisplay = (examType: string) => {
@@ -406,6 +482,29 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           
+          {/* Difficulty Mode */}
+          <TouchableOpacity style={styles.settingRow} onPress={() => setDifficultyVisible(true)}>
+            <Icon name="rocket-outline" size={22} color={colors.textSecondary} />
+            <View style={{ flex: 1, marginLeft: 15 }}>
+              <Text style={styles.settingText}>Difficulty mode</Text>
+              <Text style={styles.settingHintBelow}>
+                {DIFFICULTY_PRESETS.find((p) => p.key === currentDifficulty)?.name || 'Safe Mode'} • System Load
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Difficulty mode (System Load)',
+                  'Safe: no shuffle, no timer (normal XP).\nStandard: shuffle only (+10% XP).\nTurbo: shuffle + 30s timer (+50% XP).\nOverdrive: shuffle + 15s timer (x2 XP).\nBeast: shuffle + 5s timer (x3 XP).\n\nA 3-second grace window applies after the timer hits zero.'
+                );
+              }}
+              style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+            >
+              <Icon name="information-circle-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+
           <View style={styles.themesBlock}>
             <View style={styles.themesHeaderRow}>
               <Icon name="color-palette-outline" size={22} color={colors.textSecondary} />
@@ -528,6 +627,49 @@ export default function ProfileScreen() {
             <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        {/* Difficulty Mode Modal */}
+        <Modal visible={difficultyVisible} transparent animationType="fade" onRequestClose={() => setDifficultyVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Difficulty mode</Text>
+              <Text style={styles.modalLabel}>Concept 1: System Load</Text>
+              <View style={{ marginTop: 10, gap: 10 }}>
+                {DIFFICULTY_PRESETS.map((p) => {
+                  const isSelected = currentDifficulty === p.key;
+                  const locked = tierRank(tier) < tierRank(p.minTier);
+                  return (
+                    <TouchableOpacity
+                      key={p.key}
+                      style={[
+                        styles.themeOptionButton,
+                        isSelected && styles.themeOptionButtonSelected,
+                        locked && styles.themeOptionButtonLocked,
+                      ]}
+                      onPress={() => applyDifficulty(p.key)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.themeOptionTitle, isSelected && styles.themeOptionTitleSelected]}>
+                          {p.name} {locked ? '(locked)' : ''}
+                        </Text>
+                        <Text style={styles.themeOptionSubtitle}>
+                          {p.tagline} • Shuffle {p.shuffle ? 'On' : 'Off'} • Timer {p.timerSeconds ? `${p.timerSeconds}s` : 'Off'} • XP x{p.xpMultiplier}
+                        </Text>
+                      </View>
+                      {isSelected ? <Icon name="checkmark-circle" size={22} color={colors.primary} /> : null}
+                      {locked ? <Icon name="lock-closed-outline" size={20} color={colors.textSecondary} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalButtonSecondary} onPress={() => setDifficultyVisible(false)}>
+                  <Text style={styles.modalButtonSecondaryText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
         
         {/* Edit Profile Modal */}
         <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>

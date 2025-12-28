@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import Icon from '../../components/Icon';
-import { fetchDailyStudyStats, refreshDailyStudyStatsMV } from '../../services/userSettingsService';
+import { fetchDailyStudyStats } from '../../services/userSettingsService';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 export default function StatisticsScreen({ navigation }: any) {
@@ -21,8 +21,6 @@ export default function StatisticsScreen({ navigation }: any) {
     async function load() {
       if (!user?.id) return;
       setLoading(true);
-      // Best-effort MV refresh; ok if it fails (e.g. no permissions yet)
-      await refreshDailyStudyStatsMV();
       const data = await fetchDailyStudyStats(user.id, 60);
       if (cancelled) return;
       setRows(data);

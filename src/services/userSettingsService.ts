@@ -75,12 +75,8 @@ export type DailyStudyStat = {
 };
 
 export async function fetchDailyStudyStats(userId: string, limit = 60): Promise<DailyStudyStat[]> {
-  const { data, error } = await supabase
-    .from('user_daily_study_stats_mv')
-    .select('*')
-    .eq('user_id', userId)
-    .order('study_date', { ascending: false })
-    .limit(limit);
+  // Prefer the secure RPC (filters to auth.uid server-side).
+  const { data, error } = await supabase.rpc('get_user_daily_study_stats', { p_limit: limit });
 
   if (error) {
     console.warn('[stats] fetch failed', error);
