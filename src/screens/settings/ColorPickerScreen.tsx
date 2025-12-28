@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -229,7 +230,11 @@ export default function ColorPickerScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.modeToggle}>
           <TouchableOpacity
             style={[styles.modeButton, colorMode === 'solid' && styles.activeModeButton]}
@@ -373,7 +378,7 @@ export default function ColorPickerScreen() {
             </View>
           </>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -431,6 +436,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 28,
   },
   sectionTitle: {
     fontSize: 18,
@@ -490,16 +498,17 @@ const styles = StyleSheet.create({
   gradientGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 14,
+    justifyContent: 'space-between',
   },
   gradientOption: {
     width: '25%',
     alignItems: 'center',
+    marginBottom: 18,
   },
   gradientPreview: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
