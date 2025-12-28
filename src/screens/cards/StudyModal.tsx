@@ -83,7 +83,6 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     correctAnswer: null,
   });
   const feedbackScale = useRef(new Animated.Value(0)).current;
-  const [showSpotlight, setShowSpotlight] = useState(true);
   
   // Track session statistics
   const [sessionStats, setSessionStats] = useState({
@@ -734,7 +733,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     console.log('🔓 Unlocking animation lock early');
     animatingRef.current = false;
 
-    // Wait a bit longer so the swoosh/feedback can breathe before showing the next card.
+    // Wait 2 seconds (auto-advance) before proceeding
     setTimeout(() => {
       // Animate feedback modal exit
       Animated.timing(feedbackScale, {
@@ -778,7 +777,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           return currentCards; // Return unchanged
         });
       });
-    }, 2600); // Give the card->box swoosh a bit longer to land before the next card appears
+    }, 2000); // Changed from 1800 to 2000ms for 2-second auto-advance
   };
 
   const saveStudySession = async () => {
@@ -934,10 +933,6 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
         <View style={styles.mainContent}>
           <View style={styles.swipeableArea} {...panResponder.panHandlers}>
-            {/* Spotlight overlay so the card feels like the hero */}
-            {showSpotlight && !previewMode && !currentCard?.isFrozen ? (
-              <View pointerEvents="none" style={styles.spotlightOverlay} />
-            ) : null}
             <Animated.View 
               style={[
                 styles.cardContainer,
@@ -960,7 +955,6 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   <FlashcardCard
                     card={currentCard}
                     color={subjectColor}
-                    variant="study"
                     shuffleOptions={canUseDifficultyMode ? !!userSettings?.shuffle_mcq_enabled : false}
                     onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
                   />
@@ -1385,10 +1379,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  spotlightOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   cardContainer: {
     justifyContent: 'center',
