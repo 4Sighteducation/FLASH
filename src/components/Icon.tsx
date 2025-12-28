@@ -45,6 +45,12 @@ const emojiMap: Record<string, string> = {
   'alert-circle-outline': '⚠️',
   'information-circle': 'ℹ️',
   'information-circle-outline': 'ℹ️',
+  'time-outline': '⏱️',
+  'time': '⏱️',
+  'lock-closed': '🔒',
+  'lock-closed-outline': '🔒',
+  'eye-outline': '👁️',
+  'eye': '👁️',
   
   // Profile & Settings
   'person': '👤',
