@@ -15,13 +15,29 @@ export default function StatisticsScreen({ navigation }: any) {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<any[]>([]);
+  const [range, setRange] = useState<'today' | '7d' | '30d' | '90d'>('30d');
+
+  const rangeLimit = (r: typeof range) => {
+    switch (r) {
+      case 'today':
+        return 1;
+      case '7d':
+        return 7;
+      case '30d':
+        return 30;
+      case '90d':
+        return 90;
+      default:
+        return 30;
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       if (!user?.id) return;
       setLoading(true);
-      const data = await fetchDailyStudyStats(user.id, 60);
+      const data = await fetchDailyStudyStats(user.id, rangeLimit(range));
       if (cancelled) return;
       setRows(data);
       setLoading(false);
@@ -30,7 +46,7 @@ export default function StatisticsScreen({ navigation }: any) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, range]);
 
   // Gated: Premium/Pro only (as discussed). You can loosen later.
   const allowed = tier !== 'free';
@@ -83,7 +99,24 @@ export default function StatisticsScreen({ navigation }: any) {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.subtitle}>Last {Math.min(60, rows.length)} days</Text>
+          <View style={styles.rangeRow}>
+            {(['today', '7d', '30d', '90d'] as const).map((key) => {
+              const selected = range === key;
+              const label = key === 'today' ? 'Today' : key.toUpperCase();
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.rangePill, selected && styles.rangePillSelected]}
+                  onPress={() => setRange(key)}
+                >
+                  <Text style={[styles.rangePillText, selected && styles.rangePillTextSelected]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={styles.subtitle}>
+            {range === 'today' ? 'Today' : `Last ${rangeLimit(range)} days`}
+          </Text>
           {rows.map((r) => {
             const pct = Math.round(((r.accuracy || 0) * 100) as number);
             return (
@@ -133,6 +166,21 @@ const createStyles = (colors: any) =>
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
     loadingText: { color: colors.textSecondary, fontWeight: '700' },
     content: { padding: 16, paddingBottom: 28 },
+    rangeRow: { flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' },
+    rangePill: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.06)',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rangePillSelected: {
+      backgroundColor: 'rgba(20, 184, 166, 0.14)',
+      borderColor: 'rgba(20, 184, 166, 0.45)',
+    },
+    rangePillText: { color: colors.textSecondary, fontWeight: '900', fontSize: 12, letterSpacing: 0.4 },
+    rangePillTextSelected: { color: colors.primary },
     row: {
       padding: 14,
       borderRadius: 14,
