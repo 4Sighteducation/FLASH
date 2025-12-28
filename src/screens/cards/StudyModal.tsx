@@ -435,10 +435,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !animatingRef.current,
+      // Don't steal taps (MCQ options, flip, scroll). We'll capture only once we detect a horizontal swipe.
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (animatingRef.current) return false;
         // More sensitive to horizontal swipes
+        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+      },
+      // Critical: capture move events before nested ScrollViews/Touchables claim them.
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        if (animatingRef.current) return false;
         return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
       },
       onPanResponderGrant: (e, gestureState) => {
@@ -530,6 +537,27 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             });
         }
       },
+      onPanResponderTerminate: () => {
+        // If the responder was taken (e.g. by a ScrollView), snap back safely.
+        Animated.parallel([
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 8,
+            tension: 40,
+          }),
+          Animated.spring(cardScale, {
+            toValue: 1,
+            useNativeDriver: true,
+            friction: 8,
+            tension: 40,
+          }),
+        ]).start(() => {
+          animatingRef.current = false;
+        });
+      },
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
     })
   ).current;
 
