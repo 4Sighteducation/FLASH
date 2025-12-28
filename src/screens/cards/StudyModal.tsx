@@ -1343,8 +1343,9 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     justifyContent: 'center',
-    paddingBottom: 80, // Space for bottom navigation
-    paddingTop: 10,
+    // Footer is now part of layout (not absolute), so don't reserve a huge bottom padding.
+    paddingBottom: 8,
+    paddingTop: 6,
   },
   swipeableArea: {
     flex: 1,
@@ -1366,10 +1367,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    // Important: keep this in normal layout so it doesn't overlap the card area.
   },
   navigationContainer: {
     flexDirection: 'row',

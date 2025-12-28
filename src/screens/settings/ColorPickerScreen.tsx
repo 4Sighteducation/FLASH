@@ -16,59 +16,67 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { gamificationConfig } from '../../services/gamificationService';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
+// Source of truth: `assets/flash-color-palettes.jsx`
+// 28 distinct solids (ordered to look good in a grid)
 const COLORS = [
-  // Primary Colors
-  '#6366F1', // Indigo
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#EF4444', // Red
+  '#3B82F6', // Royal Blue
+  '#8B5CF6', // Violet
+  '#D946EF', // Fuchsia
+  '#F43F5E', // Rose
+  '#F97316', // Orange
   '#F59E0B', // Amber
+  '#EAB308', // Yellow
+  '#84CC16', // Lime
+  '#22C55E', // Green
   '#10B981', // Emerald
   '#14B8A6', // Teal
-  '#3B82F6', // Blue
-  '#6B7280', // Gray
-  '#F97316', // Orange
-  // Additional Colors
-  '#84CC16', // Lime
   '#06B6D4', // Cyan
-  '#A855F7', // Violet
-  '#F43F5E', // Rose
   '#0EA5E9', // Sky
-  '#22C55E', // Green
-  '#FACC15', // Yellow
-  '#DC2626', // Red-600
-  '#7C3AED', // Violet-600
-  '#0891B2', // Cyan-600
-  // Neutrals + deep tones
-  '#0F172A', // Slate-900
-  '#111827', // Gray-900
-  '#1F2937', // Gray-800
-  '#334155', // Slate-700
-  '#475569', // Slate-600
-  '#94A3B8', // Slate-400
-  // Extra accents
-  '#00F5FF', // Neon cyan (brand)
-  '#FF006E', // Neon pink (brand)
-  '#22D3EE', // Cyan-400
-  '#60A5FA', // Blue-400
-  '#34D399', // Emerald-400
-  '#F472B6', // Pink-400
+  '#6366F1', // Indigo
+  '#A855F7', // Purple
+  '#EC4899', // Pink
+  '#93C5FD', // Soft Blue
+  '#C4B5FD', // Soft Purple
+  '#F9A8D4', // Soft Pink
+  '#FDBA74', // Soft Peach
+  '#FB7185', // Coral
+  '#FCA5A5', // Salmon
+  '#6EE7B7', // Mint
+  '#67E8F9', // Aqua
+  '#64748B', // Slate
+  '#475569', // Graphite
+  '#334155', // Charcoal
+  '#1E293B', // Midnight
 ];
 
+// Gradients: we currently persist 2 colors (`gradient_color_1/_2`), so 3-stop gradients are approximated with first+last.
 const GRADIENT_PRESETS = [
-  { name: 'Sunset', colors: ['#FF6B6B', '#FF8E53'] },
-  { name: 'Ocean', colors: ['#4ECDC4', '#44A08D'] },
-  { name: 'Purple Dream', colors: ['#9333EA', '#DB2777'] },
-  { name: 'Forest', colors: ['#96CEB4', '#4CAF50'] },
-  { name: 'Fire', colors: ['#F97316', '#DC2626'] },
-  { name: 'Sky', colors: ['#45B7D1', '#2196F3'] },
-  { name: 'Lavender', colors: ['#DDA0DD', '#9C27B0'] },
-  { name: 'Mint', colors: ['#84CC16', '#10B981'] },
-  { name: 'Neon Wave', colors: ['#00F5FF', '#FF006E'] },
-  { name: 'Cyber Ice', colors: ['#0EA5E9', '#22D3EE'] },
-  { name: 'Midnight', colors: ['#0a0f1e', '#1E293B'] },
-  { name: 'Steel', colors: ['#475569', '#0F172A'] },
-  { name: 'Lava', colors: ['#FF006E', '#F97316'] },
+  { name: 'Sunset', colors: ['#FCA5A5', '#FB923C'] },
+  { name: 'Ocean', colors: ['#5EEAD4', '#3B82F6'] },
+  { name: 'Purple Dream', colors: ['#C084FC', '#EC4899'] },
+  { name: 'Forest', colors: ['#86EFAC', '#22C55E'] },
+  { name: 'Fire', colors: ['#FDBA74', '#F97316'] },
+  { name: 'Sky', colors: ['#7DD3FC', '#38BDF8'] },
+  { name: 'Lavender', colors: ['#DDD6FE', '#A78BFA'] },
+  { name: 'Mint', colors: ['#A7F3D0', '#6EE7B7'] },
+  { name: 'Neon Wave', colors: ['#67E8F9', '#F0ABFC'] },
+  { name: 'Cyber Ice', colors: ['#BAE6FD', '#38BDF8'] },
+  { name: 'Midnight', colors: ['#475569', '#1E293B'] },
+  { name: 'Steel', colors: ['#94A3B8', '#64748B'] },
+  // New (2-stop)
+  { name: 'Candy', colors: ['#F472B6', '#FB923C'] },
+  { name: 'Electric', colors: ['#3B82F6', '#8B5CF6'] },
+  { name: 'Deep Sea', colors: ['#0EA5E9', '#1E3A5F'] },
+  { name: 'Grape', colors: ['#7C3AED', '#DB2777'] },
+  { name: 'Mojito', colors: ['#BEF264', '#22C55E'] },
+  { name: 'Peach', colors: ['#FECACA', '#FCD34D'] },
+  { name: 'Berry', colors: ['#BE185D', '#7C3AED'] },
+  { name: 'Glacier', colors: ['#E0F2FE', '#0284C7'] },
+  { name: 'Ember', colors: ['#F87171', '#B91C1C'] },
+  // 3-stop approximations (until we add gradient_color_3 or a JSON array column)
+  { name: 'Aurora', colors: ['#22D3EE', '#EC4899'] },
+  { name: 'Sunrise', colors: ['#FDE047', '#F43F5E'] },
+  { name: 'Cosmic', colors: ['#1E1B4B', '#EC4899'] },
 ];
 
 const THEME_GRADIENTS = [
@@ -414,12 +422,12 @@ const styles = StyleSheet.create({
   colorGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
   },
   colorOption: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -463,16 +471,16 @@ const styles = StyleSheet.create({
   gradientGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 14,
   },
   gradientOption: {
-    width: '30%',
+    width: '25%',
     alignItems: 'center',
   },
   gradientPreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

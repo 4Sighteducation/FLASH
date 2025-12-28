@@ -55,9 +55,10 @@ const CARD_WIDTH = Math.min(screenWidth - 80, CARD_MAX_WIDTH); // Large margins 
 // Height: Calculate available space properly
 // Screen - Leitner boxes (~120px) - Navigation (~100px) - Header (~60px) - Safe spacing (~60px)
 // Increased reserve to prevent overlap
-const AVAILABLE_HEIGHT = screenHeight - 340; // Reserve 340px for UI chrome (was 320)
+// NOTE: StudyMode has a header + difficulty pills + leitner bar + footer; reserve more height so cards never overlap.
+const AVAILABLE_HEIGHT = screenHeight - 430;
 const CARD_HEIGHT = IS_MOBILE 
-  ? Math.min(AVAILABLE_HEIGHT * 0.92, 520) // Use 92% (was 95%), max 520px (was 550)
+  ? Math.min(AVAILABLE_HEIGHT * 0.88, 470)
   : 500;
 
 // Helper function to calculate dynamic font size based on text length
