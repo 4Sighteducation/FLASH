@@ -13,6 +13,8 @@ import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import SplashScreen from '../screens/SplashScreen';
+import PaywallScreen from '../screens/paywall/PaywallScreen';
+import { navigationRef } from './RootNavigation';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,7 +80,7 @@ export default function AppNavigator() {
 
   return (
     <SubscriptionProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {user ? (
             isOnboarded ? (
@@ -98,6 +100,13 @@ export default function AppNavigator() {
               <Stack.Screen name="SignUp" component={SignUpScreen} />
             </>
           )}
+
+          {/* Global Paywall Modal (so it can appear above any nested modal stack) */}
+          <Stack.Screen
+            name="PaywallModal"
+            component={PaywallScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SubscriptionProvider>
