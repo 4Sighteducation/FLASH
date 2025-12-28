@@ -28,6 +28,7 @@ interface UserSubject {
   color: string;
   gradient_color_1?: string;
   gradient_color_2?: string;
+  gradient_color_3?: string;
   use_gradient?: boolean;
   subject: {
     subject_name: string;
@@ -166,6 +167,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           color,
           gradient_color_1,
           gradient_color_2,
+          gradient_color_3,
           use_gradient,
           subject:exam_board_subjects!subject_id(subject_name, exam_board_id)
         `)
@@ -378,7 +380,11 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
                 <LinearGradient
                   colors={
                     subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                      ? [subject.gradient_color_1, subject.gradient_color_2]
+                      ? ([
+                          subject.gradient_color_1,
+                          subject.gradient_color_2,
+                          subject.gradient_color_3,
+                        ].filter(Boolean) as string[])
                       : [subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]
                   }
                   style={styles.subjectGradient}

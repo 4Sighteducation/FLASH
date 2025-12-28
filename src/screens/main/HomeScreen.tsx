@@ -34,6 +34,7 @@ interface UserSubject {
   color: string;
   gradient_color_1?: string;
   gradient_color_2?: string;
+  gradient_color_3?: string;
   use_gradient?: boolean;
   subject: {
     subject_name: string;
@@ -173,6 +174,7 @@ export default function HomeScreen({ navigation }: any) {
           color,
           gradient_color_1,
           gradient_color_2,
+          gradient_color_3,
           use_gradient,
           subject:exam_board_subjects!subject_id(subject_name)
         `)
@@ -433,7 +435,11 @@ export default function HomeScreen({ navigation }: any) {
                     <LinearGradient
                       colors={
                         subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                          ? [subject.gradient_color_1, subject.gradient_color_2]
+                          ? ([
+                              subject.gradient_color_1,
+                              subject.gradient_color_2,
+                              subject.gradient_color_3,
+                            ].filter(Boolean) as string[])
                           : [subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]
                       }
                       style={isGridView ? styles.subjectGradientGrid : styles.subjectGradient}
@@ -455,7 +461,11 @@ export default function HomeScreen({ navigation }: any) {
                                   subjectName: subject.subject.subject_name,
                                   currentColor: subject.color,
                                   currentGradient: subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                                    ? { color1: subject.gradient_color_1, color2: subject.gradient_color_2 }
+                                    ? {
+                                        color1: subject.gradient_color_1,
+                                        color2: subject.gradient_color_2,
+                                        color3: subject.gradient_color_3 || null,
+                                      }
                                     : null,
                                   useGradient: subject.use_gradient || false,
                                 });
@@ -503,7 +513,11 @@ export default function HomeScreen({ navigation }: any) {
                                 subjectName: subject.subject.subject_name,
                                 currentColor: subject.color,
                                 currentGradient: subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                                  ? { color1: subject.gradient_color_1, color2: subject.gradient_color_2 }
+                                  ? {
+                                      color1: subject.gradient_color_1,
+                                      color2: subject.gradient_color_2,
+                                      color3: subject.gradient_color_3 || null,
+                                    }
                                   : null,
                                 useGradient: subject.use_gradient || false,
                               });

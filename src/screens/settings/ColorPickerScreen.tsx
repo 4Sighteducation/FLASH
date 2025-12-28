@@ -49,7 +49,7 @@ const COLORS = [
   '#1E293B', // Midnight
 ];
 
-// Gradients: we currently persist 2 colors (`gradient_color_1/_2`), so 3-stop gradients are approximated with first+last.
+// Gradients: we persist up to 3 colors (`gradient_color_1/_2/_3`).
 const GRADIENT_PRESETS = [
   { name: 'Sunset', colors: ['#FCA5A5', '#FB923C'] },
   { name: 'Ocean', colors: ['#5EEAD4', '#3B82F6'] },
@@ -73,10 +73,10 @@ const GRADIENT_PRESETS = [
   { name: 'Berry', colors: ['#BE185D', '#7C3AED'] },
   { name: 'Glacier', colors: ['#E0F2FE', '#0284C7'] },
   { name: 'Ember', colors: ['#F87171', '#B91C1C'] },
-  // 3-stop approximations (until we add gradient_color_3 or a JSON array column)
-  { name: 'Aurora', colors: ['#22D3EE', '#EC4899'] },
-  { name: 'Sunrise', colors: ['#FDE047', '#F43F5E'] },
-  { name: 'Cosmic', colors: ['#1E1B4B', '#EC4899'] },
+  // 3-stop
+  { name: 'Aurora', colors: ['#22D3EE', '#A855F7', '#EC4899'] },
+  { name: 'Sunrise', colors: ['#FDE047', '#FB923C', '#F43F5E'] },
+  { name: 'Cosmic', colors: ['#1E1B4B', '#7C3AED', '#EC4899'] },
 ];
 
 const THEME_GRADIENTS = [
@@ -84,19 +84,19 @@ const THEME_GRADIENTS = [
     key: 'pulse' as const,
     name: 'Pulse (Theme)',
     requiredXp: gamificationConfig.themeUnlocks.pulse,
-    colors: ['#FF006E', '#00F5FF'],
+    colors: ['#FF006E', '#00F5FF', '#FF006E'],
   },
   {
     key: 'aurora' as const,
     name: 'Aurora (Theme)',
     requiredXp: gamificationConfig.themeUnlocks.aurora,
-    colors: ['#A855F7', '#00F5FF'],
+    colors: ['#22D3EE', '#A855F7', '#EC4899'],
   },
   {
     key: 'singularity' as const,
     name: 'Singularity (Theme)',
     requiredXp: gamificationConfig.themeUnlocks.singularity,
-    colors: ['#000000', '#00F5FF'],
+    colors: ['#000000', '#0a0f1e', '#00F5FF'],
   },
 ];
 
@@ -108,7 +108,7 @@ export default function ColorPickerScreen() {
   const { subjectId, subjectName, currentColor, currentGradient, useGradient } = route.params as any;
   
   const [selectedColor, setSelectedColor] = useState(currentColor || '#6366F1');
-  const [selectedGradient, setSelectedGradient] = useState<{color1: string, color2: string} | null>(
+  const [selectedGradient, setSelectedGradient] = useState<{ color1: string; color2: string; color3?: string | null } | null>(
     currentGradient || null
   );
   const [saving, setSaving] = useState(false);
@@ -166,6 +166,7 @@ export default function ColorPickerScreen() {
         updateData = {
           gradient_color_1: selectedGradient.color1,
           gradient_color_2: selectedGradient.color2,
+          gradient_color_3: selectedGradient.color3 || null,
           use_gradient: true,
           color: selectedGradient.color1, // Keep for backwards compatibility
         };
@@ -176,6 +177,7 @@ export default function ColorPickerScreen() {
           use_gradient: false,
           gradient_color_1: null,
           gradient_color_2: null,
+          gradient_color_3: null,
         };
       }
 
@@ -201,7 +203,11 @@ export default function ColorPickerScreen() {
       <LinearGradient
         colors={
           colorMode === 'gradient' && selectedGradient
-            ? [selectedGradient.color1, selectedGradient.color2]
+            ? ([
+                selectedGradient.color1,
+                selectedGradient.color2,
+                selectedGradient.color3,
+              ].filter(Boolean) as string[])
             : [selectedColor, adjustColor(selectedColor, -20)]
         }
         style={styles.headerGradient}
@@ -283,12 +289,19 @@ export default function ColorPickerScreen() {
             <View style={styles.gradientGrid}>
               {GRADIENT_PRESETS.map((gradient) => {
                 const isSelected = selectedGradient?.color1 === gradient.colors[0] && 
-                                  selectedGradient?.color2 === gradient.colors[1];
+                                  selectedGradient?.color2 === gradient.colors[1] &&
+                                  (gradient.colors.length < 3 || selectedGradient?.color3 === gradient.colors[2]);
                 return (
                   <TouchableOpacity
                     key={gradient.name}
                     style={styles.gradientOption}
-                    onPress={() => setSelectedGradient({ color1: gradient.colors[0], color2: gradient.colors[1] })}
+                    onPress={() =>
+                      setSelectedGradient({
+                        color1: gradient.colors[0],
+                        color2: gradient.colors[1],
+                        color3: gradient.colors.length >= 3 ? gradient.colors[2] : null,
+                      })
+                    }
                   >
                     <LinearGradient
                       colors={gradient.colors as any}
@@ -314,7 +327,9 @@ export default function ColorPickerScreen() {
               {THEME_GRADIENTS.map((g) => {
                 const unlocked = unlockedThemeGradients[g.key];
                 const isSelected =
-                  selectedGradient?.color1 === g.colors[0] && selectedGradient?.color2 === g.colors[1];
+                  selectedGradient?.color1 === g.colors[0] &&
+                  selectedGradient?.color2 === g.colors[1] &&
+                  (g.colors.length < 3 || selectedGradient?.color3 === g.colors[2]);
 
                 return (
                   <TouchableOpacity
@@ -325,7 +340,11 @@ export default function ColorPickerScreen() {
                         Alert.alert('Locked', `Unlock at ${g.requiredXp.toLocaleString()} XP.`);
                         return;
                       }
-                      setSelectedGradient({ color1: g.colors[0], color2: g.colors[1] });
+                      setSelectedGradient({
+                        color1: g.colors[0],
+                        color2: g.colors[1],
+                        color3: g.colors.length >= 3 ? g.colors[2] : null,
+                      });
                     }}
                   >
                     <LinearGradient
