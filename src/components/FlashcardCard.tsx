@@ -40,6 +40,8 @@ interface FlashcardCardProps {
   onDelete?: () => void;
   // Pro feature: randomize multiple choice option order per review attempt.
   shuffleOptions?: boolean;
+  // Visual sizing: Study mode wants the card to be the hero.
+  variant?: 'default' | 'study';
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -101,6 +103,7 @@ export default function FlashcardCard({
   showDeleteButton,
   onDelete,
   shuffleOptions = false,
+  variant = 'default',
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
   const [isFlipped, setIsFlipped] = useState(false);
@@ -115,6 +118,17 @@ export default function FlashcardCard({
   // Get box info for display
   const boxInfo = LeitnerSystem.getBoxInfo(card.box_number);
   const displayColor = color || colors.primary;
+
+  const { width: cardW, height: cardH, marginV } = (() => {
+    if (variant !== 'study') {
+      return { width: CARD_WIDTH, height: CARD_HEIGHT, marginV: 8 };
+    }
+    // Study: big, centered, "hero" card.
+    // Keep enough space for header + difficulty pills + leitner bar + footer.
+    const width = Math.min(screenWidth - 24, 420);
+    const height = Math.min(Math.floor(screenHeight * 0.62), 640);
+    return { width, height, marginV: 0 };
+  })();
 
   // Reset state when card changes
   useEffect(() => {
@@ -221,9 +235,13 @@ export default function FlashcardCard({
     return {};
   };
 
-  const questionFontSize = getDynamicFontSize(card.question, IS_MOBILE ? 18 : 22, 15);
+  const questionFontSize = getDynamicFontSize(
+    card.question,
+    variant === 'study' ? (IS_MOBILE ? 22 : 26) : IS_MOBILE ? 18 : 22,
+    15
+  );
   const optionFontSize = card.options 
-    ? getOptionsFontSize(card.options, IS_MOBILE ? 14 : 16) 
+    ? getOptionsFontSize(card.options, variant === 'study' ? (IS_MOBILE ? 15 : 17) : IS_MOBILE ? 14 : 16) 
     : 14;
 
   const handleUserAnswer = (correct: boolean) => {
@@ -500,7 +518,7 @@ export default function FlashcardCard({
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { width: cardW, height: cardH, marginVertical: marginV }]}>
         <Animated.View 
           style={[
             styles.card, 
@@ -555,9 +573,6 @@ export default function FlashcardCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    marginVertical: 8,
     alignSelf: 'center',
   },
   card: {

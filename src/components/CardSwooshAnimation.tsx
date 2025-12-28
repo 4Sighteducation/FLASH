@@ -55,22 +55,22 @@ export default function CardSwooshAnimation({
         Animated.parallel([
           Animated.timing(translateX, {
             toValue: midX,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(translateY, {
             toValue: midY,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(scale, {
             toValue: 0.8,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(rotation, {
             toValue: 180,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
         ]),
@@ -78,33 +78,33 @@ export default function CardSwooshAnimation({
         Animated.parallel([
           Animated.timing(translateX, {
             toValue: targetX,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(translateY, {
             toValue: targetY,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(scale, {
             toValue: 0.2,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.timing(rotation, {
             toValue: 360,
-            duration: 400,
+            duration: 520,
             useNativeDriver: true,
           }),
           Animated.sequence([
             Animated.timing(opacity, {
               toValue: 0.8,
-              duration: 300,
+              duration: 380,
               useNativeDriver: true,
             }),
             Animated.timing(opacity, {
               toValue: 0,
-              duration: 100,
+              duration: 140,
               useNativeDriver: true,
             }),
           ]),
