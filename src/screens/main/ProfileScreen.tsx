@@ -7,17 +7,15 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
-  ActivityIndicator,
   Switch,
-  TextInput,
-  KeyboardAvoidingView,
   Platform,
   Linking,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
-import { cleanupOrphanedCards, getOrphanedCardsStats } from '../../utils/databaseMaintenance';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -27,21 +25,25 @@ import { gamificationConfig, getRankForXp } from '../../services/gamificationSer
 import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { supabase } from '../../services/supabase';
 import { pushNotificationService } from '../../services/pushNotificationService';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { navigateToPaywall } from '../../utils/upgradePrompt';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, colors, setTheme } = useTheme();
+  const styles = createStyles(colors);
   const { tier, limits, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
-  const [cyberUnlocked, setCyberUnlocked] = useState(false);
+  const { profile } = useUserProfile();
   const [totalPoints, setTotalPoints] = useState(0);
-  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
-  const [showContactForm, setShowContactForm] = useState(false);
-  const [contactSubject, setContactSubject] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
+  const [userInfo, setUserInfo] = useState<{ exam_type?: string; username?: string } | null>(null);
+  const [editVisible, setEditVisible] = useState(false);
+  const [draftUsername, setDraftUsername] = useState('');
+  const [draftExamType, setDraftExamType] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,25 +67,49 @@ export default function ProfileScreen() {
       cancelled = true;
     };
   }, [user?.id]);
-  const [sendingMessage, setSendingMessage] = useState(false);
+  
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUserInfo() {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('users')
+        .select('exam_type, username')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn('[Profile] Failed to load users row', error);
+        return;
+      }
+      setUserInfo(data ?? null);
+    }
+    loadUserInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   React.useEffect(() => {
     loadNotificationPreferences();
   }, []);
 
-  React.useEffect(() => {
-    const loadUnlocks = async () => {
-      try {
-        if (!user?.id) return;
-        const storageKey = `unlocked_theme_cyber_v1_${user.id}`;
-        const unlocked = (await AsyncStorage.getItem(storageKey)) === 'true';
-        setCyberUnlocked(unlocked);
-      } catch {
-        setCyberUnlocked(false);
-      }
-    };
-    loadUnlocks();
-  }, [user?.id]);
+  const themeUnlocks = gamificationConfig.themeUnlocks;
+  const canUsePulse = totalPoints >= themeUnlocks.pulse;
+  const canUseAurora = totalPoints >= themeUnlocks.aurora;
+  const canUseSingularity = totalPoints >= themeUnlocks.singularity;
+
+  const themeOptions: Array<{
+    key: 'default' | 'pulse' | 'aurora' | 'singularity';
+    name: string;
+    requiredXp: number;
+    unlocked: boolean;
+  }> = [
+    { key: 'default', name: 'Default', requiredXp: 0, unlocked: true },
+    { key: 'pulse', name: 'Pulse', requiredXp: themeUnlocks.pulse, unlocked: canUsePulse },
+    { key: 'aurora', name: 'Aurora', requiredXp: themeUnlocks.aurora, unlocked: canUseAurora },
+    { key: 'singularity', name: 'Singularity', requiredXp: themeUnlocks.singularity, unlocked: canUseSingularity },
+  ];
 
   const loadNotificationPreferences = async () => {
     try {
@@ -168,165 +194,113 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleCleanupOrphanedCards = async () => {
-    if (!user?.id) return;
-    
-    setIsCleaningUp(true);
-    try {
-      // First get stats
-      const stats = await getOrphanedCardsStats(user.id);
-      
-      if (!stats || stats.orphanedInStudy === 0) {
-        Alert.alert('No Cleanup Needed', 'All your cards are from active subjects.');
-        return;
-      }
-      
-      // Show confirmation
-      Alert.alert(
-        'Clean Up Cards',
-        `Found ${stats.orphanedInStudy} cards in study mode from subjects you no longer have active:\n\n${stats.orphanedSubjects.join(', ')}\n\nRemove these cards from study mode?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Clean Up',
-            style: 'destructive',
-            onPress: async () => {
-              const result = await cleanupOrphanedCards(user.id);
-              if (result.success) {
-                Alert.alert(
-                  'Cleanup Complete',
-                  `Removed ${result.orphanedCount} cards from study mode.`
-                );
-              } else {
-                Alert.alert('Error', 'Failed to clean up cards. Please try again.');
-              }
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-      Alert.alert('Error', 'Failed to check for orphaned cards.');
-    } finally {
-      setIsCleaningUp(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!contactSubject.trim() || !contactMessage.trim()) {
-      Alert.alert('Error', 'Please fill in both subject and message fields.');
+  const handleSelectTheme = async (next: 'default' | 'pulse' | 'aurora' | 'singularity') => {
+    const option = themeOptions.find((t) => t.key === next);
+    if (!option) return;
+    if (!option.unlocked) {
+      Alert.alert('Theme locked', `Unlock ${option.name} at ${option.requiredXp.toLocaleString()} XP.`);
       return;
     }
+    setTheme(next);
+  };
 
-    setSendingMessage(true);
-    
-    // Create email link
-    const email = 'support@fl4shcards.com';
-    const subject = `FLASH App Support: ${contactSubject}`;
-    const body = `From: ${user?.email || 'Unknown'}\nUsername: ${user?.user_metadata?.username || 'Not set'}\n\n${contactMessage}`;
-    
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
+  const getExamTypeDisplay = (examType: string) => {
+    // Mirror HomeScreen mapping for consistency
+    const types: { [key: string]: string } = {
+      gcse: 'GCSE',
+      igcse: 'iGCSE',
+      alevel: 'A-Level',
+      ialev: 'iA-Level',
+      GCSE: 'GCSE',
+      INTERNATIONAL_GCSE: 'iGCSE',
+      A_LEVEL: 'A-Level',
+      INTERNATIONAL_A_LEVEL: 'iA-Level',
+      VOCATIONAL_L2: 'Vocational Level 2',
+      VOCATIONAL_L3: 'Vocational Level 3',
+      SQA_NATIONALS: 'Scottish Nationals',
+      IB: 'International Baccalaureate',
+    };
+    return types[examType] || examType || 'Not set';
+  };
+
+  const openEditProfile = () => {
+    const currentUsername = userInfo?.username || (user?.user_metadata as any)?.username || '';
+    setDraftUsername(currentUsername);
+    setDraftExamType(userInfo?.exam_type || '');
+    setEditVisible(true);
+  };
+
+  const saveProfile = async () => {
+    if (!user?.id) return;
+    const nextUsername = draftUsername.trim();
+    if (!nextUsername) {
+      Alert.alert('Username required', 'Please enter a username.');
+      return;
+    }
+    setSavingProfile(true);
     try {
-      const canOpen = await Linking.canOpenURL(mailtoUrl);
-      if (canOpen) {
-        await Linking.openURL(mailtoUrl);
-        setContactSubject('');
-        setContactMessage('');
-        setShowContactForm(false);
-        Alert.alert('Success', 'Your email app has been opened with your support message.');
-      } else {
-        Alert.alert('Error', 'Unable to open email app. Please email us directly at support@fl4shcards.com');
+      const { error } = await supabase
+        .from('users')
+        .update({
+          username: nextUsername,
+          exam_type: draftExamType || null,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Keep Auth metadata in sync (best-effort)
+      try {
+        await supabase.auth.updateUser({ data: { username: nextUsername } });
+      } catch (e) {
+        console.warn('[Profile] auth.updateUser failed (non-fatal)', e);
       }
-    } catch (error) {
-      Alert.alert('Error', 'Unable to send message. Please email us directly at support@fl4shcards.com');
+
+      setUserInfo((prev) => ({ ...(prev || {}), username: nextUsername, exam_type: draftExamType }));
+      setEditVisible(false);
+    } catch (e: any) {
+      console.error('[Profile] saveProfile failed', e);
+      Alert.alert('Error', e?.message || 'Failed to update profile. Please try again.');
     } finally {
-      setSendingMessage(false);
+      setSavingProfile(false);
     }
   };
 
-  const profileItems = [
-    {
-      icon: 'person-outline' as keyof typeof Ionicons.glyphMap,
-      label: 'Username',
-      value: user?.user_metadata?.username || 'Not set',
-    },
-    {
-      icon: 'mail-outline' as keyof typeof Ionicons.glyphMap,
-      label: 'Email',
-      value: user?.email || 'Not set',
-    },
-    {
-      icon: 'calendar-outline' as keyof typeof Ionicons.glyphMap,
-      label: 'Member Since',
-      value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown',
-    },
-  ];
+  const levelsLabel =
+    profile?.qualification_levels?.length
+      ? profile.qualification_levels
+          .map((c) =>
+            ({
+              GCSE: 'GCSE',
+              A_LEVEL: 'A-Level',
+              INTERNATIONAL_GCSE: 'iGCSE',
+              INTERNATIONAL_A_LEVEL: 'iA-Level',
+              IB: 'IB',
+            } as any)[c] || c
+          )
+          .join(', ')
+      : 'Not set';
 
-  if (showContactForm) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.contactHeader}>
-            <TouchableOpacity onPress={() => setShowContactForm(false)}>
-              <Icon name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.contactTitle}>Help & Support</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          
-          <ScrollView style={styles.contactForm} keyboardShouldPersistTaps="handled">
-            <Text style={styles.contactDescription}>
-              Need help? Have a question or suggestion? We'd love to hear from you!
-            </Text>
-            
-            <Text style={styles.inputLabel}>Subject</Text>
-            <TextInput
-              style={styles.textInput}
-              placeholder="What's this about?"
-              value={contactSubject}
-              onChangeText={setContactSubject}
-              editable={!sendingMessage}
-            />
-            
-            <Text style={styles.inputLabel}>Message</Text>
-            <TextInput
-              style={[styles.textInput, styles.textArea]}
-              placeholder="Tell us more..."
-              value={contactMessage}
-              onChangeText={setContactMessage}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              editable={!sendingMessage}
-            />
-            
-            <TouchableOpacity
-              style={[styles.sendButton, sendingMessage && styles.buttonDisabled]}
-              onPress={handleSendMessage}
-              disabled={sendingMessage}
-            >
-              {sendingMessage ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Icon name="send" size={20} color="#fff" />
-                  <Text style={styles.sendButtonText}>Send Message</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            
-            <Text style={styles.contactInfo}>
-              Or email us directly at: support@fl4shcards.com
-            </Text>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    );
-  }
+  const examBoardsLabel = profile?.exam_boards?.length ? profile.exam_boards.join(', ') : 'Not set';
+
+  const subjectsLabel =
+    profile?.subjects?.length
+      ? (() => {
+          const top = profile.subjects.slice(0, 3).map((s) => s.subject_name);
+          const extra = profile.subjects.length - top.length;
+          return extra > 0 ? `${top.join(', ')} (+${extra} more)` : top.join(', ');
+        })()
+      : 'Not set';
+
+  const profileItems = [
+    { icon: 'person-outline', label: 'Username', value: userInfo?.username || (user?.user_metadata as any)?.username || 'Not set' },
+    { icon: 'mail-outline', label: 'Email', value: user?.email || 'Not set' },
+    { icon: 'school-outline', label: 'Exam track', value: getExamTypeDisplay(userInfo?.exam_type || '') },
+    { icon: 'layers-outline', label: 'Level(s)', value: levelsLabel },
+    { icon: 'git-network', label: 'Exam board(s)', value: examBoardsLabel },
+    { icon: 'book', label: 'Subjects', value: subjectsLabel },
+    { icon: 'calendar-outline', label: 'Member Since', value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown' },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -340,14 +314,24 @@ export default function ProfileScreen() {
               </View>
             );
           })()}
-          <Text style={styles.name}>{user?.user_metadata?.username || 'Student'}</Text>
+          <Text style={styles.name}>{userInfo?.username || (user?.user_metadata as any)?.username || 'Student'}</Text>
+          <TouchableOpacity style={styles.editProfileButton} onPress={openEditProfile}>
+            <Icon name="create-outline" size={18} color={colors.text} />
+            <Text style={styles.editProfileButtonText}>Edit profile</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>Profile</Text>
+            <TouchableOpacity style={styles.smallLinkButton} onPress={() => navigation.navigate('SubjectSearch' as never, { isAddingSubjects: true } as never)}>
+              <Text style={styles.smallLinkButtonText}>Manage subjects</Text>
+              <Icon name="chevron-forward" size={18} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
           {profileItems.map((item, index) => (
             <View key={index} style={styles.infoRow}>
-              <Icon name={item.icon} size={24} color="#666" />
+              <Icon name={item.icon} size={22} color={colors.textSecondary} />
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>{item.label}</Text>
                 <Text style={styles.infoValue}>{item.value}</Text>
@@ -375,7 +359,7 @@ export default function ProfileScreen() {
             <>
               <TouchableOpacity
                 style={styles.upgradeButton}
-                onPress={() => navigation.navigate('Paywall' as never)}
+                onPress={() => navigateToPaywall()}
               >
                 <Icon name="star" size={20} color="#fff" />
                 <Text style={styles.upgradeButtonText}>
@@ -411,76 +395,97 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           
-          <View style={styles.settingRow}>
-            <Icon name="color-palette-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Cyber Mode</Text>
-            <Switch
-              value={theme === 'cyber'}
-              onValueChange={(v) => {
-                if (v && !cyberUnlocked) {
-                  Alert.alert(
-                    'Locked',
-                    `Cyber Mode unlocks at ${gamificationConfig.themeUnlocks.cyber.toLocaleString()} XP. Keep studying to unlock it!`
-                  );
-                  return;
-                }
-                toggleTheme();
-              }}
-              trackColor={{ false: '#E5E7EB', true: '#00FF88' }}
-              thumbColor={theme === 'cyber' ? '#fff' : '#f4f3f4'}
-            />
+          <View style={styles.themesBlock}>
+            <View style={styles.themesHeaderRow}>
+              <Icon name="color-palette-outline" size={22} color={colors.textSecondary} />
+              <Text style={styles.themesTitle}>Themes</Text>
+            </View>
+            <Text style={styles.themesHint}>
+              Unlock themes at {themeUnlocks.pulse.toLocaleString()} XP, {themeUnlocks.aurora.toLocaleString()} XP, and {themeUnlocks.singularity.toLocaleString()} XP.
+            </Text>
+            <View style={styles.themesList}>
+              {themeOptions.map((opt) => {
+                const isSelected = theme === opt.key;
+                const label = opt.unlocked ? opt.name : `${opt.name} (locked)`;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[
+                      styles.themeOptionButton,
+                      isSelected && styles.themeOptionButtonSelected,
+                      !opt.unlocked && styles.themeOptionButtonLocked,
+                    ]}
+                    onPress={() => handleSelectTheme(opt.key)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.themeOptionTitle, isSelected && styles.themeOptionTitleSelected]}>
+                        {label}
+                      </Text>
+                      {!opt.unlocked && (
+                        <Text style={styles.themeOptionSubtitle}>
+                          Unlock at {opt.requiredXp.toLocaleString()} XP
+                        </Text>
+                      )}
+                    </View>
+                    {isSelected && <Icon name="checkmark-circle" size={22} color={colors.primary} />}
+                    {!isSelected && opt.unlocked && <Icon name="chevron-forward" size={22} color={colors.textSecondary} />}
+                    {!opt.unlocked && <Icon name="lock-closed-outline" size={20} color={colors.textSecondary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
           
           <View style={styles.settingRow}>
-            <Icon name="notifications-outline" size={24} color="#666" />
+            <Icon name="notifications-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.settingText}>Push Notifications</Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={handleNotificationToggle}
-              trackColor={{ false: '#E5E7EB', true: '#00D4FF' }}
-              thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
+              trackColor={{ false: 'rgba(255,255,255,0.18)', true: colors.primary }}
+              thumbColor={notificationsEnabled ? '#fff' : '#CBD5E1'}
             />
           </View>
           
           <View style={styles.settingRow}>
-            <Icon name="alert-circle-outline" size={24} color="#666" />
+            <Icon name="alert-circle-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.settingText}>Cards Due Reminders</Text>
             <Switch
               value={inAppNotificationsEnabled}
               onValueChange={handleInAppNotificationToggle}
-              trackColor={{ false: '#E5E7EB', true: '#00D4FF' }}
-              thumbColor={inAppNotificationsEnabled ? '#fff' : '#f4f3f4'}
+              trackColor={{ false: 'rgba(255,255,255,0.18)', true: colors.primary }}
+              thumbColor={inAppNotificationsEnabled ? '#fff' : '#CBD5E1'}
             />
           </View>
-          <Text style={styles.settingHint}>
+          <Text style={styles.settingHintBelow}>
             Show notification banner when you have cards due for review
           </Text>
           
           <TouchableOpacity 
             style={styles.settingRow}
-            onPress={() => setShowContactForm(true)}
+            onPress={() => Linking.openURL('https://www.fl4shcards.com/contact/')}
           >
-            <Icon name="help-circle-outline" size={24} color="#666" />
+            <Icon name="help-circle-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.settingText}>Help & Support</Text>
-            <Icon name="chevron-forward" size={24} color="#ccc" />
+            <Icon name="open-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingRow}
             onPress={() => Linking.openURL('https://www.fl4shcards.com/privacy/')}
           >
-            <Icon name="document-text-outline" size={24} color="#666" />
+            <Icon name="document-text-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.settingText}>Privacy Policy</Text>
-            <Icon name="open-outline" size={22} color="#ccc" />
+            <Icon name="open-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.settingRow}
             onPress={() => Linking.openURL('https://www.fl4shcards.com/terms/')}
           >
-            <Icon name="document-outline" size={24} color="#666" />
+            <Icon name="document-text-outline" size={22} color={colors.textSecondary} />
             <Text style={styles.settingText}>Terms of Use (EULA)</Text>
-            <Icon name="open-outline" size={22} color="#ccc" />
+            <Icon name="open-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -489,16 +494,7 @@ export default function ProfileScreen() {
           >
             <Icon name="trash-outline" size={24} color="#DC2626" />
             <Text style={[styles.settingText, { color: '#DC2626', fontWeight: '600' }]}>Delete Account</Text>
-            <Icon name="chevron-forward" size={24} color="#ccc" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.settingRow}
-            onPress={() => navigation.navigate('APISettings' as never)}
-          >
-            <Icon name="key-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>API Settings</Text>
-            <Icon name="chevron-forward" size={24} color="#ccc" />
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
           {isAdmin && (
@@ -512,26 +508,41 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Maintenance</Text>
-          <TouchableOpacity 
-            style={[styles.settingRow, { opacity: isCleaningUp ? 0.6 : 1 }]}
-            onPress={handleCleanupOrphanedCards}
-            disabled={isCleaningUp}
-          >
-            <Icon name="trash-outline" size={24} color="#666" />
-            <Text style={styles.settingText}>Clean Up Orphaned Cards</Text>
-            {isCleaningUp ? (
-              <ActivityIndicator size="small" color="#666" />
-            ) : (
-              <Icon name="chevron-forward" size={24} color="#ccc" />
-            )}
-          </TouchableOpacity>
-          <Text style={styles.maintenanceHint}>
-            Remove cards from subjects you no longer have active
-          </Text>
-        </View>
+        
+        {/* Edit Profile Modal */}
+        <Modal visible={editVisible} transparent animationType="fade" onRequestClose={() => setEditVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Edit profile</Text>
+              <Text style={styles.modalLabel}>Username</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={draftUsername}
+                onChangeText={setDraftUsername}
+                placeholder="Enter a username"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+              />
+              <Text style={styles.modalLabel}>Exam track (optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={draftExamType}
+                onChangeText={setDraftExamType}
+                placeholder="e.g. A_LEVEL, GCSE"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="characters"
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalButtonSecondary} onPress={() => setEditVisible(false)} disabled={savingProfile}>
+                  <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalButtonPrimary} onPress={saveProfile} disabled={savingProfile}>
+                  <Text style={styles.modalButtonPrimaryText}>{savingProfile ? 'Saving…' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Icon name="log-out-outline" size={24} color="#FF3B30" />
@@ -542,17 +553,19 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 28,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 18,
   },
   avatar: {
     width: 120,
@@ -579,31 +592,67 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.text,
+  },
+  editProfileButton: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  editProfileButtonText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 15,
+    color: colors.text,
+  },
+  smallLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  smallLinkButtonText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '900',
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   infoContent: {
     marginLeft: 15,
@@ -611,11 +660,11 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   infoValue: {
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginTop: 2,
   },
   settingRow: {
@@ -623,13 +672,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   settingText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: colors.text,
     marginLeft: 15,
+  },
+  settingHintBelow: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 6,
+    marginBottom: 12,
+    paddingLeft: 38,
+  },
+  themesBlock: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 6,
+  },
+  themesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themesTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+  },
+  themesHint: {
+    marginTop: 6,
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+    paddingLeft: 34,
+  },
+  themesList: {
+    marginTop: 10,
+    gap: 10,
+  },
+  themeOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  themeOptionButtonSelected: {
+    backgroundColor: 'rgba(20, 184, 166, 0.12)',
+    borderColor: 'rgba(20, 184, 166, 0.45)',
+  },
+  themeOptionButtonLocked: {
+    opacity: 0.6,
+  },
+  themeOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  themeOptionTitleSelected: {
+    color: colors.primary,
+  },
+  themeOptionSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
   adminRow: {
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
@@ -644,14 +759,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 12,
     padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   logoutText: {
     fontSize: 18,
@@ -659,85 +771,70 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     marginLeft: 10,
   },
-  maintenanceHint: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 5,
-    paddingHorizontal: 40,
-  },
-  // Contact Form Styles
-  contactHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  contactTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-  },
-  contactForm: {
+  // Edit modal
+  modalOverlay: {
     flex: 1,
-    padding: 20,
-  },
-  contactDescription: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
-    lineHeight: 22,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  textInput: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 20,
-  },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  sendButton: {
-    backgroundColor: '#00D4FF',
-    borderRadius: 8,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    padding: 18,
     justifyContent: 'center',
-    marginTop: 10,
-    gap: 8,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  modalCard: {
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: '#0B1220',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  sendButtonText: {
-    color: '#fff',
+  modalTitle: {
+    color: colors.text,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '900',
+    marginBottom: 12,
   },
-  contactInfo: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 30,
-  },
-  settingHint: {
+  modalLabel: {
+    color: colors.textSecondary,
     fontSize: 12,
-    color: '#666',
-    marginTop: -10,
-    marginBottom: 10,
-    paddingHorizontal: 40,
+    fontWeight: '800',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  modalInput: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.text,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  modalButtonSecondary: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+  },
+  modalButtonSecondaryText: {
+    color: colors.text,
+    fontWeight: '900',
+  },
+  modalButtonPrimary: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  modalButtonPrimaryText: {
+    color: '#000',
+    fontWeight: '900',
   },
   // Subscription styles
   subscriptionStatus: {
@@ -792,4 +889,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-}); 
+});

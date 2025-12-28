@@ -48,6 +48,9 @@ const emojiMap: Record<string, string> = {
   
   // Profile & Settings
   'person': '👤',
+  'person-outline': '👤',
+  'mail-outline': '✉️',
+  'calendar-outline': '📅',
   'color-palette-outline': '🎨',
   'notifications': '🔔',
   'notifications-outline': '🔔',
@@ -61,6 +64,9 @@ const emojiMap: Record<string, string> = {
   'settings-outline': '⚙️',
   'shield-checkmark': '🛡️',
   'card': '💳',
+  'lock-closed-outline': '🔒',
+  'document-outline': '📄',
+  'open-outline': '🔗',
   
   // Social
   'logo-google': 'G',
