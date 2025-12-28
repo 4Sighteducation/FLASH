@@ -18,6 +18,7 @@ import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import FlashcardCard from '../../components/FlashcardCard';
 import CompactLeitnerBoxes from '../../components/CompactLeitnerBoxes';
 import CardSwooshAnimation from '../../components/CardSwooshAnimation';
@@ -56,6 +57,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const { topicName, subjectName, subjectColor, boxNumber } = route.params;
   const { user } = useAuth();
   const { tier } = useSubscription();
+  const { colors } = useTheme();
+  const themed = stylesFactory(colors, subjectColor);
+  // Option B refactor: make all `styles.*` usages in this file theme-driven.
+  // (Some newer UI bits were already using `themed.*`.)
+  const styles = themed;
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentIndexRef = useRef(0);
@@ -869,8 +875,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
+      <SafeAreaView style={themed.container}>
+        <View style={themed.loadingContainer}>
           <ActivityIndicator size="large" color={subjectColor} />
         </View>
       </SafeAreaView>
@@ -879,17 +885,17 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   if (flashcards.length === 0) {
     return (
-      <View style={styles.fullScreenContainer}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Icon name="close" size={28} color="#333" />
+      <View style={themed.fullScreenContainer}>
+        <SafeAreaView style={themed.container}>
+          <View style={themed.header}>
+            <TouchableOpacity onPress={handleClose} style={themed.closeButton}>
+              <Icon name="close" size={28} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
+            <Text style={themed.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
             <View style={{ minWidth: 50 }} />
           </View>
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No flashcards found for this topic</Text>
+          <View style={themed.emptyContainer}>
+            <Text style={themed.emptyText}>No flashcards found for this topic</Text>
           </View>
         </SafeAreaView>
       </View>
@@ -899,28 +905,28 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const currentCard = flashcards[currentIndex];
 
   return (
-    <View style={styles.fullScreenContainer}>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon name="close" size={28} color="#333" />
+    <View style={themed.fullScreenContainer}>
+      <SafeAreaView style={themed.container}>
+        <View style={themed.header}>
+          <TouchableOpacity onPress={handleClose} style={themed.closeButton}>
+            <Icon name="close" size={28} color={colors.text} />
           </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
-            {previewMode && <Text style={styles.previewBadge}>👀 PREVIEW</Text>}
+          <View style={themed.headerTitleContainer}>
+            <Text style={themed.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
+            {previewMode && <Text style={themed.previewBadge}>👀 PREVIEW</Text>}
           </View>
-          <View style={styles.progressInfo}>
-            <Text style={styles.counter}>Card {currentIndex + 1}/{initialDueCount}</Text>
+          <View style={themed.progressInfo}>
+            <Text style={themed.counter}>Card {currentIndex + 1}/{initialDueCount}</Text>
             {cardsDeferredToTomorrow > 0 && (
-              <Text style={styles.deferredCount}>❌ {cardsDeferredToTomorrow} →tomorrow</Text>
+              <Text style={themed.deferredCount}>❌ {cardsDeferredToTomorrow} →tomorrow</Text>
             )}
             {timerUi ? (
-              <View style={[styles.timerPill, { borderColor: timerUi.color }]}>
-                <Text style={[styles.timerPillText, { color: timerUi.color }]}>{timerUi.label}</Text>
+              <View style={[themed.timerPill, { borderColor: timerUi.color }]}>
+                <Text style={[themed.timerPillText, { color: timerUi.color }]}>{timerUi.label}</Text>
               </View>
             ) : null}
             <TouchableOpacity
-              style={[styles.systemLoadPill, !canUseDifficultyMode && styles.systemLoadPillLocked]}
+              style={[themed.systemLoadPill, !canUseDifficultyMode && themed.systemLoadPillLocked]}
               onPress={() => {
                 if (!canUseDifficultyMode) {
                   showUpgradePrompt({
@@ -933,7 +939,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                 setDifficultyVisible(true);
               }}
             >
-              <Text style={styles.systemLoadPillText}>
+              <Text style={themed.systemLoadPillText}>
                 ⚡ {difficultyLabel(difficultyFromSettings(userSettings))}
               </Text>
             </TouchableOpacity>
@@ -941,18 +947,18 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         </View>
 
         {/* Leitner Boxes Visualization */}
-        <View style={styles.leitnerContainer}>
+        <View style={themed.leitnerContainer}>
           <CompactLeitnerBoxes 
             boxes={boxCounts} 
             activeBox={currentCard?.box_number}
           />
         </View>
 
-        <View style={styles.mainContent}>
-          <View style={styles.swipeableArea} {...panResponder.panHandlers}>
+        <View style={themed.mainContent}>
+          <View style={themed.swipeableArea} {...panResponder.panHandlers}>
             <Animated.View 
               style={[
-                styles.cardContainer,
+                themed.cardContainer,
                 {
                   transform: [
                     { translateX },
@@ -983,24 +989,24 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           </View>
         </View>
 
-        <View style={styles.bottomSection}>
-          <View style={styles.navigationContainer}>
+        <View style={themed.bottomSection}>
+          <View style={themed.navigationContainer}>
             <TouchableOpacity
-              style={[styles.navButton, currentIndex === 0 && styles.disabledButton]}
+              style={[themed.navButton, currentIndex === 0 && themed.disabledButton]}
               onPress={handlePrevious}
               disabled={currentIndex === 0}
             >
-              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#666' : '#00F5FF'} />
-              <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledText]}>
+              <Icon name="chevron-back" size={24} color={currentIndex === 0 ? colors.textSecondary : colors.primary} />
+              <Text style={[themed.navButtonText, currentIndex === 0 && themed.disabledText]}>
                 Previous
               </Text>
             </TouchableOpacity>
 
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
+            <View style={themed.progressContainer}>
+              <View style={themed.progressBar}>
                 <View 
                   style={[
-                    styles.progressFill, 
+                    themed.progressFill, 
                     { 
                       width: `${((currentIndex + 1) / flashcards.length) * 100}%`,
                       backgroundColor: subjectColor 
@@ -1008,41 +1014,41 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   ]} 
                 />
               </View>
-              <Text style={styles.swipeHint}>Swipe to navigate</Text>
+              <Text style={themed.swipeHint}>Swipe to navigate</Text>
             </View>
 
             {previewMode ? (
               currentIndex === flashcards.length - 1 ? (
                 <TouchableOpacity
-                  style={styles.exitPreviewButton}
+                  style={themed.exitPreviewButton}
                   onPress={exitPreview}
                 >
-                  <Text style={styles.exitPreviewText}>Exit Preview</Text>
+                  <Text style={themed.exitPreviewText}>Exit Preview</Text>
                   <Icon name="close-circle" size={20} color="#fff" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={styles.navButton}
+                  style={themed.navButton}
                   onPress={handleNext}
                 >
-                  <Text style={styles.navButtonText}>Next</Text>
+                  <Text style={themed.navButtonText}>Next</Text>
                   <Icon name="chevron-forward" size={24} color="#fff" />
                 </TouchableOpacity>
               )
             ) : currentIndex === flashcards.length - 1 ? (
               <TouchableOpacity
-                style={styles.finishButton}
+                style={themed.finishButton}
                 onPress={handleClose}
               >
-                <Text style={styles.finishButtonText}>Finish</Text>
+                <Text style={themed.finishButtonText}>Finish</Text>
                 <Icon name="checkmark-circle" size={20} color="#fff" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={styles.navButton}
+                style={themed.navButton}
                 onPress={handleNext}
               >
-                <Text style={styles.navButtonText}>Next</Text>
+                <Text style={themed.navButtonText}>Next</Text>
                 <Icon name="chevron-forward" size={24} color="#fff" />
               </TouchableOpacity>
             )}
@@ -1067,10 +1073,10 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
         {/* Difficulty Mode (System Load) */}
         <Modal visible={difficultyVisible} transparent animationType="fade" onRequestClose={() => setDifficultyVisible(false)}>
-          <View style={styles.difficultyOverlay}>
-            <View style={styles.difficultyCard}>
-              <Text style={styles.difficultyTitle}>Difficulty mode</Text>
-              <Text style={styles.difficultySubtitle}>Concept 1: System Load</Text>
+          <View style={themed.difficultyOverlay}>
+            <View style={themed.difficultyCard}>
+              <Text style={themed.difficultyTitle}>Difficulty mode</Text>
+              <Text style={themed.difficultySubtitle}>Concept 1: System Load</Text>
               <View style={{ marginTop: 10, gap: 10 }}>
                 {(
                   [
@@ -1086,26 +1092,26 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   return (
                     <TouchableOpacity
                       key={p.key}
-                      style={[styles.difficultyOption, selected && styles.difficultyOptionSelected]}
+                      style={[themed.difficultyOption, selected && themed.difficultyOptionSelected]}
                       onPress={() => applyDifficulty(p.key as any)}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.difficultyOptionTitle, selected && styles.difficultyOptionTitleSelected]}>
+                        <Text style={[themed.difficultyOptionTitle, selected && themed.difficultyOptionTitleSelected]}>
                           {p.name}
                         </Text>
-                        <Text style={styles.difficultyOptionSub}>
+                        <Text style={themed.difficultyOptionSub}>
                           {p.tagline} • Shuffle {p.shuffle ? 'On' : 'Off'} • Timer {p.timer ? `${p.timer}s` : 'Off'} • XP x{p.mult}
                         </Text>
                       </View>
-                      {selected ? <Text style={styles.difficultyCheck}>✓</Text> : null}
+                      {selected ? <Text style={themed.difficultyCheck}>✓</Text> : null}
                     </TouchableOpacity>
                   );
                 })}
               </View>
-              <Text style={styles.difficultyHint}>A 3-second grace window applies after the timer hits zero.</Text>
-              <View style={styles.difficultyActions}>
-                <TouchableOpacity style={styles.difficultyCloseBtn} onPress={() => setDifficultyVisible(false)}>
-                  <Text style={styles.difficultyCloseText}>Close</Text>
+              <Text style={themed.difficultyHint}>A 3-second grace window applies after the timer hits zero.</Text>
+              <View style={themed.difficultyActions}>
+                <TouchableOpacity style={themed.difficultyCloseBtn} onPress={() => setDifficultyVisible(false)}>
+                  <Text style={themed.difficultyCloseText}>Close</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1383,14 +1389,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
 const IS_MOBILE = screenWidth < 768;
 
-const styles = StyleSheet.create({
+// Option B refactor: theme-driven styles (consistent with the rest of the app).
+// Keep bottomSection white (legacy) but ensure text contrast elsewhere is correct.
+const stylesFactory = (colors: any, subjectColor: string) => StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
-    backgroundColor: '#0a0f1e', // Theme dark background
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -1403,9 +1411,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: IS_MOBILE ? 12 : 16,
     paddingVertical: IS_MOBILE ? 12 : 16,
-    backgroundColor: 'rgba(0, 245, 255, 0.08)', // Theme surface
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 245, 255, 0.25)', // Theme border
+    borderBottomColor: colors.border,
   },
   closeButton: {
     padding: 8,
@@ -1414,40 +1422,40 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: IS_MOBILE ? 16 : 18,
     fontWeight: '600',
-    color: '#FFFFFF', // Theme text
+    color: colors.text,
     flex: 1,
     textAlign: 'center',
     paddingHorizontal: 8,
   },
   counter: {
     fontSize: 16,
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     fontWeight: '500',
     minWidth: 50,
     textAlign: 'right',
   },
   timerPill: {
     marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
     backgroundColor: 'rgba(0,0,0,0.22)',
     alignSelf: 'flex-end',
   },
   timerPillText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.2,
   },
   systemLoadPill: {
     marginTop: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(0,0,0,0.22)',
+    borderColor: 'rgba(20, 184, 166, 0.35)',
+    backgroundColor: 'rgba(20, 184, 166, 0.10)',
     alignSelf: 'flex-end',
   },
   systemLoadPillLocked: {
@@ -1455,12 +1463,12 @@ const styles = StyleSheet.create({
   },
   systemLoadPillText: {
     color: '#E2E8F0',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.3,
   },
   leitnerContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: 'rgba(0,0,0,0.25)',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
