@@ -27,6 +27,7 @@ import { supabase } from '../../services/supabase';
 import { pushNotificationService } from '../../services/pushNotificationService';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { navigateToPaywall } from '../../utils/upgradePrompt';
+import { getTrackDisplayName, normalizeExamTrackId } from '../../utils/examTracks';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -39,10 +40,14 @@ export default function ProfileScreen() {
   const [totalPoints, setTotalPoints] = useState(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
-  const [userInfo, setUserInfo] = useState<{ exam_type?: string; username?: string } | null>(null);
+  const [userInfo, setUserInfo] = useState<{
+    exam_type?: string | null;
+    primary_exam_type?: string | null;
+    secondary_exam_type?: string | null;
+    username?: string | null;
+  } | null>(null);
   const [editVisible, setEditVisible] = useState(false);
   const [draftUsername, setDraftUsername] = useState('');
-  const [draftExamType, setDraftExamType] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -74,7 +79,7 @@ export default function ProfileScreen() {
       if (!user?.id) return;
       const { data, error } = await supabase
         .from('users')
-        .select('exam_type, username')
+        .select('exam_type, primary_exam_type, secondary_exam_type, username')
         .eq('id', user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -226,7 +231,6 @@ export default function ProfileScreen() {
   const openEditProfile = () => {
     const currentUsername = userInfo?.username || (user?.user_metadata as any)?.username || '';
     setDraftUsername(currentUsername);
-    setDraftExamType(userInfo?.exam_type || '');
     setEditVisible(true);
   };
 
@@ -241,10 +245,7 @@ export default function ProfileScreen() {
     try {
       const { error } = await supabase
         .from('users')
-        .update({
-          username: nextUsername,
-          exam_type: draftExamType || null,
-        })
+        .update({ username: nextUsername })
         .eq('id', user.id);
 
       if (error) throw error;
@@ -256,7 +257,7 @@ export default function ProfileScreen() {
         console.warn('[Profile] auth.updateUser failed (non-fatal)', e);
       }
 
-      setUserInfo((prev) => ({ ...(prev || {}), username: nextUsername, exam_type: draftExamType }));
+      setUserInfo((prev) => ({ ...(prev || {}), username: nextUsername }));
       setEditVisible(false);
     } catch (e: any) {
       console.error('[Profile] saveProfile failed', e);
@@ -266,20 +267,13 @@ export default function ProfileScreen() {
     }
   };
 
-  const levelsLabel =
-    profile?.qualification_levels?.length
-      ? profile.qualification_levels
-          .map((c) =>
-            ({
-              GCSE: 'GCSE',
-              A_LEVEL: 'A-Level',
-              INTERNATIONAL_GCSE: 'iGCSE',
-              INTERNATIONAL_A_LEVEL: 'iA-Level',
-              IB: 'IB',
-            } as any)[c] || c
-          )
-          .join(', ')
-      : 'Not set';
+  const primaryTrack = normalizeExamTrackId(userInfo?.primary_exam_type || userInfo?.exam_type || null);
+  const secondaryTrack = normalizeExamTrackId(userInfo?.secondary_exam_type || null);
+  const examTracksLabel = primaryTrack
+    ? secondaryTrack
+      ? `${getTrackDisplayName(primaryTrack)} + ${getTrackDisplayName(secondaryTrack)}`
+      : getTrackDisplayName(primaryTrack)
+    : getExamTypeDisplay((userInfo?.exam_type || '') as any);
 
   const examBoardsLabel = profile?.exam_boards?.length ? profile.exam_boards.join(', ') : 'Not set';
 
@@ -295,8 +289,7 @@ export default function ProfileScreen() {
   const profileItems = [
     { icon: 'person-outline', label: 'Username', value: userInfo?.username || (user?.user_metadata as any)?.username || 'Not set' },
     { icon: 'mail-outline', label: 'Email', value: user?.email || 'Not set' },
-    { icon: 'school-outline', label: 'Exam track', value: getExamTypeDisplay(userInfo?.exam_type || '') },
-    { icon: 'layers-outline', label: 'Level(s)', value: levelsLabel },
+    { icon: 'school-outline', label: 'Exam track(s)', value: examTracksLabel || 'Not set' },
     { icon: 'git-network', label: 'Exam board(s)', value: examBoardsLabel },
     { icon: 'book', label: 'Subjects', value: subjectsLabel },
     { icon: 'calendar-outline', label: 'Member Since', value: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown' },
@@ -324,10 +317,28 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>Profile</Text>
-            <TouchableOpacity style={styles.smallLinkButton} onPress={() => navigation.navigate('SubjectSearch' as never, { isAddingSubjects: true } as never)}>
-              <Text style={styles.smallLinkButtonText}>Manage subjects</Text>
-              <Icon name="chevron-forward" size={18} color={colors.primary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={styles.smallLinkButton}
+                onPress={() =>
+                  navigation.navigate(
+                    'ExamTypeSelection' as never,
+                    {
+                      mode: 'profile_add_track',
+                      initialPrimaryTrack: primaryTrack,
+                      initialSecondaryTrack: secondaryTrack,
+                    } as never
+                  )
+                }
+              >
+                <Text style={styles.smallLinkButtonText}>Add exam track</Text>
+                <Icon name="chevron-forward" size={18} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallLinkButton} onPress={() => navigation.navigate('SubjectSearch' as never, { isAddingSubjects: true } as never)}>
+                <Text style={styles.smallLinkButtonText}>Manage subjects</Text>
+                <Icon name="chevron-forward" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
           {profileItems.map((item, index) => (
             <View key={index} style={styles.infoRow}>
@@ -522,15 +533,6 @@ export default function ProfileScreen() {
                 placeholder="Enter a username"
                 placeholderTextColor={colors.textSecondary}
                 autoCapitalize="none"
-              />
-              <Text style={styles.modalLabel}>Exam track (optional)</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={draftExamType}
-                onChangeText={setDraftExamType}
-                placeholder="e.g. A_LEVEL, GCSE"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="characters"
               />
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.modalButtonSecondary} onPress={() => setEditVisible(false)} disabled={savingProfile}>

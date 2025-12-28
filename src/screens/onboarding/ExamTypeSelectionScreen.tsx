@@ -1,13 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Dimensions, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { ExamTrack, ExamTrackId, getExamTracks } from '../../utils/examTracks';
 
 export default function ExamTypeSelectionScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const params = (route.params || {}) as {
+    mode?: 'profile_add_track';
+    initialPrimaryTrack?: ExamTrackId | null;
+    initialSecondaryTrack?: ExamTrackId | null;
+  };
   const [step, setStep] = useState<0 | 1>(0);
   const [primaryTrack, setPrimaryTrack] = useState<ExamTrackId | null>(null);
   const [secondaryTrack, setSecondaryTrack] = useState<ExamTrackId | null>(null);
@@ -17,6 +23,16 @@ export default function ExamTypeSelectionScreen() {
 
   const examTypes: ExamTrack[] = useMemo(() => getExamTracks(), []);
 
+  // Profile entrypoint: jump straight to "second track" step with primary prefilled.
+  useEffect(() => {
+    if (params.mode === 'profile_add_track') {
+      if (params.initialPrimaryTrack) setPrimaryTrack(params.initialPrimaryTrack);
+      if (params.initialSecondaryTrack) setSecondaryTrack(params.initialSecondaryTrack);
+      setStep(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleContinue = () => {
     if (step === 0) {
       if (!primaryTrack) return;
@@ -24,10 +40,10 @@ export default function ExamTypeSelectionScreen() {
       return;
     }
     if (!primaryTrack) return;
-    navigation.navigate(
-      'SubjectSearch' as never,
-      { primaryTrack, secondaryTrack: secondaryTrack || null } as never
-    );
+    // This screen is used in two places:
+    // - Onboarding stack: route name is "SubjectSearch"
+    // - Home stack (modal): route name is "SubjectSelection" (we also keep an alias "SubjectSearch")
+    navigation.navigate('SubjectSearch' as never, { primaryTrack, secondaryTrack: secondaryTrack || null } as never);
   };
 
   return (
@@ -57,7 +73,9 @@ export default function ExamTypeSelectionScreen() {
             <Text style={styles.subtitle}>
               {step === 0
                 ? 'Select your main study track'
-                : 'Optional — you can skip this and add it later in your profile'}
+                : params.mode === 'profile_add_track'
+                  ? 'Optional — add a second track so you can study multiple pathways'
+                  : 'Optional — you can skip this and add it later in your profile'}
             </Text>
           </View>
 
