@@ -35,6 +35,7 @@ import PastPapersLibraryScreen from '../screens/papers/PastPapersLibraryScreen';
 import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
+import StatisticsScreen from '../screens/main/StatisticsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -44,6 +45,14 @@ function HomeStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} />
+      <Stack.Screen
+        name="Statistics"
+        component={StatisticsScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
       <Stack.Screen 
         name="ExamTypeSelection" 
         component={ExamTypeSelectionScreen}
@@ -58,6 +67,15 @@ function HomeStack() {
         options={{ 
           headerShown: false,
           presentation: 'modal'
+        }}
+      />
+      {/* Alias: some flows navigate to SubjectSearch (onboarding stack name). Keep this here to avoid "not handled" hangs. */}
+      <Stack.Screen
+        name="SubjectSearch"
+        component={SubjectSearchScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
         }}
       />
       <Stack.Screen 

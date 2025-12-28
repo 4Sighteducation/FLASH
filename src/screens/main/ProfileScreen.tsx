@@ -518,6 +518,15 @@ export default function ProfileScreen() {
               <Icon name="chevron-forward" size={24} color="#00F5FF" />
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => navigation.navigate('Statistics' as never)}
+          >
+            <Icon name="trending-up" size={22} color={colors.textSecondary} />
+            <Text style={styles.settingText}>Statistics Dashboard</Text>
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
         
         {/* Edit Profile Modal */}
