@@ -5,6 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
+  Dimensions,
   SafeAreaView,
   Alert,
   Image,
@@ -13,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+const { width: deviceWidth } = Dimensions.get('window');
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -77,6 +80,9 @@ export default function ImageCardGeneratorScreen() {
   const [numCards, setNumCards] = useState('5');
   const [additionalGuidance, setAdditionalGuidance] = useState('');
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewListRef = React.useRef<FlatList<GeneratedCard>>(null);
+  const [pageWidth, setPageWidth] = useState(deviceWidth);
   const [isSaving, setIsSaving] = useState(false);
 
   const pickImage = async (source: 'camera' | 'gallery') => {
@@ -375,33 +381,67 @@ export default function ImageCardGeneratorScreen() {
   );
 
   const renderPreview = () => (
-    <ScrollView style={styles.previewContainer}>
-      <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
-      {generatedCards.map((card, index) => {
-        const flashcard = {
-          id: `preview-${index}`,
-          question: card.question,
-          answer: card.answer,
-          card_type: selectedCardType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
-          options: card.options,
-          correct_answer: card.correctAnswer,
-          key_points: card.keyPoints,
-          detailed_answer: card.detailedAnswer,
-          box_number: 1,
-          topic: topicName,
-        };
+    <View style={styles.previewContainer}>
+      <View style={styles.previewHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
+          <Text style={styles.previewHint}>Swipe to preview</Text>
+        </View>
+        <Text style={styles.previewCount}>
+          {generatedCards.length > 0 ? `${previewIndex + 1}/${generatedCards.length}` : '0/0'}
+        </Text>
+      </View>
 
-        return (
-          <View key={index} style={styles.previewCardWrapper}>
-            <FlashcardCard
-              card={flashcard}
-              color="#6366F1"
-              showDeleteButton={false}
-            />
-          </View>
-        );
-      })}
-    </ScrollView>
+      <View
+        style={{ flex: 1 }}
+        onLayout={(e) => setPageWidth(e.nativeEvent.layout.width || deviceWidth)}
+      >
+      <FlatList
+        ref={previewListRef}
+        data={generatedCards}
+        keyExtractor={(_, i) => `preview-${i}`}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
+        onMomentumScrollEnd={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const width = e.nativeEvent.layoutMeasurement.width || 1;
+          const idx = Math.round(x / width);
+          setPreviewIndex(Math.max(0, Math.min(idx, generatedCards.length - 1)));
+        }}
+        renderItem={({ item, index }) => {
+          const flashcard = {
+            id: `preview-${index}`,
+            question: item.question,
+            answer: item.answer,
+            card_type: selectedCardType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
+            options: item.options,
+            correct_answer: item.correctAnswer,
+            key_points: item.keyPoints,
+            detailed_answer: item.detailedAnswer,
+            box_number: 1,
+            topic: topicName,
+          };
+
+          return (
+            <View style={[styles.previewPage, { width: pageWidth }]}>
+              <View style={styles.previewCardFrame}>
+                <FlashcardCard
+                  card={flashcard}
+                  color="#6366F1"
+                  showDeleteButton={false}
+                  variant="studyHero"
+                />
+              </View>
+            </View>
+          );
+        }}
+      />
+      </View>
+    </View>
   );
 
   return (
@@ -709,8 +749,32 @@ const styles = StyleSheet.create({
   previewContainer: {
     flex: 1,
   },
-  previewCardWrapper: {
-    marginBottom: 16,
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  previewCount: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  previewHint: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
+  previewPage: {
+    width: '100%',
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+  previewCardFrame: {
+    flex: 1,
   },
   bottomButtons: {
     flexDirection: 'row',

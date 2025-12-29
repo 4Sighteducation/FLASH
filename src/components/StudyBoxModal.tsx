@@ -16,10 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import FlashcardCard from './FlashcardCard';
 import CardSwooshAnimation from './CardSwooshAnimation';
 import FrozenCard from './FrozenCard';
 import { LeitnerSystem } from '../utils/leitnerSystem';
+import { useSubscription } from '../contexts/SubscriptionContext';
+import { getOrCreateUserSettings, UserSettings } from '../services/userSettingsService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,6 +62,10 @@ export default function StudyBoxModal({
   subjectColor 
 }: StudyBoxModalProps) {
   const { user } = useAuth();
+  const navigation = useNavigation();
+  const { tier } = useSubscription();
+  const canUseDifficultyMode = tier === 'pro';
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [cards, setCards] = useState<StudyCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -66,6 +73,58 @@ export default function StudyBoxModal({
   const [animationTarget, setAnimationTarget] = useState<number | null>(null);
   const [sessionStats, setSessionStats] = useState({ correct: 0, incorrect: 0, total: 0 });
   const [showAllCaughtUp, setShowAllCaughtUp] = useState(false);
+
+  // Load per-user settings (Pro only) so we can match difficulty behaviour across review flows
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSettings() {
+      if (!user?.id) return;
+      const s = await getOrCreateUserSettings(user.id);
+      if (cancelled) return;
+      setUserSettings(s);
+    }
+    loadSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
+  const difficultyFromSettings = (s: UserSettings | null): DifficultyKey => {
+    if (!s) return 'safe';
+    const shuffle = !!s.shuffle_mcq_enabled;
+    const timer = Number(s.answer_timer_seconds || 0);
+    if (!shuffle && timer === 0) return 'safe';
+    if (shuffle && timer === 0) return 'standard';
+    if (shuffle && timer === 30) return 'turbo';
+    if (shuffle && timer === 15) return 'overdrive';
+    if (shuffle && timer === 5) return 'beast';
+    return 'standard';
+  };
+
+  const difficultyKey: DifficultyKey = canUseDifficultyMode ? difficultyFromSettings(userSettings) : 'safe';
+  const allowFlipLockedCards = difficultyKey === 'safe' || difficultyKey === 'standard';
+  const friendlyDifficulty = {
+    safe: 'Safe',
+    standard: 'Standard',
+    turbo: 'Turbo',
+    overdrive: 'Overdrive',
+    beast: 'Beast',
+  }[difficultyKey];
+
+  const handleRevealDisabled = () => {
+    Alert.alert(
+      'Reveal Answer is disabled',
+      `Reveal Answer is disabled in ${friendlyDifficulty}. To enable Reveal Answer, please switch to Safe or Standard Mode.`,
+      [
+        {
+          text: 'Open Difficulty Mode',
+          onPress: () => navigation.navigate('Profile' as never, { screen: 'ProfileMain', params: { openDifficulty: true } } as never),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
   
   // Animation values for swipe
   const translateX = React.useRef(new Animated.Value(0)).current;
@@ -79,10 +138,14 @@ export default function StudyBoxModal({
   const panResponder = React.useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only enable swipe for frozen cards
-        const card = cards[currentIndexRef.current];
-        return !!(card?.isFrozen && Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx));
+        // Enable swipe for all cards, but only when the intent is clearly horizontal.
+        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
+      },
+      // Capture move events before nested Touchables (e.g. FrozenCard tap-to-flip) claim them.
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
       },
       onPanResponderGrant: () => {
         translateX.stopAnimation();
@@ -135,6 +198,8 @@ export default function StudyBoxModal({
           }).start();
         }
       },
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
     })
   ).current;
 
@@ -389,6 +454,10 @@ export default function StudyBoxModal({
                 <FrozenCard
                   card={cards[currentIndex]}
                   color={getBoxColor()}
+                  allowFlip={allowFlipLockedCards}
+                  variant="studyHero"
+                  difficultyModeLabel={difficultyKey}
+                  onRevealDisabled={handleRevealDisabled}
                 />
               ) : (
                 <FlashcardCard
@@ -402,9 +471,9 @@ export default function StudyBoxModal({
           </View>
         )}
 
-        {/* Navigation for frozen cards */}
-        {cards.length > 0 && cards[currentIndex]?.isFrozen && (
-          <View style={styles.frozenNavigation}>
+        {/* Navigation (always visible; swipe is a bonus) */}
+        {cards.length > 0 && (
+          <View style={styles.navigationRow}>
             <TouchableOpacity
               style={[styles.navButton, currentIndex === 0 && styles.disabledNavButton]}
               onPress={() => currentIndex > 0 && setCurrentIndex(currentIndex - 1)}
@@ -413,11 +482,12 @@ export default function StudyBoxModal({
               <Icon name="chevron-back" size={24} color={currentIndex === 0 ? '#ccc' : '#333'} />
               <Text style={[styles.navButtonText, currentIndex === 0 && styles.disabledNavText]}>Previous</Text>
             </TouchableOpacity>
-            
-            <Text style={styles.frozenNavText}>
-              {currentIndex + 1} of {cards.length} cards
-            </Text>
-            
+
+            <View style={styles.navCenter}>
+              <Text style={styles.navCenterText}>{currentIndex + 1} / {cards.length}</Text>
+              <Text style={styles.swipeHint}>Swipe to navigate</Text>
+            </View>
+
             <TouchableOpacity
               style={[styles.navButton, currentIndex === cards.length - 1 && styles.disabledNavButton]}
               onPress={() => currentIndex < cards.length - 1 && setCurrentIndex(currentIndex + 1)}
@@ -427,11 +497,6 @@ export default function StudyBoxModal({
               <Icon name="chevron-forward" size={24} color={currentIndex === cards.length - 1 ? '#ccc' : '#333'} />
             </TouchableOpacity>
           </View>
-        )}
-
-        {/* Swipe hint for frozen cards */}
-        {cards.length > 0 && cards[currentIndex]?.isFrozen && (
-          <Text style={styles.swipeHint}>Swipe to navigate</Text>
         )}
 
         {/* Progress Bar */}
@@ -638,7 +703,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  frozenNavigation: {
+  navigationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -647,6 +712,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+  },
+  navCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+  },
+  navCenterText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#333',
   },
   navButton: {
     flexDirection: 'row',
@@ -665,10 +740,7 @@ const styles = StyleSheet.create({
   disabledNavText: {
     color: '#ccc',
   },
-  frozenNavText: {
-    fontSize: 14,
-    color: '#666',
-  },
+  // frozenNavText removed (replaced by navCenterText)
   swipeHint: {
     fontSize: 12,
     color: '#999',

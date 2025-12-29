@@ -102,6 +102,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const [tomorrowCards, setTomorrowCards] = useState<any[]>([]);
   const [previewMode, setPreviewMode] = useState(false);
   const [initialDueCount, setInitialDueCount] = useState(0);
+  const previewModeRef = useRef(false);
+  const flashcardsLengthRef = useRef(0);
+  const frozenBrowseRef = useRef(false);
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
@@ -116,9 +119,63 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const answeredCardIdsRef = useRef<Set<string>>(new Set());
   const [timerUi, setTimerUi] = useState<{ label: string; color: string } | null>(null);
+  
+  // Hero-card staging + "skip for session"
+  const cardOpacity = useRef(new Animated.Value(1)).current;
+  const cardTranslateY = useRef(new Animated.Value(0)).current;
+  const [isIntermission, setIsIntermission] = useState(false);
+  const skippedCardIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
+
+  useEffect(() => {
+    flashcardsLengthRef.current = flashcards.length;
+  }, [flashcards.length]);
+
+  useEffect(() => {
+    // Track whether the current card is frozen so swipe can work in "browse mode" (StudyHub frozen browsing)
+    frozenBrowseRef.current = !!flashcards[currentIndex]?.isFrozen;
+  }, [currentIndex, flashcards]);
+
+  // Animate card in when the index changes
+  useEffect(() => {
+    setIsIntermission(false);
+    cardOpacity.setValue(0);
+    cardTranslateY.setValue(16);
+    translateX.setValue(screenWidth * 0.7);
+    cardScale.setValue(0.97);
+
+    Animated.parallel([
+      Animated.spring(translateX, {
+        toValue: 0,
+        friction: 10,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardScale, {
+        toValue: 1,
+        friction: 10,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardTranslateY, {
+        toValue: 0,
+        friction: 10,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [currentIndex]);
 
   useEffect(() => {
@@ -155,6 +212,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   };
 
   const difficultyKey = canUseDifficultyMode ? difficultyFromSettings(userSettings) : 'safe';
+  const difficultyName = {
+    safe: 'Safe',
+    standard: 'Standard',
+    turbo: 'Turbo',
+    overdrive: 'Overdrive',
+    beast: 'Beast',
+  }[difficultyKey];
 
   const xpMultiplierFromDifficulty = (d: DifficultyKey) => {
     switch (d) {
@@ -170,6 +234,23 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       default:
         return 1.0;
     }
+  };
+
+  const handleRevealDisabled = (mode: string) => {
+    const friendly = mode === 'turbo' || mode === 'overdrive' || mode === 'beast'
+      ? { turbo: 'Turbo', overdrive: 'Overdrive', beast: 'Beast' }[mode]
+      : difficultyName || 'this mode';
+    Alert.alert(
+      'Reveal Answer is disabled',
+      `Reveal Answer is disabled in ${friendly}. To enable Reveal Answer, please switch to Safe or Standard Mode.`,
+      [
+        {
+          text: 'Open Difficulty Mode',
+          onPress: () => navigation.navigate('Profile' as never, { screen: 'ProfileMain', params: { openDifficulty: true } } as never),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   // Timer + per-card measurement for Difficulty mode (Pro only)
@@ -330,6 +411,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   };
 
   const handleNext = () => {
+    // Preview mode: keep it simple (avoid competing animations that can leave the card hidden)
+    if (previewMode) {
+      setCurrentIndex((prev) => Math.min(prev + 1, Math.max(0, flashcards.length - 1)));
+      return;
+    }
     if (currentIndex < flashcards.length - 1 && !animatingRef.current) {
       animatingRef.current = true;
       
@@ -382,6 +468,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   };
 
   const handlePrevious = () => {
+    // Preview mode: keep it simple (avoid competing animations that can leave the card hidden)
+    if (previewMode) {
+      setCurrentIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
     if (currentIndex > 0 && !animatingRef.current) {
       animatingRef.current = true;
       
@@ -440,13 +531,13 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         if (animatingRef.current) return false;
-        // More sensitive to horizontal swipes
-        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+        // Prefer horizontal intent; avoid stealing taps.
+        return Math.abs(gestureState.dx) > 8 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
       },
       // Critical: capture move events before nested ScrollViews/Touchables claim them.
       onMoveShouldSetPanResponderCapture: (_, gestureState) => {
         if (animatingRef.current) return false;
-        return Math.abs(gestureState.dx) > 5 && Math.abs(gestureState.dy) < Math.abs(gestureState.dx);
+        return Math.abs(gestureState.dx) > 8 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
       },
       onPanResponderGrant: (e, gestureState) => {
         if (animatingRef.current) return;
@@ -466,14 +557,77 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       onPanResponderRelease: (_, gestureState) => {
         if (animatingRef.current) return;
 
-        const threshold = screenWidth * 0.25; // Threshold for swipe
+        const isPreview = previewModeRef.current;
+        const isBrowse = isPreview || frozenBrowseRef.current;
+        const cardsLen = flashcardsLengthRef.current;
+        const threshold = isBrowse ? screenWidth * 0.12 : screenWidth * 0.25; // Easier in browse/preview
         const velocity = gestureState.vx;
         const currentIdx = currentIndexRef.current;
         
         // Determine if we should complete the swipe based on distance and velocity
-        const shouldSwipeRight = gestureState.dx > threshold || (velocity > 0.3 && gestureState.dx > 50);
-        const shouldSwipeLeft = gestureState.dx < -threshold || (velocity < -0.3 && gestureState.dx < -50);
+        const shouldSwipeRight =
+          gestureState.dx > threshold ||
+          (velocity > 0.2 && gestureState.dx > 30) ||
+          (isBrowse && gestureState.dx > 60);
+        const shouldSwipeLeft =
+          gestureState.dx < -threshold ||
+          (velocity < -0.2 && gestureState.dx < -30) ||
+          (isBrowse && gestureState.dx < -60);
         
+        // Browse/Preview: do not run complex animations here (they can race with hero-card resets).
+        if (isBrowse) {
+          if (shouldSwipeRight && currentIdx > 0) {
+            animatingRef.current = true;
+            Animated.timing(translateX, {
+              toValue: screenWidth * 1.15,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(() => {
+              // Prevent a "flash" of the old card snapping back to center.
+              cardOpacity.setValue(0);
+              cardScale.setValue(1);
+              animatingRef.current = false;
+              const nextIdx = Math.max(currentIdx - 1, 0);
+              currentIndexRef.current = nextIdx;
+              setCurrentIndex(nextIdx);
+            });
+            return;
+          }
+          if (shouldSwipeLeft && currentIdx < cardsLen - 1) {
+            animatingRef.current = true;
+            Animated.timing(translateX, {
+              toValue: -screenWidth * 1.15,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(() => {
+              // Prevent a "flash" of the old card snapping back to center.
+              cardOpacity.setValue(0);
+              cardScale.setValue(1);
+              animatingRef.current = false;
+              const nextIdx = Math.min(currentIdx + 1, Math.max(0, cardsLen - 1));
+              currentIndexRef.current = nextIdx;
+              setCurrentIndex(nextIdx);
+            });
+            return;
+          }
+          // Snap back
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+              friction: 8,
+              tension: 40,
+            }),
+            Animated.spring(cardScale, {
+              toValue: 1,
+              useNativeDriver: true,
+              friction: 8,
+              tension: 40,
+            }),
+          ]).start();
+          return;
+        }
+
         if (shouldSwipeRight && currentIdx > 0) {
           // Complete swipe right animation then trigger previous
           animatingRef.current = true;
@@ -561,8 +715,53 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     })
   ).current;
 
+  const getNextDueIndex = (cards: any[], startIdx: number) => {
+    for (let i = startIdx; i < cards.length; i++) {
+      const c = cards[i];
+      if (!c) continue;
+      if (c.isFrozen) continue;
+      if (skippedCardIdsRef.current.has(c.id)) continue;
+      return i;
+    }
+    return -1;
+  };
+
+  const handleSkipCardForSession = () => {
+    const card = flashcards[currentIndexRef.current];
+    if (!card || card.isFrozen || previewMode) return;
+    skippedCardIdsRef.current.add(card.id);
+
+    setIsIntermission(true);
+    Animated.parallel([
+      Animated.timing(cardOpacity, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardTranslateY, {
+        toValue: -18,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardScale, {
+        toValue: 0.96,
+        friction: 8,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      const nextIdx = getNextDueIndex(flashcards, currentIndexRef.current + 1);
+      if (nextIdx === -1) {
+        saveStudySession();
+      } else {
+        setCurrentIndex(nextIdx);
+      }
+    });
+  };
+
   const handleCardAnswer = async (cardId: string, correct: boolean, meta?: { timedOut?: boolean }) => {
     const card = flashcards.find(c => c.id === cardId);
+    if (skippedCardIdsRef.current.has(cardId)) return;
     if (!card || card.isFrozen || animatingRef.current) {
       console.log('⚠️ Answer blocked:', { 
         cardFound: !!card, 
@@ -604,9 +803,34 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     setAnswerFeedback({
       correct,
       message: feedbackMessage,
-      correctAnswer: correct ? null : card.answer, // Show correct answer if wrong
+      // Study UX: always reveal the answer for self-assessed card types; for MCQ, reveal only when incorrect.
+      correctAnswer:
+        card.card_type === 'multiple_choice'
+          ? (correct ? null : (card.correct_answer || card.answer || null))
+          : (card.answer || card.correct_answer || null),
     });
     setShowAnswerFeedback(true);
+    setIsIntermission(true);
+
+    // Fade card out to reveal Leitner/animations
+    Animated.parallel([
+      Animated.timing(cardOpacity, {
+        toValue: 0,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardTranslateY, {
+        toValue: -18,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+      Animated.spring(cardScale, {
+        toValue: 0.96,
+        friction: 8,
+        tension: 70,
+        useNativeDriver: true,
+      }),
+    ]).start();
     
     // Show points animation (+ Pro multipliers)
     const basePointsForAnswer = user?.id
@@ -752,7 +976,9 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         // Check if there are any more due cards after the current index
         // Use functional state to get fresh flashcards array
         setFlashcards(currentCards => {
-          const remainingDueCards = currentCards.slice(currentIndexRef.current + 1).filter(c => !c.isFrozen).length;
+          const remainingDueCards = currentCards
+            .slice(currentIndexRef.current + 1)
+            .filter(c => !c.isFrozen && !skippedCardIdsRef.current.has(c.id)).length;
           console.log('📊 Remaining due cards:', remainingDueCards);
 
           
@@ -766,8 +992,14 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             console.log('➡️ Auto-advancing to next card (no animation)');
             translateX.setValue(0);
             cardScale.setValue(1);
-            setCurrentIndex(currentIndexRef.current + 1);
-            console.log('✅ Advanced to card', currentIndexRef.current + 2);
+            const nextIdx = getNextDueIndex(currentCards, currentIndexRef.current + 1);
+            if (nextIdx === -1) {
+              console.log('🏁 No more due cards (skips ignored), ending session');
+              saveStudySession();
+            } else {
+              setCurrentIndex(nextIdx);
+              console.log('✅ Advanced to card', nextIdx + 1);
+            }
           } else {
             // We're on the last card, so the session should end
             console.log('🏁 Last card, ending session');
@@ -843,7 +1075,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   };
   
   const exitPreview = () => {
-    setPreviewMode(false);
+    // Avoid state updates during unmount (can cause hangs on some devices in Preview flow).
     navigation.goBack();
   };
 
@@ -867,7 +1099,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Icon name="close" size={28} color="#333" />
+              <Icon name="close" size={28} color="#FF3B30" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
             <View style={{ minWidth: 50 }} />
@@ -881,13 +1113,14 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   }
 
   const currentCard = flashcards[currentIndex];
+  const browseMode = previewMode || !!currentCard?.isFrozen;
 
   return (
     <View style={styles.fullScreenContainer}>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon name="close" size={28} color="#333" />
+            <Icon name="close" size={28} color="#FF3B30" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
@@ -898,11 +1131,16 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             {cardsDeferredToTomorrow > 0 && (
               <Text style={styles.deferredCount}>❌ {cardsDeferredToTomorrow} →tomorrow</Text>
             )}
+            {previewMode && (
+              <TouchableOpacity onPress={exitPreview} style={styles.exitPreviewPill}>
+                <Text style={styles.exitPreviewPillText}>Exit</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         {/* Pro: Difficulty + timer pills (display only; configuration happens in Profile) */}
-        {!previewMode && canUseDifficultyMode && !currentCard?.isFrozen ? (
+        {!browseMode && canUseDifficultyMode && !currentCard?.isFrozen ? (
           <View style={styles.difficultyRow}>
             <TouchableOpacity
               style={styles.systemLoadPill}
@@ -924,38 +1162,55 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         ) : null}
 
         {/* Leitner Boxes Visualization */}
-        <View style={styles.leitnerContainer}>
-          <CompactLeitnerBoxes 
-            boxes={boxCounts} 
-            activeBox={currentCard?.box_number}
-          />
-        </View>
+        <View style={styles.stage}>
+          <View style={[styles.leitnerContainer, !isIntermission && styles.leitnerDimmed]}>
+            <CompactLeitnerBoxes 
+              boxes={boxCounts} 
+              activeBox={currentCard?.box_number}
+            />
+          </View>
 
-        <View style={styles.mainContent}>
-          <View style={styles.swipeableArea} {...panResponder.panHandlers}>
+          {/* Hero overlay sits ABOVE Leitner boxes */}
+          <View
+            style={styles.heroOverlay}
+            pointerEvents="box-none"
+            {...(browseMode ? panResponder.panHandlers : {})}
+          >
             <Animated.View 
               style={[
-                styles.cardContainer,
+                styles.heroCardFrame,
                 {
                   transform: [
                     { translateX },
+                    { translateY: cardTranslateY },
                     { scale: cardScale }
                   ],
+                  opacity: cardOpacity,
                 },
               ]}
+              pointerEvents={isIntermission ? 'none' : 'auto'}
             >
-              <View ref={cardRef} collapsable={false}>
+              <View ref={cardRef} collapsable={false} style={styles.heroCardPadding}>
                 {currentCard.isFrozen || previewMode ? (
                   <FrozenCard
                     card={currentCard}
                     color={subjectColor}
                     preview={previewMode}
+                    variant="studyHero"
+                    allowFlip={!['turbo', 'overdrive', 'beast'].includes(difficultyKey)}
+                    difficultyModeLabel={difficultyKey}
+                    onRevealDisabled={handleRevealDisabled}
                   />
                 ) : (
                   <FlashcardCard
                     card={currentCard}
                     color={subjectColor}
                     shuffleOptions={canUseDifficultyMode ? !!userSettings?.shuffle_mcq_enabled : false}
+                    interactionMode="study"
+                    variant="studyHero"
+                    allowQuestionExpand={true}
+                    questionClampLines={6}
+                    onSkip={handleSkipCardForSession}
                     onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
                   />
                 )}
@@ -964,6 +1219,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           </View>
         </View>
 
+        {browseMode ? (
         <View style={styles.bottomSection}>
           <View style={styles.navigationContainer}>
             <TouchableOpacity
@@ -992,43 +1248,24 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
               <Text style={styles.swipeHint}>Swipe to navigate</Text>
             </View>
 
-            {previewMode ? (
-              currentIndex === flashcards.length - 1 ? (
-                <TouchableOpacity
-                  style={styles.exitPreviewButton}
-                  onPress={exitPreview}
-                >
-                  <Text style={styles.exitPreviewText}>Exit Preview</Text>
-                  <Icon name="close-circle" size={20} color="#fff" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.navButton}
-                  onPress={handleNext}
-                >
-                  <Text style={styles.navButtonText}>Next</Text>
-                  <Icon name="chevron-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-              )
-            ) : currentIndex === flashcards.length - 1 ? (
-              <TouchableOpacity
-                style={styles.finishButton}
-                onPress={handleClose}
-              >
-                <Text style={styles.finishButtonText}>Finish</Text>
-                <Icon name="checkmark-circle" size={20} color="#fff" />
+            {previewMode && currentIndex === flashcards.length - 1 ? (
+              <TouchableOpacity style={styles.exitPreviewButton} onPress={exitPreview}>
+                <Text style={styles.exitPreviewText}>Exit Preview</Text>
+                <Icon name="close-circle" size={20} color="#fff" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={styles.navButton}
+                style={[styles.navButton, currentIndex === flashcards.length - 1 && styles.disabledButton]}
                 onPress={handleNext}
+                disabled={currentIndex === flashcards.length - 1}
               >
-                <Text style={styles.navButtonText}>Next</Text>
+                <Text style={[styles.navButtonText, currentIndex === flashcards.length - 1 && styles.disabledText]}>Next</Text>
                 <Icon name="chevron-forward" size={24} color="#fff" />
               </TouchableOpacity>
             )}
           </View>
         </View>
+        ) : null}
 
         {/* Card Swoosh Animation */}
         <CardSwooshAnimation
@@ -1080,9 +1317,11 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                   {answerFeedback.message}
                 </Text>
                 
-                {!answerFeedback.correct && answerFeedback.correctAnswer && (
+                {answerFeedback.correctAnswer && (
                   <View style={styles.correctAnswerBox}>
-                    <Text style={styles.correctAnswerLabel}>Correct Answer:</Text>
+                    <Text style={styles.correctAnswerLabel}>
+                      {answerFeedback.correct ? 'Answer:' : 'Correct Answer:'}
+                    </Text>
                     <Text style={styles.correctAnswerText}>{answerFeedback.correctAnswer}</Text>
                   </View>
                 )}
@@ -1344,6 +1583,10 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
     marginLeft: -8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 59, 48, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.22)',
   },
   headerTitle: {
     fontSize: IS_MOBILE ? 16 : 18,
@@ -1368,6 +1611,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
   },
+  leitnerDimmed: {
+    opacity: 0.55,
+  },
   mainContent: {
     flex: 1,
     justifyContent: 'center',
@@ -1380,10 +1626,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardContainer: {
+  stage: {
+    flex: 1,
+    position: 'relative',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
+  },
+  heroCardFrame: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroCardPadding: {
+    width: '100%',
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   bottomSection: {
     backgroundColor: 'white',
@@ -1498,7 +1764,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 200,
+    paddingTop: 320,
     backgroundColor: 'transparent',
     pointerEvents: 'none',
   },
@@ -1744,6 +2010,21 @@ const styles = StyleSheet.create({
     color: '#FF9500',
     fontWeight: '500',
     marginTop: 2,
+  },
+  exitPreviewPill: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignSelf: 'flex-end',
+  },
+  exitPreviewPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   summaryOverlay: {
     flex: 1,

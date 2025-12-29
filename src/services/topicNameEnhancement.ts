@@ -12,12 +12,21 @@ export interface TopicNameEnhancementParams {
 
 export class TopicNameEnhancementService {
   private static apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://www.fl4sh.cards/api';
+  private static failureCount = 0;
+  private static lastFailureAtMs = 0;
+  private static readonly CIRCUIT_BREAK_MS = 10 * 60 * 1000; // 10 min
 
   /**
    * Enhance a single topic name using AI
    */
   static async enhanceTopicName(params: TopicNameEnhancementParams): Promise<string> {
     try {
+      // Circuit breaker: if the API is returning errors, don't spam requests or LogBox.
+      const now = Date.now();
+      if (this.failureCount >= 3 && now - this.lastFailureAtMs < this.CIRCUIT_BREAK_MS) {
+        return params.topicName;
+      }
+
       console.log('🤖 Enhancing topic name:', params.topicName);
 
       const response = await fetch(`${this.apiUrl}/enhance-topic-names`, {
@@ -29,7 +38,11 @@ export class TopicNameEnhancementService {
       });
 
       if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
+        this.failureCount += 1;
+        this.lastFailureAtMs = Date.now();
+        // Non-fatal: silently fall back to original name.
+        console.log(`⚠️ Topic name enhancement API returned ${response.status}; using original`);
+        return params.topicName;
       }
 
       const data = await response.json();
@@ -39,9 +52,13 @@ export class TopicNameEnhancementService {
         return data.enhanced;
       }
 
-      throw new Error('Invalid response from enhancement API');
+      // Non-fatal: fall back to original.
+      return params.topicName;
     } catch (error) {
-      console.error('❌ Error enhancing topic name:', error);
+      this.failureCount += 1;
+      this.lastFailureAtMs = Date.now();
+      // Avoid console.error (LogBox spam); fall back silently.
+      console.log('⚠️ Topic name enhancement failed; using original');
       // Return original if enhancement fails
       return params.topicName;
     }

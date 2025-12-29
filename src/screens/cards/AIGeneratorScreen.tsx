@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
+  Dimensions,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
@@ -12,6 +14,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+const { width: deviceWidth } = Dimensions.get('window');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +85,9 @@ export default function AIGeneratorScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewListRef = useRef<FlatList<GeneratedCard>>(null);
+  const [pageWidth, setPageWidth] = useState(deviceWidth);
   const [currentStep, setCurrentStep] = useState<'select' | 'options' | 'preview'>('select');
   const [aiService] = useState(() => new AIService());
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -380,6 +386,14 @@ export default function AIGeneratorScreen() {
   const handleDeletePreviewCard = (index: number) => {
     const newCards = generatedCards.filter((_, i) => i !== index);
     setGeneratedCards(newCards);
+    const nextIdx = Math.min(previewIndex, Math.max(0, newCards.length - 1));
+    setPreviewIndex(nextIdx);
+    // Keep the FlatList in sync after deletion
+    requestAnimationFrame(() => {
+      if (nextIdx >= 0 && newCards.length > 0) {
+        previewListRef.current?.scrollToIndex({ index: nextIdx, animated: false });
+      }
+    });
     if (newCards.length === 0) {
       Alert.alert('No Cards Left', 'All cards deleted. Generate new ones?', [
         { text: 'Cancel', onPress: () => setCurrentStep('options') },
@@ -389,43 +403,73 @@ export default function AIGeneratorScreen() {
   };
 
   const renderPreview = () => (
-    <ScrollView style={styles.previewContainer}>
+    <View style={styles.previewContainer}>
       <View style={styles.previewHeader}>
-        <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
-        <Text style={styles.previewCount}>{generatedCards.length} cards</Text>
+        <View>
+          <Text style={styles.sectionTitle}>Generated Cards Preview</Text>
+          <Text style={styles.previewHint}>Swipe to preview • Tap options to sanity-check</Text>
+        </View>
+        <Text style={styles.previewCount}>
+          {generatedCards.length > 0 ? `${previewIndex + 1}/${generatedCards.length}` : '0/0'}
+        </Text>
       </View>
-      {generatedCards.map((card, index) => {
-        // Convert generated card to flashcard format
-        const flashcard = {
-          id: `preview-${index}`,
-          question: card.question,
-          answer: card.answer,
-          card_type: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
-          options: card.options,
-          correct_answer: card.correctAnswer,
-          key_points: card.keyPoints,
-          detailed_answer: card.detailedAnswer,
-          box_number: 1,
-          topic: topic,
-        };
 
-        return (
-          <View key={index} style={styles.previewCardWrapper}>
-            <TouchableOpacity
-              style={styles.deletePreviewButton}
-              onPress={() => handleDeletePreviewCard(index)}
-            >
-              <Text style={styles.deletePreviewText}>✕</Text>
-            </TouchableOpacity>
-            <FlashcardCard
-              card={flashcard}
-              color="#6366F1"
-              showDeleteButton={false}
-            />
-          </View>
-        );
-      })}
-    </ScrollView>
+      <View
+        style={{ flex: 1 }}
+        onLayout={(e) => setPageWidth(e.nativeEvent.layout.width || deviceWidth)}
+      >
+      <FlatList
+        ref={previewListRef}
+        data={generatedCards}
+        keyExtractor={(_, i) => `preview-${i}`}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
+        onMomentumScrollEnd={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const width = e.nativeEvent.layoutMeasurement.width || 1;
+          const idx = Math.round(x / width);
+          setPreviewIndex(Math.max(0, Math.min(idx, generatedCards.length - 1)));
+        }}
+        renderItem={({ item, index }) => {
+          const flashcard = {
+            id: `preview-${index}`,
+            question: item.question,
+            answer: item.answer,
+            card_type: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'manual',
+            options: item.options,
+            correct_answer: item.correctAnswer,
+            key_points: item.keyPoints,
+            detailed_answer: item.detailedAnswer,
+            box_number: 1,
+            topic: topic,
+          };
+
+          return (
+            <View style={[styles.previewPage, { width: pageWidth }]}>
+              <TouchableOpacity
+                style={styles.deletePreviewButton}
+                onPress={() => handleDeletePreviewCard(index)}
+              >
+                <Text style={styles.deletePreviewText}>✕</Text>
+              </TouchableOpacity>
+              <View style={styles.previewCardFrame}>
+                <FlashcardCard
+                  card={flashcard}
+                  color="#6366F1"
+                  showDeleteButton={false}
+                  variant="studyHero"
+                />
+              </View>
+            </View>
+          );
+        }}
+      />
+      </View>
+    </View>
   );
 
   return (
@@ -926,26 +970,40 @@ const styles = StyleSheet.create({
     color: '#00D4FF',
     fontWeight: '600',
   },
-  previewCardWrapper: {
-    padding: 16,
-    position: 'relative',
+  previewHint: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  previewPage: {
+    width: '100%',
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    overflow: 'visible',
+  },
+  previewCardFrame: {
+    flex: 1,
   },
   deletePreviewButton: {
     position: 'absolute',
-    top: 24,
-    right: 24,
+    top: 12,
+    right: 12,
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    zIndex: 1000,
+    elevation: 20,
     shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 4,
-    elevation: 5,
   },
   deletePreviewText: {
     color: '#fff',

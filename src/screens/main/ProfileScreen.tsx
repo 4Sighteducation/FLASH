@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
@@ -34,6 +34,7 @@ import { showUpgradePrompt } from '../../utils/upgradePrompt';
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
+  const route = useRoute();
   const { theme, colors, setTheme } = useTheme();
   const styles = createStyles(colors);
   const { tier, limits, restorePurchases } = useSubscription();
@@ -151,6 +152,15 @@ export default function ProfileScreen() {
       console.error('Error loading notification preferences:', error);
     }
   };
+
+  // Open Difficulty modal if requested via navigation param
+  useEffect(() => {
+    const params: any = (route as any)?.params;
+    if (params?.openDifficulty === true && canUseDifficultyMode) {
+      setDifficultyVisible(true);
+      navigation.setParams({ openDifficulty: undefined } as any);
+    }
+  }, [route, navigation, canUseDifficultyMode]);
 
   const handleNotificationToggle = async (value: boolean) => {
     try {

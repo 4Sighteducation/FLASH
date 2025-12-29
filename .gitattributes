@@ -1,0 +1,62 @@
+# Normalize line endings across platforms to avoid CRLF churn on Windows.
+# - Most text files are stored and checked out as LF.
+# - Windows-native scripts keep CRLF for better compatibility.
+# - Common binary formats are explicitly marked as binary.
+
+# Default: treat files as text and use LF on checkout
+* text=auto eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts (force LF)
+*.sh text eol=lf
+
+# Common docs/config (explicit text helps avoid mis-detection)
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.env text eol=lf
+*.example text eol=lf
+*.sql text eol=lf
+
+# Code
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+
+# Xcode / Apple project files (treat as text)
+*.pbxproj text eol=lf
+*.plist text eol=lf
+*.xcconfig text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.wav binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+

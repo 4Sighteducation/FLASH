@@ -31,44 +31,97 @@ interface FrozenCardProps {
   };
   color: string;
   preview?: boolean;
+  allowFlip?: boolean;
+  variant?: 'default' | 'studyHero';
+  difficultyModeLabel?: 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
+  onRevealDisabled?: (difficulty: string) => void;
 }
 
-export default function FrozenCard({ card, color, preview = false }: FrozenCardProps) {
+export default function FrozenCard({
+  card,
+  color,
+  preview = false,
+  allowFlip = true,
+  variant = 'default',
+  difficultyModeLabel,
+  onRevealDisabled,
+}: FrozenCardProps) {
   const [isFlipped, setIsFlipped] = React.useState(false);
+  const isFlipDisabled = !allowFlip;
   
   // If preview mode, act like a flippable flashcard (read-only)
   if (preview) {
+    const canFlip = !!allowFlip;
     return (
-      <View style={[styles.container, { borderColor: color }]}>
+      <View style={[
+        styles.container,
+        variant === 'studyHero' && styles.containerStudyHero,
+        { borderColor: color }
+      ]}>
         <TouchableOpacity 
-          style={styles.previewCard}
-          onPress={() => setIsFlipped(!isFlipped)}
+          style={[styles.previewCard, variant === 'studyHero' && styles.previewCardStudyHero]}
+          onPress={
+            canFlip
+              ? () => setIsFlipped(!isFlipped)
+              : () => {
+                  if (isFlipDisabled && onRevealDisabled) {
+                    onRevealDisabled(difficultyModeLabel || 'turbo');
+                  }
+                }
+          }
           activeOpacity={0.9}
+          disabled={false}
         >
+          {!canFlip ? (
+            <View pointerEvents="none" style={styles.previewLockedOverlay}>
+              <View style={styles.previewLockedBadge}>
+                <Icon name="lock-closed" size={18} color="#111827" />
+                <Text style={styles.previewLockedText}>Locked</Text>
+              </View>
+            </View>
+          ) : null}
           <View style={styles.previewBadge}>
             <Icon name="eye-outline" size={16} color="#6366F1" />
             <Text style={styles.previewBadgeText}>Preview Only</Text>
           </View>
           
           {card.topic && (
-            <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
+            <Text style={[
+              styles.topicLabel,
+              variant === 'studyHero' && styles.topicLabelStudyHero,
+              { color }
+            ]}>
+              {stripExamType(card.topic)}
+            </Text>
           )}
           
           {!isFlipped ? (
             <>
-              <Text style={styles.question}>{card.question}</Text>
-              <Text style={styles.tapToFlip}>Tap to see answer</Text>
+              <View style={[styles.questionBox, variant === 'studyHero' && styles.questionBoxStudyHero]}>
+                <Text style={[styles.question, variant === 'studyHero' && styles.questionStudyHero]}>
+                  {card.question}
+                </Text>
+              </View>
+              {canFlip ? (
+                <Text style={[styles.tapToFlip, variant === 'studyHero' && styles.tapToFlipStudyHero]}>Tap to see answer</Text>
+              ) : (
+              <Text style={[styles.tapToFlip, variant === 'studyHero' && styles.tapToFlipStudyHero]}>
+                Answer locked in Turbo+
+              </Text>
+              )}
             </>
           ) : (
             <>
-              <Text style={styles.answerLabel}>Answer:</Text>
-              <Text style={styles.answer}>{card.answer || 'No answer available'}</Text>
-              <Text style={styles.tapToFlip}>Tap to flip back</Text>
+              <Text style={[styles.answerLabel, variant === 'studyHero' && styles.answerLabelStudyHero]}>Answer:</Text>
+              <Text style={[styles.answer, variant === 'studyHero' && styles.answerStudyHero]}>
+                {card.answer || 'No answer available'}
+              </Text>
+              <Text style={[styles.tapToFlip, variant === 'studyHero' && styles.tapToFlipStudyHero]}>Tap to flip back</Text>
             </>
           )}
           
-          <View style={[styles.boxIndicator, { backgroundColor: color + '20' }]}>
-            <Text style={[styles.boxText, { color }]}>Available Tomorrow</Text>
+          <View style={[styles.boxIndicator, variant === 'studyHero' && styles.boxIndicatorStudyHero, { backgroundColor: color + '20' }]}>
+            <Text style={[styles.boxText, variant === 'studyHero' && styles.boxTextStudyHero, { color }]}>Available Tomorrow</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -93,21 +146,56 @@ export default function FrozenCard({ card, color, preview = false }: FrozenCardP
   };
 
   return (
-    <View style={[styles.container, { borderColor: color }]}>
-      {/* Frozen Overlay */}
-      <View style={styles.frozenOverlay}>
-        <Icon name="lock-closed" size={40} color="#999" />
+    <View style={[
+      styles.container,
+      variant === 'studyHero' && styles.containerStudyHero,
+      { borderColor: color }
+    ]}>
+      {/* Locked badge (visual only; don't hide the question) */}
+      <View pointerEvents="none" style={styles.lockBadge}>
+        <Icon name="lock-closed" size={28} color="#111827" />
       </View>
 
       {/* Card Content */}
-      <View style={styles.cardContent}>
+      <TouchableOpacity
+        activeOpacity={allowFlip ? 0.9 : 1}
+        onPress={() => {
+          if (!allowFlip && onRevealDisabled) {
+            onRevealDisabled(difficultyModeLabel || 'turbo');
+            return;
+          }
+          if (allowFlip) {
+            setIsFlipped((v) => !v);
+          }
+        }}
+        disabled={false}
+        style={[styles.cardContent, allowFlip && styles.cardContentFlippable]}
+      >
         {card.topic && (
-          <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
+          <Text style={[
+            styles.topicLabel,
+            variant === 'studyHero' && styles.topicLabelStudyHero,
+            { color }
+          ]}>
+            {stripExamType(card.topic)}
+          </Text>
         )}
         
-        <Text style={styles.question} numberOfLines={6}>
-          {card.question}
-        </Text>
+        {!isFlipped ? (
+          <Text
+            style={[styles.question, variant === 'studyHero' && styles.questionStudyHero]}
+            numberOfLines={6}
+          >
+            {card.question}
+          </Text>
+        ) : (
+          <>
+            <Text style={[styles.answerLabel, variant === 'studyHero' && styles.answerLabelStudyHero]}>Answer:</Text>
+            <Text style={[styles.answer, variant === 'studyHero' && styles.answerStudyHero]}>
+              {card.answer || 'No answer available'}
+            </Text>
+          </>
+        )}
 
         {/* Frozen Status */}
         <View style={styles.frozenStatus}>
@@ -129,7 +217,7 @@ export default function FrozenCard({ card, color, preview = false }: FrozenCardP
         <View style={[styles.boxIndicator, { backgroundColor: color + '20' }]}>
           <Text style={[styles.boxText, { color }]}>Box {card.box_number}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -150,15 +238,25 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
-  frozenOverlay: {
+  containerStudyHero: {
+    width: '100%',
+    flex: 1,
+    marginVertical: 0,
+    alignSelf: 'stretch',
+    backgroundColor: '#0a0f1e',
+    borderRadius: 24,
+    borderWidth: 4,
+  },
+  lockBadge: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    justifyContent: 'center',
+    top: 16,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 10,
   },
   cardContent: {
@@ -166,11 +264,18 @@ const styles = StyleSheet.create({
     padding: 20,
     opacity: 0.7,
   },
+  cardContentFlippable: {
+    opacity: 1,
+  },
   topicLabel: {
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 8,
     textTransform: 'uppercase',
+  },
+  topicLabelStudyHero: {
+    textTransform: 'none',
+    color: '#E5E7EB',
   },
   question: {
     fontSize: 18,
@@ -178,6 +283,12 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 20,
     lineHeight: 24,
+  },
+  questionStudyHero: {
+    color: '#FFFFFF',
+    marginBottom: 0,
+    lineHeight: 26,
+    fontWeight: '800',
   },
   frozenStatus: {
     flexDirection: 'row',
@@ -227,6 +338,10 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
+  previewCardStudyHero: {
+    padding: 18,
+    justifyContent: 'flex-start',
+  },
   previewBadge: {
     position: 'absolute',
     top: 16,
@@ -244,17 +359,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6366F1',
   },
+  questionBox: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginTop: 10,
+    marginBottom: 14,
+  },
+  questionBoxStudyHero: {
+    marginTop: 16,
+  },
   answer: {
     fontSize: 16,
     color: '#333',
     lineHeight: 24,
     marginBottom: 20,
   },
+  answerStudyHero: {
+    color: '#E5E7EB',
+  },
   answerLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#666',
     marginBottom: 12,
+  },
+  answerLabelStudyHero: {
+    color: '#9CA3AF',
   },
   tapToFlip: {
     position: 'absolute',
@@ -263,5 +397,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999',
     fontStyle: 'italic',
+  },
+  tapToFlipStudyHero: {
+    color: 'rgba(255,255,255,0.55)',
+  },
+  previewLockedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 24,
+    zIndex: 9,
+  },
+  previewLockedBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(17, 24, 39, 0.10)',
+  },
+  previewLockedText: {
+    color: '#111827',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  boxIndicatorStudyHero: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  boxTextStudyHero: {
+    fontWeight: '800',
   },
 }); 
