@@ -25,7 +25,7 @@ import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { gamificationService } from '../../services/gamificationService';
-import { getOrCreateUserSettings, UserSettings } from '../../services/userSettingsService';
+import { getOrCreateUserSettings, updateUserSettings, UserSettings } from '../../services/userSettingsService';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -105,6 +105,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const previewModeRef = useRef(false);
   const flashcardsLengthRef = useRef(0);
   const frozenBrowseRef = useRef(false);
+  const [difficultySheetVisible, setDifficultySheetVisible] = useState(false);
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
@@ -199,6 +200,19 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   }, [user?.id]);
 
   type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
+  const SHEET_PRESETS: Array<{
+    key: DifficultyKey;
+    name: string;
+    tagline: string;
+    shuffle: boolean;
+    timerSeconds: number;
+  }> = [
+    { key: 'safe', name: 'Safe', tagline: 'No shuffle • No timer', shuffle: false, timerSeconds: 0 },
+    { key: 'standard', name: 'Standard', tagline: 'Shuffle only', shuffle: true, timerSeconds: 0 },
+    { key: 'turbo', name: 'Turbo', tagline: 'Shuffle + 30s timer', shuffle: true, timerSeconds: 30 },
+    { key: 'overdrive', name: 'Overdrive', tagline: 'Shuffle + 15s timer', shuffle: true, timerSeconds: 15 },
+    { key: 'beast', name: 'Beast', tagline: 'Shuffle + 5s timer', shuffle: true, timerSeconds: 5 },
+  ];
   const difficultyFromSettings = (s: UserSettings | null): DifficultyKey => {
     if (!s) return 'safe';
     const shuffle = !!s.shuffle_mcq_enabled;
@@ -246,11 +260,32 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       [
         {
           text: 'Open Difficulty Mode',
-          onPress: () => navigation.navigate('Profile' as never, { screen: 'ProfileMain', params: { openDifficulty: true } } as never),
+          onPress: () => setDifficultySheetVisible(true),
         },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
+  };
+
+  const applyDifficultyPreset = async (key: DifficultyKey) => {
+    if (!user?.id) {
+      Alert.alert('Login required', 'Please log in to change Difficulty Mode.');
+      return;
+    }
+    const preset = SHEET_PRESETS.find(p => p.key === key);
+    if (!preset) return;
+    // Persist
+    const updated = await updateUserSettings(user.id, {
+      shuffle_mcq_enabled: preset.shuffle,
+      answer_timer_seconds: preset.timerSeconds,
+    });
+    if (updated) {
+      setUserSettings(updated);
+      setDifficultySheetVisible(false);
+      Alert.alert('Difficulty updated', `${preset.name} mode enabled.`);
+    } else {
+      Alert.alert('Error', 'Failed to update Difficulty Mode. Please try again.');
+    }
   };
 
   // Timer + per-card measurement for Difficulty mode (Pro only)
@@ -1283,6 +1318,44 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
           onComplete={() => setShowPointsAnimation(false)}
         />
 
+        {/* Difficulty bottom sheet (local, over current card) */}
+        <Modal
+          visible={difficultySheetVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDifficultySheetVisible(false)}
+        >
+          <View style={styles.sheetOverlay}>
+            <TouchableOpacity style={{ flex: 1 }} onPress={() => setDifficultySheetVisible(false)} />
+            <View style={styles.sheetCard}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>Difficulty Mode</Text>
+                <TouchableOpacity onPress={() => setDifficultySheetVisible(false)}>
+                  <Icon name="close" size={24} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+              {SHEET_PRESETS.map(preset => {
+                const isSelected = difficultyKey === preset.key;
+                return (
+                  <TouchableOpacity
+                    key={preset.key}
+                    style={[styles.sheetOption, isSelected && styles.sheetOptionSelected]}
+                    onPress={() => applyDifficultyPreset(preset.key)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sheetOptionTitle, isSelected && styles.sheetOptionTitleSelected]}>
+                        {preset.name}
+                      </Text>
+                      <Text style={styles.sheetOptionSubtitle}>{preset.tagline}</Text>
+                    </View>
+                    {isSelected && <Icon name="checkmark-circle" size={22} color="#22C55E" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </Modal>
+
         {/* Enhanced Answer Feedback Modal */}
         <Modal
           visible={showAnswerFeedback}
@@ -1905,6 +1978,57 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
     borderTopWidth: 2,
     borderTopColor: '#f0f0f0',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetCard: {
+    backgroundColor: '#0f172a',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 10,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#E5E7EB',
+  },
+  sheetOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  sheetOptionSelected: {
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34,197,94,0.08)',
+  },
+  sheetOptionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#E5E7EB',
+  },
+  sheetOptionTitleSelected: {
+    color: '#22C55E',
+  },
+  sheetOptionSubtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    color: '#9CA3AF',
   },
   percentageLabel: {
     fontSize: 17,
