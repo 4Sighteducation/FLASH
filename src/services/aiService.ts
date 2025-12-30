@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { normalizeExamTrackId } from '../utils/examTracks';
 
 export interface CardGenerationParams {
   subject: string;
@@ -21,6 +22,65 @@ export interface GeneratedCard {
   detailedAnswer?: string;
   acronym?: string;
   explanation?: string;
+}
+
+/**
+ * Map a subject's qualification code / track id to the prompt "examType" expected by `api/generate-cards.js`.
+ *
+ * Important: This is about *question difficulty/style* (prompting), not DB filtering.
+ * We keep DB/search using qualification codes (e.g. A_LEVEL, BTEC_NATIONALS_L3),
+ * but the generator prompt expects human-ish labels like "GCSE" / "A-Level".
+ */
+function examTypeForGenerationPrompt(raw: string | null | undefined): string {
+  const v = (raw ?? '').toString().trim();
+  if (!v) return 'GCSE';
+
+  // If we can normalize to our stable track ids, use that first.
+  const track = normalizeExamTrackId(v);
+  if (track === 'INTERNATIONAL_GCSE') return 'iGCSE';
+  if (track === 'INTERNATIONAL_A_LEVEL') return 'International A-Level';
+  if (track === 'A_LEVEL') return 'A-Level';
+  if (track === 'GCSE') return 'GCSE';
+  if (track === 'IB') return 'IB';
+  if (track === 'VOCATIONAL_L3') return 'A-Level'; // "harder prompt" for Level 3 tracks
+  if (track === 'VOCATIONAL_L2') return 'GCSE';
+  // SQA track covers multiple actual quals; if we only have the broad track id, default to GCSE.
+  // When we have the subject's qualification code (NATIONAL_5/HIGHER/ADVANCED_HIGHER), that will override this branch.
+  if (track === 'SQA_NATIONALS') return 'GCSE';
+
+  // Otherwise, we may have a qualification_types.code like BTEC_NATIONALS_L3.
+  const upper = v.toUpperCase();
+
+  // Explicit international variants
+  if (upper.includes('INTERNATIONAL_A_LEVEL')) return 'International A-Level';
+  if (upper.includes('INTERNATIONAL_GCSE')) return 'iGCSE';
+
+  // --- Scottish Nationals mapping ---
+  // National 5 ~ GCSE; Higher/Advanced Higher ~ A-Level difficulty.
+  if (upper.includes('ADVANCED_HIGHER') || upper === 'ADVANCED_HIGHER') return 'A-Level';
+  if (upper.includes('HIGHER') || upper === 'HIGHER') return 'A-Level';
+  if (upper.includes('NATIONAL_5') || upper === 'NATIONAL_5') return 'GCSE';
+
+  // --- Vocational mapping ---
+  // GCSE-level: BTEC Firsts / Cambridge Nationals (typically Level 2)
+  if (upper.includes('BTEC_FIRST') || upper.includes('BTEC_FIRSTS')) return 'GCSE';
+  if (upper.includes('CAMBRIDGE_NATIONAL')) return 'GCSE';
+
+  // A-Level-level: Cambridge Technicals / BTEC Nationals (Level 3)
+  if (upper.includes('CAMBRIDGE_TECHNICAL')) return 'A-Level';
+  if (upper.includes('BTEC_NATIONAL')) return 'A-Level';
+
+  // Level 3 qualifications should use the harder prompt (per request)
+  if (upper.includes('_L3') || upper.includes('ADVANCED_HIGHER') || upper === 'HIGHER') return 'A-Level';
+
+  // Level 2 / GCSE-adjacent
+  if (upper.includes('_L2') || upper.includes('NATIONAL_5')) return 'GCSE';
+
+  // If it's a plain "BTEC" style value, keep BTEC guidance.
+  if (upper === 'BTEC' || upper.includes('BTEC')) return 'BTEC';
+
+  // Fall back to GCSE.
+  return 'GCSE';
 }
 
 // Exam complexity guidance
@@ -81,6 +141,7 @@ export class AIService {
     try {
       console.log('Generating cards with params:', params);
       console.log('API URL:', this.apiUrl);
+      const promptExamType = examTypeForGenerationPrompt(params.examType);
       
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -90,13 +151,16 @@ export class AIService {
         body: JSON.stringify({
           subject: params.subject,
           topic: params.topic,
-          examType: params.examType,
+          // The generator prompt expects GCSE/A-Level style values; don't pass DB qualification codes directly.
+          examType: promptExamType,
           examBoard: params.examBoard,
           questionType: params.questionType,
           numCards: params.numCards,
           contentGuidance: params.contentGuidance,
           isOverview: params.isOverview || false,
-          childrenTopics: params.childrenTopics || []
+          childrenTopics: params.childrenTopics || [],
+          // Debugging/telemetry only (backend can ignore safely)
+          qualificationCode: params.examType,
         })
       });
 

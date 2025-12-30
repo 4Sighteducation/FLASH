@@ -25,7 +25,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
 import UnlockedAvatarsModal from '../../components/UnlockedAvatarsModal';
-import { getAvatarForXp } from '../../services/avatarService';
+import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface UserSubject {
   id: string;
@@ -38,6 +40,7 @@ interface UserSubject {
   use_gradient?: boolean;
   subject: {
     subject_name: string;
+    qualification_types?: { code?: string | null } | null;
   };
   flashcard_count?: number;
   topic_count?: number;
@@ -45,11 +48,14 @@ interface UserSubject {
 
 interface UserData {
   exam_type: string;
+  primary_exam_type?: string | null;
+  secondary_exam_type?: string | null;
   username: string;
 }
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { colors, theme } = useTheme();
   const styles = createStyles(colors, theme);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -157,7 +163,7 @@ export default function HomeScreen({ navigation }: any) {
       // Fetch user data
       const { data: userInfo, error: userError } = await supabase
         .from('users')
-        .select('exam_type, username')
+        .select('exam_type, primary_exam_type, secondary_exam_type, username')
         .eq('id', user?.id)
         .single();
 
@@ -176,7 +182,7 @@ export default function HomeScreen({ navigation }: any) {
           gradient_color_2,
           gradient_color_3,
           use_gradient,
-          subject:exam_board_subjects!subject_id(subject_name)
+          subject:exam_board_subjects!subject_id(subject_name, qualification_types(code))
         `)
         .eq('user_id', user?.id);
 
@@ -249,8 +255,17 @@ export default function HomeScreen({ navigation }: any) {
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
       examBoard: subject.exam_board,
-      examType: userData?.exam_type,
+      // Use the subject's own qualification code so mixed-track users get correct topic search + AI prompt.
+      examType: subject.subject?.qualification_types?.code || userData?.exam_type,
     });
+  };
+
+  const getSubjectAddTracks = (): { primaryTrack: string; secondaryTrack: string | null } | null => {
+    // Prefer new dual-track fields, fall back to legacy exam_type.
+    const primary = (userData?.primary_exam_type || userData?.exam_type || '').toString().trim();
+    if (!primary) return null;
+    const secondary = (userData?.secondary_exam_type || '').toString().trim() || null;
+    return { primaryTrack: primary, secondaryTrack: secondary };
   };
 
   const handleDeleteSubject = async () => {
@@ -294,7 +309,6 @@ export default function HomeScreen({ navigation }: any) {
 
   const totalPoints = userStats?.total_points ?? 0;
   const rank = getRankForXp(totalPoints);
-  const avatar = getAvatarForXp(totalPoints);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -307,7 +321,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
                 <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                  <Image source={avatar.source} style={styles.headerAvatarImage} resizeMode="contain" />
+                  <SystemStatusRankIcon rankKey={rank.current.key} size={38} withContainerGlow={false} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -544,11 +558,22 @@ export default function HomeScreen({ navigation }: any) {
             <TouchableOpacity
               style={styles.addMoreButton}
               onPress={() => {
-                if (userData?.exam_type) {
-                  navigation.navigate('SubjectSelection', { 
-                    examType: userData.exam_type,
-                    isAddingSubjects: true 
+                // Enforce Free plan subject limit at the entry point (in addition to server-side insert checks).
+                if (tier === 'free' && limits.maxSubjects !== -1 && userSubjects.length >= limits.maxSubjects) {
+                  showUpgradePrompt({
+                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    navigation,
                   });
+                  return;
+                }
+                if (userData?.exam_type) {
+                  // Use search-based picker that supports blended tracks (primary + optional secondary).
+                  const tracks = getSubjectAddTracks();
+                  if (tracks) {
+                    navigation.navigate('SubjectSearch' as never, tracks as never);
+                  } else {
+                    navigation.navigate('ExamTypeSelection');
+                  }
                 } else {
                   navigation.navigate('ExamTypeSelection');
                 }
@@ -566,10 +591,12 @@ export default function HomeScreen({ navigation }: any) {
               style={styles.addSubjectButton}
               onPress={() => {
                 if (userData?.exam_type) {
-                  navigation.navigate('SubjectSelection', { 
-                    examType: userData.exam_type,
-                    isAddingSubjects: true 
-                  });
+                  const tracks = getSubjectAddTracks();
+                  if (tracks) {
+                    navigation.navigate('SubjectSearch' as never, tracks as never);
+                  } else {
+                    navigation.navigate('ExamTypeSelection');
+                  }
                 } else {
                   // If no exam type, go to exam type selection first
                   navigation.navigate('ExamTypeSelection');

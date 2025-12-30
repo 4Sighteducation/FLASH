@@ -14,6 +14,8 @@ import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface UserSubject {
   id: string;
@@ -22,6 +24,7 @@ interface UserSubject {
   color: string;
   subject: {
     subject_name: string;
+    qualification_types?: { code?: string | null } | null;
   };
 }
 
@@ -29,6 +32,7 @@ export default function CardSubjectSelector() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
@@ -60,7 +64,7 @@ export default function CardSubjectSelector() {
           subject_id,
           exam_board,
           color,
-          subject:exam_board_subjects!subject_id(subject_name)
+          subject:exam_board_subjects!subject_id(subject_name, qualification_types(code))
         `)
         .eq('user_id', user?.id);
 
@@ -80,7 +84,8 @@ export default function CardSubjectSelector() {
       subjectName: subject.subject.subject_name,
       subjectColor: subject.color,
       examBoard: subject.exam_board,
-      examType: userData?.exam_type,
+      // Use subject qualification for correct search + AI generation difficulty in mixed-track scenarios.
+      examType: subject.subject?.qualification_types?.code || userData?.exam_type,
       mode: mode,
     } as never);
   };
@@ -138,9 +143,20 @@ export default function CardSubjectSelector() {
             <Text style={styles.emptyText}>No subjects added yet</Text>
             <TouchableOpacity
               style={styles.addSubjectButton}
-              onPress={() => navigation.navigate('SubjectSelection' as never, { 
-                examType: userData?.exam_type 
-              } as never)}
+              onPress={() => {
+                if (tier === 'free' && limits.maxSubjects !== -1 && userSubjects.length >= limits.maxSubjects) {
+                  showUpgradePrompt({
+                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    navigation,
+                  });
+                  return;
+                }
+                navigation.navigate('SubjectSelection' as never, {
+                  // Keep subject adding flow driven by the user's track(s); per-subject qualification is derived from chosen subject.
+                  examType: userData?.exam_type,
+                  isAddingSubjects: true,
+                } as never);
+              }}
             >
               <Text style={styles.addSubjectText}>Add Subjects</Text>
             </TouchableOpacity>
