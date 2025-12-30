@@ -21,6 +21,15 @@ export function abbreviateTopicName(topicName: string): string {
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, '')
     .trim();
+
+  // Strip common trailing curriculum/spec codes like: "Topic title [J587_01_1_5_2]"
+  // These appear in some exam-board exports and are not useful in UI labels.
+  cleaned = cleaned
+    // Bracketed codes (require at least one underscore or slash inside to avoid removing common "[see p2]" text)
+    .replace(/\s*\[[^\]]*(?:_|\/)[^\]]*\]\s*$/u, '')
+    // Bare codes without brackets (e.g. "... J587_01_1_5_2")
+    .replace(/\s+[A-Za-z]{1,6}\d{0,6}(?:_[A-Za-z0-9]+){2,}\s*$/u, '')
+    .trim();
   
   // Split by common delimiters
   const delimiters = [
@@ -99,7 +108,12 @@ export function getTopicLabel(topic: {
   topic_name?: string | null;
 }): string {
   const display = (topic.display_name || '').trim();
-  if (display) return display;
+  if (display) {
+    // display_name can still contain junk (codes/html) depending on source; sanitize defensively.
+    const sanitizedDisplay = sanitizeTopicLabel(display);
+    if (sanitizedDisplay) return sanitizedDisplay;
+    return display;
+  }
 
   const sanitized = sanitizeTopicLabel(topic.topic_name);
   if (sanitized) return sanitized;

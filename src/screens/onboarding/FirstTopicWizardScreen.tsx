@@ -319,7 +319,7 @@ export default function FirstTopicWizardScreen() {
                 onPress={() => toggleTopicSelection(result.topic_id)}
               >
                 <View style={styles.resultContent}>
-                  <Text style={styles.resultTitle}>{result.topic_name}</Text>
+                  <Text style={styles.resultTitle}>{sanitizeTopicLabel(result.topic_name, { maxLength: 120 })}</Text>
                   <Text style={styles.resultSummary}>{result.plain_english_summary}</Text>
 
                   {/* Breadcrumb */}
