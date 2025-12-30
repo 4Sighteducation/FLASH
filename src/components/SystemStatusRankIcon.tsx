@@ -442,7 +442,9 @@ function iconForRankKey(rankKey: string) {
       return OverclockedIcon;
     case 'elite':
       return NeuralNetIcon;
+    // Back-compat (older ladder may have used 'legend' for the final tier)
     case 'legend':
+    case 'singularity':
       return SingularityIcon;
     default:
       return StandbyIcon;
@@ -455,18 +457,24 @@ function SystemStatusRankIconInner({ rankKey, size = 44, withContainerGlow = tru
   const wrapSize = size;
   const iconSize = Math.max(12, size - 8);
   const rankIdx = rankIndexFromKey(rankKey);
+  const baseContainerStyle = {
+    width: wrapSize,
+    height: wrapSize,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderRadius: wrapSize / 2,
+  };
   return (
     <View
       style={
         withContainerGlow
           ? [
               {
-                width: wrapSize,
-                height: wrapSize,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: wrapSize / 2,
+                ...baseContainerStyle,
+                // Dark "stage" so neon rings pop.
                 backgroundColor: 'rgba(0,0,0,0.18)',
+                // Keep the glow + rings clipped cleanly in small slots (prevents lopsided cropping).
+                overflow: 'hidden',
               },
               Platform.select({
                 ios: {
@@ -482,7 +490,13 @@ function SystemStatusRankIconInner({ rankKey, size = 44, withContainerGlow = tru
                 default: {},
               }),
             ]
-          : undefined
+          : [
+              {
+                ...baseContainerStyle,
+                // No extra shadow/background, but still ensure consistent sizing + crisp clipping.
+                overflow: 'hidden',
+              },
+            ]
       }
     >
       <FrameRings rankIdx={rankIdx} />

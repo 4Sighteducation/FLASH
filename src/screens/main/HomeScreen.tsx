@@ -321,7 +321,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
                 <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                  <SystemStatusRankIcon rankKey={rank.current.key} size={38} withContainerGlow={false} />
+                <SystemStatusRankIcon rankKey={rank.current.key} size={40} withContainerGlow={false} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -715,11 +715,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   headerAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 22,
     backgroundColor: 'rgba(0, 245, 255, 0.18)',
-    borderWidth: 1,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   headerAvatarImage: {
     width: 38,

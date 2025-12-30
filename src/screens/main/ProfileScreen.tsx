@@ -30,6 +30,8 @@ import { navigateToPaywall } from '../../utils/upgradePrompt';
 import { getTrackDisplayName, normalizeExamTrackId } from '../../utils/examTracks';
 import { getOrCreateUserSettings, updateUserSettings, UserSettings } from '../../services/userSettingsService';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { navigate } from '../../navigation/RootNavigation';
+import { captureFeedbackScreenshot } from '../../utils/feedbackScreenshot';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -392,7 +394,7 @@ export default function ProfileScreen() {
             const rank = getRankForXp(totalPoints);
             return (
               <View style={[styles.avatar, { borderColor: rank.current.color }]}>
-                <SystemStatusRankIcon rankKey={rank.current.key} size={64} />
+                <SystemStatusRankIcon rankKey={rank.current.key} size={96} withContainerGlow={false} />
               </View>
             );
           })()}
@@ -421,10 +423,6 @@ export default function ProfileScreen() {
                 }
               >
                 <Text style={styles.smallLinkButtonText}>Add exam track</Text>
-                <Icon name="chevron-forward" size={18} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.smallLinkButton} onPress={() => navigation.navigate('SubjectSearch' as never, { isAddingSubjects: true } as never)}>
-                <Text style={styles.smallLinkButtonText}>Manage subjects</Text>
                 <Icon name="chevron-forward" size={18} color={colors.primary} />
               </TouchableOpacity>
             </View>
@@ -588,11 +586,31 @@ export default function ProfileScreen() {
           
           <TouchableOpacity 
             style={styles.settingRow}
-            onPress={() => Linking.openURL('https://www.fl4shcards.com/contact/')}
+            onPress={() => {
+              const mode = tier === 'pro' ? 'priority' : 'support';
+              // Capture before opening modal, so we capture the Profile screen context (or current screen).
+              (async () => {
+                let uri: string | undefined;
+                try {
+                  uri = await captureFeedbackScreenshot();
+                } catch {
+                  // non-fatal
+                }
+                navigate('FeedbackModal', {
+                  mode,
+                  contextTitle: tier === 'pro' ? 'Priority help & support' : 'Help & support',
+                  contextHint: 'Tell us what’s wrong — add steps to reproduce and a screenshot if possible.',
+                  sourceRouteName: 'Profile',
+                  sourceRouteParams: null,
+                  defaultCategory: 'bug',
+                  initialScreenshotUri: uri,
+                });
+              })();
+            }}
           >
             <Icon name="help-circle-outline" size={22} color={colors.textSecondary} />
-            <Text style={styles.settingText}>Help & Support</Text>
-            <Icon name="open-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.settingText}>{tier === 'pro' ? 'Priority Help & Support' : 'Help & Support'}</Text>
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity
