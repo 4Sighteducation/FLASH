@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { getTopicLabel, sanitizeTopicLabel } from '../../utils/topicNameUtils';
+import FeedbackPill from '../../components/support/FeedbackPill';
 
 const TOPIC_SEARCH_ENDPOINTS = [
   process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
@@ -135,6 +136,51 @@ export default function SmartTopicDiscoveryScreen() {
         fullSubject: fullSubjectName,
         level: qualificationLevel 
       });
+
+      // Helper: if AI metadata isn't available for this course (common for newer boards/quals),
+      // fall back to sensible curriculum-based suggestions instead of generic placeholders.
+      const getCurriculumFallback = async (): Promise<string[]> => {
+        try {
+          if (!subjectId) return [];
+          const { data: topics, error: topicsError } = await supabase
+            .from('curriculum_topics')
+            .select('topic_name, topic_level, sort_order')
+            .eq('exam_board_subject_id', subjectId)
+            .gte('topic_level', 2)
+            .lte('topic_level', 4)
+            .order('sort_order', { ascending: true })
+            .order('topic_name', { ascending: true })
+            .limit(30);
+
+          if (topicsError) {
+            console.log('⚠️ Curriculum fallback query failed (non-fatal):', topicsError);
+            return [];
+          }
+
+          const cleaned = (topics || [])
+            .map((t: any) => String(t?.topic_name || '').trim())
+            .filter(Boolean)
+            .map((topicName: string) => {
+              // Remove leading numeric spec codes (e.g., "6.1 ", "3.4.5 ")
+              const withoutCodes = topicName.replace(/^[\d.]+\s+/, '').trim();
+              return sanitizeTopicLabel(withoutCodes, { maxLength: 64 });
+            })
+            .filter(Boolean);
+
+          // Deduplicate, keep order, and take first 4.
+          const seen = new Set<string>();
+          const unique = cleaned.filter((x) => {
+            if (!x) return false;
+            if (seen.has(x)) return false;
+            seen.add(x);
+            return true;
+          });
+          return unique.slice(0, 4);
+        } catch (e) {
+          console.log('⚠️ Curriculum fallback threw (non-fatal):', e);
+          return [];
+        }
+      };
       
       // Call database function to get smart topic suggestions
       // Excludes topics the user already has cards for
@@ -148,8 +194,13 @@ export default function SmartTopicDiscoveryScreen() {
 
       if (error) {
         console.error('❌ Error fetching smart suggestions:', error);
-        // Fallback to generic suggestions
-        setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        const fallback = await getCurriculumFallback();
+        if (fallback.length > 0) {
+          setSmartSuggestions(fallback);
+        } else {
+          // Last-resort generic suggestions
+          setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        }
         return;
       }
 
@@ -166,13 +217,45 @@ export default function SmartTopicDiscoveryScreen() {
         setSmartSuggestions(suggestions);
       } else {
         console.log('⚠️ No suggestions found, using fallback');
-        // Fallback if no data
-        setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        const fallback = await getCurriculumFallback();
+        if (fallback.length > 0) {
+          setSmartSuggestions(fallback);
+        } else {
+          // Last-resort generic suggestions
+          setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        }
       }
     } catch (error) {
       console.error('❌ Exception fetching suggestions:', error);
-      // Fallback to generic
-      setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+      try {
+        // Try curriculum fallback first
+        const { data: topics } = await supabase
+          .from('curriculum_topics')
+          .select('topic_name, topic_level, sort_order')
+          .eq('exam_board_subject_id', subjectId)
+          .gte('topic_level', 2)
+          .lte('topic_level', 4)
+          .order('sort_order', { ascending: true })
+          .order('topic_name', { ascending: true })
+          .limit(30);
+        const cleaned = (topics || [])
+          .map((t: any) => String(t?.topic_name || '').trim())
+          .filter(Boolean)
+          .map((topicName: string) => {
+            const withoutCodes = topicName.replace(/^[\d.]+\s+/, '').trim();
+            return sanitizeTopicLabel(withoutCodes, { maxLength: 64 });
+          });
+        const seen = new Set<string>();
+        const unique = cleaned.filter((x) => x && !seen.has(x) && (seen.add(x), true));
+        if (unique.length > 0) {
+          setSmartSuggestions(unique.slice(0, 4));
+        } else {
+          setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+        }
+      } catch {
+        // Final fallback to generic
+        setSmartSuggestions(['photosynthesis', 'atoms', 'world war 2', 'quadratic equations']);
+      }
     } finally {
       setLoadingSuggestions(false);
     }
@@ -486,6 +569,23 @@ export default function SmartTopicDiscoveryScreen() {
                 )}
               </TouchableOpacity>
             )}
+          </View>
+
+          <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
+            <FeedbackPill
+              label="Not found the topic you need?"
+              hint="Tell us what’s missing/incorrect and we’ll improve the curriculum."
+              category="topics"
+              contextTitle="Topics feedback"
+              contextHint="Topics not found / incorrect / irrelevant"
+              subjectId={subjectId}
+              extraParams={{
+                subjectName,
+                examBoard,
+                examType,
+                searchQuery,
+              }}
+            />
           </View>
 
           {/* Smart Suggestions */}

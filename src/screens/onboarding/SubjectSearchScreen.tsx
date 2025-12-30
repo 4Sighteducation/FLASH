@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { ensureCanAddSubjects } from '../../utils/usageLimits';
 import { normalizeSubjectName } from '../../utils/subjectName';
 import { ExamTrackId, normalizeExamTrackId, trackToQualificationCodes } from '../../utils/examTracks';
 
@@ -45,6 +47,7 @@ export default function SubjectSearchScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { primaryTrack, secondaryTrack } = route.params as {
     primaryTrack: ExamTrackId | string;
     secondaryTrack?: ExamTrackId | string | null;
@@ -319,6 +322,19 @@ export default function SubjectSearchScreen() {
         throw new Error('Missing user session');
       }
 
+      // Authoritative subject gate right before upsert (prevents bypass via any UI path)
+      const ok = await ensureCanAddSubjects({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: selectedSubjects.length,
+        navigation,
+      });
+      if (!ok) {
+        setIsSaving(false);
+        return;
+      }
+
       // Ensure a public.users profile exists (some social logins can lack it if DB trigger isn't installed)
       const { error: ensureError } = await supabase.rpc('ensure_user_profile', {
         p_user_id: user.id,
@@ -353,12 +369,24 @@ export default function SubjectSearchScreen() {
 
       console.log('✅ Subjects saved successfully!');
 
-      // Update user's exam type
-      console.log('📝 Updating user exam_type to:', examType);
-      
+      // Update user's exam tracks.
+      // Keep legacy `exam_type` in sync with primary track for backward compatibility.
+      const primaryToStore = resolvedPrimary;
+      const secondaryToStore = resolvedSecondary || null;
+
+      console.log('📝 Updating user exam tracks to:', {
+        exam_type: primaryToStore,
+        primary_exam_type: primaryToStore,
+        secondary_exam_type: secondaryToStore,
+      });
+
       const { error: userError } = await supabase
         .from('users')
-        .update({ exam_type: examType })
+        .update({
+          exam_type: primaryToStore,
+          primary_exam_type: primaryToStore,
+          secondary_exam_type: secondaryToStore,
+        })
         .eq('id', user?.id);
 
       if (userError) {
@@ -366,7 +394,7 @@ export default function SubjectSearchScreen() {
         throw userError;
       }
 
-      console.log('✅ User exam_type updated!');
+      console.log('✅ User exam tracks updated!');
       console.log('🚀 Navigating to OnboardingComplete...');
 
       // Navigate to onboarding complete

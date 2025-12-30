@@ -258,17 +258,36 @@ CONTENT GUIDANCE:
           switch (questionType) {
             case 'multiple_choice':
               // Filter out invalid options (single letters, empty strings, etc.)
-              const rawOptions = card.options || [];
-              processedCard.options = rawOptions.filter(opt => {
-                const trimmed = opt.trim();
+              const rawOptions = Array.isArray(card.options) ? card.options : [];
+              // Defensive: models sometimes return non-string options (objects/numbers/null).
+              // Normalize to strings and drop obviously-bad values.
+              const normalizedOptions = rawOptions
+                .map((opt) => {
+                  if (typeof opt === 'string') return opt;
+                  if (opt == null) return '';
+                  if (typeof opt === 'number' || typeof opt === 'boolean') return String(opt);
+                  if (typeof opt === 'object') {
+                    // Common structured shapes from some model/tooling variants
+                    if (typeof opt.text === 'string') return opt.text;
+                    if (typeof opt.value === 'string') return opt.value;
+                    if (typeof opt.option === 'string') return opt.option;
+                    return '';
+                  }
+                  return '';
+                })
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .filter((s) => s !== '[object Object]');
+
+              processedCard.options = normalizedOptions.filter((s) => {
                 // Keep options that are:
                 // - More than 2 characters (exclude "E", "a)", etc.)
                 // - OR start with a letter followed by ) (like "a) Something")
-                return trimmed.length > 2 || /^[a-d]\)/.test(trimmed.toLowerCase());
+                return s.length > 2 || /^[a-d]\)/.test(s.toLowerCase());
               });
               
-              processedCard.correctAnswer = card.correctAnswer || '';
-              processedCard.detailedAnswer = card.detailedAnswer || '';
+              processedCard.correctAnswer = typeof card.correctAnswer === 'string' ? card.correctAnswer : String(card.correctAnswer || '');
+              processedCard.detailedAnswer = typeof card.detailedAnswer === 'string' ? card.detailedAnswer : String(card.detailedAnswer || '');
               
               // Ensure we have exactly 4 options
               while (processedCard.options.length < 4) {
