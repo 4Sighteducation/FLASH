@@ -1,4 +1,12 @@
-require('dotenv').config();
+// IMPORTANT: EAS runs `expo config` to evaluate this file.
+// On Windows (or after a failed/partial install), node_modules may be missing and `dotenv` may not be resolvable.
+// Keep this optional so builds/config evaluation don't crash.
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('dotenv').config();
+} catch (e) {
+  // no-op
+}
 
 // Debug: Log environment variables
 console.log('🔍 Loading app.config.js...');
