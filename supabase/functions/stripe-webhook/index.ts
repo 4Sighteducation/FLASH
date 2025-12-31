@@ -293,13 +293,71 @@ serve(async (req) => {
               fromEmail,
               subject: 'Your FL4SH Pro access is ready',
               html: `
-                <p>Your parent/guardian has purchased <strong>FL4SH Pro</strong> for you.</p>
-                <p><strong>Step 1:</strong> Install FL4SH on your phone.</p>
-                <p><strong>Step 2:</strong> Sign in / create an account in the app.</p>
-                <p><strong>Step 3:</strong> Redeem your code:</p>
-                <p style="font-size:18px; letter-spacing:1px;"><strong>${codePretty}</strong></p>
-                <p>You can also use this link:</p>
-                <p><a href="${claimLink}">${claimLink}</a></p>
+                <!doctype html>
+                <html lang=\"en\">
+                  <head>
+                    <meta charset=\"utf-8\" />
+                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+                    <title>FL4SH Pro access</title>
+                  </head>
+                  <body style=\"margin:0;padding:0;background:#070A12;color:#E6EAF2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;\">
+                    <div style=\"display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;\">Your FL4SH Pro access is ready — redeem your code in the app.</div>
+
+                    <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#070A12;padding:28px 12px;\">
+                      <tr>
+                        <td align=\"center\">
+                          <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:640px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#0B1020;\">
+                            <tr>
+                              <td style=\"padding:22px 22px 14px 22px;text-align:center;\">
+                                <img src=\"https://www.fl4shcards.com/flash_assets/flash-logo-transparent.png\" width=\"72\" height=\"72\" alt=\"FL4SH\" style=\"display:block;margin:0 auto 10px auto;\" />
+                                <div style=\"font-size:22px;font-weight:800;letter-spacing:0.2px;\">Your FL4SH Pro access is ready</div>
+                                <div style=\"margin-top:6px;font-size:14px;opacity:0.85;line-height:1.45;\">A parent/guardian has purchased <strong>FL4SH Pro</strong> for you.</div>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style=\"padding:0 22px 18px 22px;\">
+                                <div style=\"height:1px;background:rgba(255,255,255,0.08);\"></div>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style=\"padding:0 22px 18px 22px;font-size:14px;line-height:1.6;\">
+                                <div style=\"font-weight:700;margin-bottom:6px;\">How to activate</div>
+                                <ol style=\"margin:0 0 0 18px;padding:0;\">
+                                  <li>Install FL4SH on your phone.</li>
+                                  <li>Sign in / create an account in the app (Sign in with Apple is fine).</li>
+                                  <li>Open <strong>Profile → Redeem code</strong> and enter your code.</li>
+                                </ol>
+
+                                <div style=\"margin-top:14px;font-weight:700;\">Your code</div>
+                                <div style=\"margin-top:8px;padding:14px 14px;border-radius:14px;background:#070A12;border:1px solid rgba(255,255,255,0.10);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,\"Liberation Mono\",\"Courier New\",monospace;font-size:18px;letter-spacing:1px;text-align:center;\">
+                                  <strong>${codePretty}</strong>
+                                </div>
+
+                                <div style=\"margin-top:14px;text-align:center;\">
+                                  <a href=\"${claimLink}\" style=\"display:inline-block;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#00E5FF,#FF4FD8);color:#0B1020;font-weight:800;text-decoration:none;\">Open redeem page</a>
+                                </div>
+
+                                <div style=\"margin-top:14px;font-size:12px;opacity:0.75;line-height:1.5;\">
+                                  If the button doesn’t work, open FL4SH and paste the code manually.
+                                  <br />
+                                  Need help? Reply to this email.
+                                </div>
+                              </td>
+                            </tr>
+
+                            <tr>
+                              <td style=\"padding:16px 22px 20px 22px;background:rgba(255,255,255,0.03);font-size:12px;opacity:0.75;line-height:1.5;text-align:center;\">
+                                FL4SH • Study Smarter
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </body>
+                </html>
               `,
             });
 
