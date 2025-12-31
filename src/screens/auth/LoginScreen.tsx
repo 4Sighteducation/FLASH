@@ -19,7 +19,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { socialAuth } from '../../services/socialAuth';
-import PhoneAuthModal from '../../components/PhoneAuthModal';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 
@@ -28,9 +27,9 @@ const { width } = Dimensions.get('window');
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
-  const [showPhoneAuth, setShowPhoneAuth] = useState(false);
   const [error, setError] = useState('');
   const { signIn } = useAuth();
   const { colors } = useTheme();
@@ -202,18 +201,33 @@ export default function LoginScreen({ navigation }: any) {
             </View>
 
             <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#94A3B8"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setError('');
-                }}
-                secureTextEntry
-                editable={!loading && !socialLoading}
-              />
+              <View style={styles.passwordRow}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Password"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setError('');
+                  }}
+                  secureTextEntry={!showPassword}
+                  editable={!loading && !socialLoading}
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword((v) => !v)}
+                  disabled={loading || !!socialLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Forgot Password Link */}
@@ -299,20 +313,6 @@ export default function LoginScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
 
-              {/* Phone - Mobile only */}
-              {Platform.OS !== 'web' && (
-                <TouchableOpacity
-                  style={[styles.socialButton, socialLoading === 'phone' && styles.socialButtonActive]}
-                  onPress={() => setShowPhoneAuth(true)}
-                  disabled={!!socialLoading || loading}
-                >
-                  {socialLoading === 'phone' ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Ionicons name="call" size={24} color="#00F5FF" />
-                  )}
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Create Account - PROMINENT */}
@@ -331,11 +331,6 @@ export default function LoginScreen({ navigation }: any) {
 
         </View>
       </KeyboardAvoidingView>
-
-      <PhoneAuthModal 
-        visible={showPhoneAuth}
-        onClose={() => setShowPhoneAuth(false)}
-      />
     </View>
   );
 }
@@ -403,6 +398,19 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 14,
+  },
+  passwordRow: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 52,
+  },
+  passwordToggle: {
+    position: 'absolute',
+    right: 14,
+    height: '100%',
+    justifyContent: 'center',
   },
   input: {
     backgroundColor: 'rgba(0, 245, 255, 0.05)',
