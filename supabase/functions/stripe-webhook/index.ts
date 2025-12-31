@@ -71,6 +71,54 @@ async function verifyStripeSignature(params: {
 
 type StripeEvent = { id: string; type: string; created?: number; data?: { object?: unknown } };
 
+type StripeInvoice = {
+  object: 'invoice';
+  livemode?: boolean;
+  subscription?: string | null;
+  lines?: { data?: Array<{ period?: { end?: number } }> };
+};
+
+type StripeSubscription = { id: string; metadata?: Record<string, string> };
+
+function isStripeInvoice(x: any): x is StripeInvoice {
+  return x && x.object === 'invoice';
+}
+
+function getInvoicePeriodEndMs(inv: StripeInvoice): number | null {
+  const endSec = inv?.lines?.data?.[0]?.period?.end;
+  if (!endSec || typeof endSec !== 'number') return null;
+  return endSec * 1000;
+}
+
+async function stripeGet<T>(params: { url: string; apiKey: string }): Promise<T> {
+  const res = await fetch(params.url, { headers: { Authorization: `Bearer ${params.apiKey}` } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`[Stripe] ${res.status} ${text}`);
+  return JSON.parse(text) as T;
+}
+
+async function revenueCatGet<T>(params: { url: string; apiKey: string }): Promise<T> {
+  const res = await fetch(params.url, { headers: { Authorization: `Bearer ${params.apiKey}` } });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`[RevenueCat] ${res.status} ${text}`);
+  return JSON.parse(text) as T;
+}
+
+async function revenueCatPost<T>(params: { url: string; apiKey: string; body: unknown }): Promise<T> {
+  const res = await fetch(params.url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${params.apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params.body),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`[RevenueCat] ${res.status} ${text}`);
+  return JSON.parse(text) as T;
+}
+
+function safeIsoFromMs(ms: number): string {
+  return new Date(ms).toISOString();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -109,25 +157,66 @@ serve(async (req) => {
     const evt = JSON.parse(rawBody) as StripeEvent;
     console.log('[stripe-webhook] verified event', { id: evt?.id, type: evt?.type });
 
-    // Stub routing (real logic comes next)
     switch (evt.type) {
       case 'checkout.session.completed':
-      case 'invoice.paid':
-      case 'customer.subscription.deleted':
+        // We intentionally do NOT grant access here. Some flows can complete without money collected.
         break;
-      default:
-        break;
-    }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
-  } catch (e) {
-    console.error('[stripe-webhook] handler error', e);
-    return new Response(JSON.stringify({ ok: false, error: 'Webhook handler failed.' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    });
-  }
-});
+      case 'invoice.paid':
+        try {
+          const invObj = (evt?.data as any)?.object;
+          if (!isStripeInvoice(invObj)) {
+            console.warn('[stripe-webhook] invoice.paid: unexpected payload');
+            break;
+          }
+
+          const subscriptionId = invObj.subscription;
+          if (!subscriptionId) {
+            console.warn('[stripe-webhook] invoice.paid: missing subscription id');
+            break;
+          }
+
+          const expiresAtMs = getInvoicePeriodEndMs(invObj);
+          if (!expiresAtMs) {
+            console.warn('[stripe-webhook] invoice.paid: missing invoice period end');
+            break;
+          }
+
+          const stripeKey = invObj.livemode ? Deno.env.get('STRIPE_SECRET_KEY') : Deno.env.get('STRIPE_SECRET_KEY_TEST');
+          if (!stripeKey) {
+            console.error('[stripe-webhook] invoice.paid: missing Stripe secret key', { livemode: !!invObj.livemode });
+            break;
+          }
+
+          const rcApiKey = Deno.env.get('REVENUECAT_SECRET_API_KEY') || '';
+          const rcProjectId = Deno.env.get('REVENUECAT_PROJECT_ID') || '';
+          const rcProEntitlementId = Deno.env.get('REVENUECAT_PRO_ENTITLEMENT_ID') || '';
+
+          if (!rcApiKey || !rcProjectId || !rcProEntitlementId) {
+            console.error('[stripe-webhook] invoice.paid: missing RevenueCat env vars', {
+              hasApiKey: !!rcApiKey,
+              hasProjectId: !!rcProjectId,
+              hasProEntitlementId: !!rcProEntitlementId,
+            });
+            break;
+          }
+
+          const sub = await stripeGet<StripeSubscription>({
+            url: `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+            apiKey: stripeKey,
+          });
+
+          const studentUserId = (sub?.metadata?.student_user_id || '').trim();
+          if (!studentUserId) {
+            console.warn('[stripe-webhook] invoice.paid: subscription missing metadata.student_user_id', { subscriptionId });
+            break;
+          }
+
+          const customerId = encodeURIComponent(studentUserId);
+          const rcBase = 'https://api.revenuecat.com/v2';
+
+          const active = await revenueCatGet<any>({
+            url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/active_entitlements`,
+            apiKey: rcApiKey,
+          });
+
