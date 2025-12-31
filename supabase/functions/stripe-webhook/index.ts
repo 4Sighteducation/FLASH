@@ -220,3 +220,71 @@ serve(async (req) => {
             apiKey: rcApiKey,
           });
 
+
+          const items = active?.items ?? active?.active_entitlements?.items ?? [];
+          const current = Array.isArray(items) ? items.find((x: any) => x?.entitlement_id === rcProEntitlementId) : null;
+          const currentExpMs =
+            current && typeof current.expires_at === 'number'
+              ? current.expires_at
+              : current && typeof current.expire_at === 'number'
+                ? current.expire_at
+                : null;
+
+          if (currentExpMs && currentExpMs >= expiresAtMs) {
+            console.log('[stripe-webhook] invoice.paid: pro already valid', {
+              studentUserId,
+              expiresAt: safeIsoFromMs(currentExpMs),
+            });
+            break;
+          }
+
+          // RevenueCat grant endpoint is "grant unless one already exists".
+          // To support "extend expiry", we revoke the existing grant (if present) and then grant with new expiry.
+          if (currentExpMs) {
+            console.log('[stripe-webhook] invoice.paid: revoke existing pro to extend', {
+              studentUserId,
+              from: safeIsoFromMs(currentExpMs),
+              to: safeIsoFromMs(expiresAtMs),
+            });
+            await revenueCatPost<any>({
+              url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/actions/revoke_granted_entitlement`,
+              apiKey: rcApiKey,
+              body: { entitlement_id: rcProEntitlementId },
+            });
+          }
+
+          console.log('[stripe-webhook] invoice.paid: grant pro', {
+            studentUserId,
+            expiresAt: safeIsoFromMs(expiresAtMs),
+          });
+
+          await revenueCatPost<any>({
+            url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/actions/grant_entitlement`,
+            apiKey: rcApiKey,
+            body: { entitlement_id: rcProEntitlementId, expires_at: expiresAtMs },
+          });
+        } catch (e) {
+          console.error('[stripe-webhook] invoice.paid handler failed', e);
+        }
+        break;
+
+      case 'customer.subscription.deleted':
+        // Do nothing: access will expire based on RevenueCat expires_at.
+        break;
+
+      default:
+        break;
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+  } catch (e) {
+    console.error('[stripe-webhook] handler error', e);
+    return new Response(JSON.stringify({ ok: false, error: 'Webhook handler failed.' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
+  }
+});
