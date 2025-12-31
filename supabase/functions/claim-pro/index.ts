@@ -125,7 +125,16 @@ serve(async (req) => {
       });
     }
 
-    if (status !== 'paid' && !(status === 'claimed' && claimedBy === userId)) {
+    // Edge case: if the original claimer user was deleted from Supabase Auth,
+    // the FK sets claimed_by to NULL, but status stays "claimed". Treat that as "paid" so it can be reclaimed.
+    if (status === 'claimed' && !claimedBy) {
+      console.warn('[claim-pro] claim is marked claimed but claimed_by is null; allowing reclaim', {
+        claimId: (claim as any).id,
+      });
+    }
+
+    if (status !== 'paid' && !(status === 'claimed' && (!claimedBy || claimedBy === userId))) {
+      console.warn('[claim-pro] claim not redeemable', { claimId: (claim as any).id, status, claimedByPresent: !!claimedBy });
       return new Response(JSON.stringify({ ok: false, error: 'This code is not ready to redeem yet.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
