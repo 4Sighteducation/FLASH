@@ -16,8 +16,8 @@ function AppContent() {
   useEffect(() => {
     // Handle deep links for OAuth
     const handleDeepLink = async (url: string) => {
-      if (url && url.includes('auth/callback')) {
       // Redeem deep link: com.foursighteducation.flash://redeem?code=XXXX
+      // Must be handled regardless of OAuth callback URLs.
       const parsed = Linking.parse(url);
       if (parsed?.path === 'redeem') {
         const code = (parsed?.queryParams as any)?.code;
@@ -28,8 +28,10 @@ function AppContent() {
             params: { screen: 'RedeemCode', params: { code } },
           });
         }
+        return;
       }
 
+      if (url && url.includes('auth/callback')) {
         console.log('OAuth callback received, processing...');
         // Let the oauthHandler process the URL.
         // It will call setSession, which triggers onAuthStateChange in AuthContext.
@@ -57,36 +59,27 @@ function AppContent() {
       }
     });
 
-    // Handle auth errors globally
-    const handleAuthError = async () => {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            // Clear any stale tokens
-            try {
-              const keys = await AsyncStorage.getAllKeys();
-              const authKeys = keys.filter(key => 
-                key.includes('supabase') || 
-                key.includes('auth') || 
-                key.includes('token')
-              );
-              if (authKeys.length > 0) {
-                await AsyncStorage.multiRemove(authKeys);
-              }
-            } catch (error) {
-              console.error('Error clearing auth storage:', error);
+    // Keep storage tidy on true sign-out. Do NOT clear on TOKEN_REFRESHED (that can invalidate sessions).
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+      async (event) => {
+        if (event === 'SIGNED_OUT') {
+          // Clear any stale tokens
+          try {
+            const keys = await AsyncStorage.getAllKeys();
+            const authKeys = keys.filter(key =>
+              key.includes('supabase') ||
+              key.includes('auth') ||
+              key.includes('token')
+            );
+            if (authKeys.length > 0) {
+              await AsyncStorage.multiRemove(authKeys);
             }
+          } catch (error) {
+            console.error('Error clearing auth storage:', error);
           }
         }
-      );
-
-      return () => {
-        subscription.unsubscribe();
-        urlSubscription.remove();
-      };
-    };
-
-    handleAuthError();
+      }
+    );
 
     // Clear any invalid tokens on app start
     const clearInvalidTokens = async () => {
@@ -112,6 +105,11 @@ function AppContent() {
     };
 
     clearInvalidTokens();
+
+    return () => {
+      authSubscription.unsubscribe();
+      urlSubscription.remove();
+    };
   }, []);
 
   return (
