@@ -131,7 +131,7 @@ serve(async (req) => {
     form.set('success_url', successUrl);
     form.set('cancel_url', cancelUrl);
     form.set('billing_address_collection', 'auto');
-    form.set('customer_creation', 'if_required');
+
 
     form.set('line_items[0][price]', priceId);
     form.set('line_items[0][quantity]', '1');
