@@ -469,6 +469,13 @@ export default function ProfileScreen() {
                 <Text style={styles.restoreButtonText}>Restore Purchases</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.manageStoreButton}
+                onPress={() => navigation.navigate('RedeemCode' as never, { code: '' } as never)}
+              >
+                <Text style={styles.manageStoreButtonText}>Redeem code</Text>
+              </TouchableOpacity>
+
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
                   style={styles.manageStoreButton}

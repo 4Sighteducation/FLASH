@@ -5,6 +5,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { navigate } from './src/navigation/RootNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './src/services/supabase';
 import * as Linking from 'expo-linking';
@@ -16,6 +17,19 @@ function AppContent() {
     // Handle deep links for OAuth
     const handleDeepLink = async (url: string) => {
       if (url && url.includes('auth/callback')) {
+      // Redeem deep link: com.foursighteducation.flash://redeem?code=XXXX
+      const parsed = Linking.parse(url);
+      if (parsed?.path === 'redeem') {
+        const code = (parsed?.queryParams as any)?.code;
+        if (typeof code === 'string' && code.length > 0) {
+          // Navigate into the Profile stack modal
+          navigate('Main', {
+            screen: 'Profile',
+            params: { screen: 'RedeemCode', params: { code } },
+          });
+        }
+      }
+
         console.log('OAuth callback received, processing...');
         // Let the oauthHandler process the URL.
         // It will call setSession, which triggers onAuthStateChange in AuthContext.

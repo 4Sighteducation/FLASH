@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,7 @@ import ManageTopicScreen from '../screens/cards/ManageTopicScreen';
 import ManageAllCardsScreen from '../screens/cards/ManageAllCardsScreen';
 import APISettingsScreen from '../screens/settings/APISettingsScreen';
 import PaywallScreen from '../screens/paywall/PaywallScreen';
+import RedeemCodeScreen from '../screens/paywall/RedeemCodeScreen';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { Alert } from 'react-native';
 import TopicEditModal from '../components/TopicEditModal';
@@ -36,6 +38,7 @@ import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
+import PrioritySupportFab from '../components/support/PrioritySupportFab';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -235,6 +238,11 @@ function ProfileStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen
+        name="RedeemCode"
+        component={RedeemCodeScreen}
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
+      <Stack.Screen
         name="Paywall"
         component={PaywallScreen}
         options={{
@@ -282,52 +290,57 @@ export default function MainNavigator() {
   const { tier } = useSubscription();
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }: any) => ({
-        tabBarIcon: ({ focused, color, size }: any) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        screenOptions={({ route }: any) => ({
+          tabBarIcon: ({ focused, color, size }: any) => {
+            let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Study') {
-            iconName = focused ? 'book' : 'book-outline';
-          } else if (route.name === 'Papers') {
-            iconName = focused ? 'document-text' : 'document-text-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          } else {
-            iconName = 'help-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: '#6366F1',
-        tabBarInactiveTintColor: 'gray',
-        headerShown: false,
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Study" component={StudyStack} />
-      <Tab.Screen
-        name="Papers"
-        component={PapersStack}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            if (tier !== 'pro') {
-              e.preventDefault();
-              Alert.alert(
-                'Pro feature',
-                'Past Papers are available on Pro. Upgrade to unlock thousands of real exam questions with AI marking.',
-                [
-                  { text: 'Not now', style: 'cancel' },
-                  { text: 'View plans', onPress: () => navigation.navigate('Profile' as never, { screen: 'Paywall' } as never) },
-                ]
-              );
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'Study') {
+              iconName = focused ? 'book' : 'book-outline';
+            } else if (route.name === 'Papers') {
+              iconName = focused ? 'document-text' : 'document-text-outline';
+            } else if (route.name === 'Profile') {
+              iconName = focused ? 'person' : 'person-outline';
+            } else {
+              iconName = 'help-outline';
             }
+
+            return <Ionicons name={iconName} size={size} color={color} />;
           },
+          tabBarActiveTintColor: '#6366F1',
+          tabBarInactiveTintColor: 'gray',
+          headerShown: false,
         })}
-      />
-      <Tab.Screen name="Profile" component={ProfileStack} />
-    </Tab.Navigator>
+      >
+        <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="Study" component={StudyStack} />
+        <Tab.Screen
+          name="Papers"
+          component={PapersStack}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              if (tier !== 'pro') {
+                e.preventDefault();
+                Alert.alert(
+                  'Pro feature',
+                  'Past Papers are available on Pro. Upgrade to unlock thousands of real exam questions with AI marking.',
+                  [
+                    { text: 'Not now', style: 'cancel' },
+                    { text: 'View plans', onPress: () => navigation.navigate('Profile' as never, { screen: 'Paywall' } as never) },
+                  ]
+                );
+              }
+            },
+          })}
+        />
+        <Tab.Screen name="Profile" component={ProfileStack} />
+      </Tab.Navigator>
+
+      {/* Pro-only floating button for priority support */}
+      <PrioritySupportFab />
+    </View>
   );
 } 
