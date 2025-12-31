@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,6 +120,42 @@ function safeIsoFromMs(ms: number): string {
   return new Date(ms).toISOString();
 }
 
+function formatClaimCode(code: string): string {
+  const clean = (code || '').replace(/[^0-9A-Z]/gi, '').toUpperCase();
+  return clean.replace(/(.{4})/g, '$1-').replace(/-$/, '');
+}
+
+async function sendSendGridEmail(params: { to: string; subject: string; html: string; fromEmail: string }): Promise<void> {
+  const sendGridKey = Deno.env.get('SENDGRID_API_KEY') || '';
+  if (!sendGridKey) {
+    console.warn('[stripe-webhook] SENDGRID_API_KEY not set; skipping email');
+    return;
+  }
+
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${sendGridKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: params.to }] }],
+      from: { email: params.fromEmail, name: 'FL4SH' },
+      subject: params.subject,
+      content: [{ type: 'text/html', value: params.html }],
+      tracking_settings: {
+        click_tracking: { enable: false, enable_text: false },
+        open_tracking: { enable: false },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.warn('[stripe-webhook] SendGrid send failed (non-fatal):', res.status, text);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -207,8 +244,76 @@ serve(async (req) => {
           });
 
           const studentUserId = (sub?.metadata?.student_user_id || '').trim();
+          const parentClaimId = (sub?.metadata?.parent_claim_id || '').trim();
+
+          // Parent-first flow: parent pays on web, child claims later. No immediate RevenueCat grant here.
+          if (!studentUserId && parentClaimId) {
+            const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+            const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+            const supabase = createClient(supabaseUrl, serviceKey);
+
+            const { data: claim, error: updErr } = await supabase
+              .from('parent_claims')
+              .update({
+                status: 'paid',
+                stripe_subscription_id: subscriptionId,
+                stripe_invoice_id: (invObj as any)?.id ?? null,
+                stripe_customer_id: (invObj as any)?.customer ?? null,
+                livemode: !!invObj.livemode,
+                paid_expires_at_ms: expiresAtMs,
+                paid_at: new Date().toISOString(),
+              })
+              .eq('id', parentClaimId)
+              .neq('status', 'claimed')
+              .select('id, child_email, claim_code, status')
+              .maybeSingle();
+
+            if (updErr) {
+              console.error('[stripe-webhook] invoice.paid: failed to update parent_claims', updErr);
+              break;
+            }
+            if (!claim?.id) {
+              console.warn('[stripe-webhook] invoice.paid: parent_claim_id not found or already claimed', { parentClaimId });
+              break;
+            }
+
+            const marketingBase = Deno.env.get('FL4SH_MARKETING_BASE_URL') || 'https://www.fl4shcards.com';
+            const claimCode = String((claim as any).claim_code);
+            const claimLink = `${marketingBase.replace(/\/$/, '')}/claim?code=${encodeURIComponent(claimCode)}`;
+            const codePretty = formatClaimCode(claimCode);
+            const toEmail = String((claim as any).child_email);
+
+            const fromEmail =
+              Deno.env.get('SENDGRID_PARENTS_FROM_EMAIL') ||
+              Deno.env.get('SENDGRID_FROM_EMAIL') ||
+              'support@fl4shcards.com';
+
+            await sendSendGridEmail({
+              to: toEmail,
+              fromEmail,
+              subject: 'Your FL4SH Pro access is ready',
+              html: `
+                <p>Your parent/guardian has purchased <strong>FL4SH Pro</strong> for you.</p>
+                <p><strong>Step 1:</strong> Install FL4SH on your phone.</p>
+                <p><strong>Step 2:</strong> Sign in / create an account in the app.</p>
+                <p><strong>Step 3:</strong> Redeem your code:</p>
+                <p style="font-size:18px; letter-spacing:1px;"><strong>${codePretty}</strong></p>
+                <p>You can also use this link:</p>
+                <p><a href="${claimLink}">${claimLink}</a></p>
+              `,
+            });
+
+            console.log('[stripe-webhook] invoice.paid: parent-claim marked paid + emailed child', {
+              parentClaimId,
+              toEmail,
+            });
+            break;
+          }
+
           if (!studentUserId) {
-            console.warn('[stripe-webhook] invoice.paid: subscription missing metadata.student_user_id', { subscriptionId });
+            console.warn('[stripe-webhook] invoice.paid: subscription missing metadata.student_user_id (and no parent_claim_id)', {
+              subscriptionId,
+            });
             break;
           }
 
