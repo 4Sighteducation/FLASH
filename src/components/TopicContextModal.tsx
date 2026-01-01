@@ -434,6 +434,25 @@ export default function TopicContextModal({
                     </View>
                   </TouchableOpacity>
                 )}
+
+                {/* Grandparent Overview Option (broader section overview) */}
+                {context.grandparent && (
+                  <TouchableOpacity
+                    style={[styles.overviewButton, { borderColor: subjectColor }]}
+                    onPress={() => handleQuickCreate(context.grandparent!, true)}
+                    disabled={generating === context.grandparent.id}
+                  >
+                    <Icon name="layers-outline" size={24} color={subjectColor} />
+                    <View style={styles.overviewButtonText}>
+                      <Text style={[styles.overviewTitle, { color: subjectColor }]}>
+                        Generate Section Overview
+                      </Text>
+                      <Text style={styles.overviewSubtitle}>
+                        Broader view: Summary cards for {sanitizeTopicLabel(context.grandparent.name)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </>
             )}
 

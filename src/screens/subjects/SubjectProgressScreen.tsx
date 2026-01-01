@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,58 +11,40 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import { abbreviateTopicName, getTopicLabel, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import TopicContextModal from '../../components/TopicContextModal';
+import TopicChildrenPickerModal from '../../components/TopicChildrenPickerModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateHierarchyPalette, getHierarchyColor } from '../../utils/colorPaletteGenerator';
+import { generateHierarchyPalette } from '../../utils/colorPaletteGenerator';
+import { TOPIC_PRIORITY_LEVELS, getTopicPriorityInfo } from '../../constants/topicPriorities';
 
-interface DiscoveredTopic {
-  id?: string;
-  topic_id: string;
+interface CurriculumTopic {
+  id: string;
   topic_name: string;
+  display_name?: string | null;
   topic_level: number;
-  parent_topic_id?: string;
-  parent_name?: string;
-  grandparent_name?: string;
-  great_grandparent_name?: string;
-  card_count: number;
-  cards_mastered: number;
-  is_newly_discovered?: boolean;
-  last_studied?: string;
-  priority?: number | null;
-  // Legacy support
-  full_path?: string[];
+  parent_topic_id: string | null;
+  sort_order?: number | null;
 }
 
-interface TopicGroup {
-  level0: string;           // Exam paper (great_grandparent)
-  level1: string;           // Main section (grandparent)
-  level2?: string;          // Sub-section (parent)
-  level3?: string;          // Topic header (for Level 4+ grouping)
-  topics: DiscoveredTopic[];
+interface DiscoveredTopicRow {
+  topic_id: string;
+  card_count: number;
+  cards_mastered: number;
+  is_newly_discovered?: boolean | null;
 }
 
 // Keep props broad so React Navigation can pass through its own route typing without conflicts.
 // (Strict param typing belongs on the navigator's ParamList, not here.)
 type SubjectProgressScreenProps = any;
 
-// Priority levels configuration - REVERSED (1 = highest priority!)
-const PRIORITY_LEVELS = [
-  { value: 1, label: "🔥 Urgent", number: '1', color: '#EF4444', description: 'Top priority! Critical for exams.' }, // Red - #1!
-  { value: 2, label: '⚡ High Priority', number: '2', color: '#FF006E', description: 'Important topic - needs focus.' }, // Pink
-  { value: 3, label: '📌 Medium Priority', number: '3', color: '#F59E0B', description: 'Useful to know - review when ready.' }, // Orange
-  { value: 4, label: '✅ Low Priority', number: '4', color: '#10B981', description: 'Good to know - review occasionally.' }, // Green
-];
-
-const getPriorityInfo = (priority: number | null | undefined) => {
-  if (!priority) return null;
-  return PRIORITY_LEVELS.find(p => p.value === priority);
-};
+// Priority config is shared across the app (1 = highest).
 
 export default function SubjectProgressScreen({ route, navigation }: SubjectProgressScreenProps) {
   const { subjectId, subjectName, subjectColor, examBoard, examType } = route?.params || {};
@@ -75,29 +57,53 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   const colorPalette = generateHierarchyPalette(safeSubjectColor);
 
   const [loading, setLoading] = useState(true);
-  const [discoveredTopics, setDiscoveredTopics] = useState<DiscoveredTopic[]>([]);
-  const [groupedTopics, setGroupedTopics] = useState<TopicGroup[]>([]);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [completionPercentage, setCompletionPercentage] = useState(0);
   
-  // Multi-level collapse state (for 4-tier hierarchy)
-  const [collapsedL0, setCollapsedL0] = useState<Set<string>>(new Set());
-  const [collapsedL1, setCollapsedL1] = useState<Set<string>>(new Set());
-  const [collapsedL2, setCollapsedL2] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState({
     totalCards: 0,
     topicsDiscovered: 0,
     cardsMastered: 0,
   });
-  const [showTopicOptions, setShowTopicOptions] = useState<DiscoveredTopic | null>(null);
-  const [showContextModal, setShowContextModal] = useState<DiscoveredTopic | null>(null);
+
+  // Curriculum + discovery state (IDs, not names)
+  const [topicsById, setTopicsById] = useState<Map<string, CurriculumTopic>>(new Map());
+  const [childrenIndex, setChildrenIndex] = useState<Map<string | null, string[]>>(new Map());
+  const [rootTopicIds, setRootTopicIds] = useState<string[]>([]);
+  const [discoveredTopicIds, setDiscoveredTopicIds] = useState<Set<string>>(new Set());
+  const [topicProgress, setTopicProgress] = useState<Map<string, DiscoveredTopicRow>>(new Map());
+  const [topicPriorities, setTopicPriorities] = useState<Map<string, number | null>>(new Map());
+  const [overviewCounts, setOverviewCounts] = useState<Map<string, number>>(new Map());
+
+  // UI state (fully closed by default)
+  const [expandedTopicIds, setExpandedTopicIds] = useState<Set<string>>(new Set());
+
+  const [showTopicOptions, setShowTopicOptions] = useState<{
+    topicId: string;
+    topicName: string;
+    topicLevel: number;
+    cardCount: number;
+    overviewCount: number;
+    hasChildren: boolean;
+    priority: number | null;
+  } | null>(null);
+  const [showContextModal, setShowContextModal] = useState<{ topicId: string; topicName: string } | null>(null);
+  const [showAddModal, setShowAddModal] = useState<{ topicId: string; topicName: string } | null>(null);
+
   const [priorityFilter, setPriorityFilter] = useState<number | null>(null); // null = show all
   const [showPriorityTooltip, setShowPriorityTooltip] = useState<number | null>(null);
+  const [showPriorityExplainer, setShowPriorityExplainer] = useState(false);
 
   useEffect(() => {
     loadPriorityFilter();
     fetchDiscoveredTopics();
   }, []);
+
+  // Refresh when returning from Manage & Prioritize / other flows.
+  useFocusEffect(
+    useCallback(() => {
+      fetchDiscoveredTopics();
+    }, [subjectId, user?.id])
+  );
 
   useEffect(() => {
     if (priorityFilter !== null || priorityFilter === null) {
@@ -128,366 +134,319 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     try {
       setLoading(true);
 
-      // Fetch discovered topics with hierarchy built from parent relationships
-      const { data: topics, error } = await supabase
-        .rpc('get_user_topics_with_hierarchy', {
-          p_user_id: user?.id,
-          p_subject_name: subjectName,
-        });
-
-      if (error) {
-        console.error('Error from RPC:', error);
-        // Fallback to simple query if RPC not available
-        // Fallback: Simple query if RPC fails
-        const { data: fallbackTopics, error: fallbackError } = await supabase
-          .from('flashcards')
-          .select('topic_id, subject_name')
-          .eq('user_id', user?.id);
-        
-        if (!fallbackError && fallbackTopics) {
-          // Get unique topic IDs
-          const topicIds = [...new Set(fallbackTopics.map(f => f.topic_id))];
-          
-          // Fetch full topic details with hierarchy
-          const { data: topicDetails, error: detailsError } = await supabase
-            .from('curriculum_topics')
-            .select(`
-              id,
-              topic_name,
-              display_name,
-              topic_level,
-              parent_topic_id,
-              parent:curriculum_topics!parent_topic_id(
-                topic_name,
-                display_name,
-                parent:curriculum_topics!parent_topic_id(
-                  topic_name,
-                  display_name,
-                  parent:curriculum_topics!parent_topic_id(topic_name, display_name)
-                )
-              )
-            `)
-            .in('id', topicIds);
-          
-          if (!detailsError && topicDetails) {
-            // Count cards per topic
-            const cardCounts = new Map();
-            fallbackTopics.forEach(f => {
-              cardCounts.set(f.topic_id, (cardCounts.get(f.topic_id) || 0) + 1);
-            });
-            
-            // Transform to match expected format
-            const transformedTopics = topicDetails.map(t => ({
-              topic_id: t.id,
-              topic_name: t.display_name || t.topic_name,
-              topic_level: t.topic_level,
-              parent_topic_id: t.parent_topic_id,
-              parent_name: t.parent?.display_name || t.parent?.topic_name || null,
-              grandparent_name: t.parent?.parent?.display_name || t.parent?.parent?.topic_name || null,
-              great_grandparent_name: t.parent?.parent?.parent?.display_name || t.parent?.parent?.parent?.topic_name || null,
-              card_count: cardCounts.get(t.id) || 0,
-              cards_mastered: 0,
-            }));
-            
-            setDiscoveredTopics(transformedTopics as any);
-            
-            // Calculate stats
-            const totalCards = transformedTopics.reduce((sum, t) => sum + (t.card_count || 0), 0);
-            const cardsMastered = transformedTopics.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
-            
-            setStats({
-              totalCards,
-              topicsDiscovered: transformedTopics.length,
-              cardsMastered,
-            });
-
-            // Filter and group topics by parent
-            const filteredTopics = filterTopicsByPriority(transformedTopics as any);
-            const grouped = groupTopicsByHierarchy(filteredTopics);
-            setGroupedTopics(grouped);
-            
-            if (grouped.length > 0) {
-              setExpandedSections(new Set([grouped[0].level1]));
-            }
-          }
-        }
+      if (!user?.id || !subjectId) {
+        setLoading(false);
         return;
       }
 
-      if (topics && topics.length > 0) {
-        // Fetch priorities for all topics
-        const topicIds = topics.map(t => t.topic_id);
-        const { data: priorities } = await supabase
+      // 1) Fetch full curriculum for this subject (no artificial depth cap)
+      const { data: curriculum, error: curriculumError } = await supabase
+        .from('curriculum_topics')
+        .select('id, topic_name, display_name, topic_level, parent_topic_id, sort_order')
+        .eq('exam_board_subject_id', subjectId)
+        .order('topic_level', { ascending: true })
+        .order('sort_order', { ascending: true })
+        .order('topic_name', { ascending: true });
+
+      if (curriculumError) throw curriculumError;
+      const topics = (curriculum || []) as CurriculumTopic[];
+
+      const byId = new Map<string, CurriculumTopic>();
+      const children = new Map<string | null, string[]>();
+      topics.forEach((t) => {
+        byId.set(t.id, t);
+        const key = t.parent_topic_id ?? null;
+        const arr = children.get(key) || [];
+        arr.push(t.id);
+        children.set(key, arr);
+      });
+
+      // Root topics = Level 0 by your definition (parent_topic_id IS NULL)
+      const roots = (children.get(null) || []).slice();
+
+      setTopicsById(byId);
+      setChildrenIndex(children);
+      setRootTopicIds(roots);
+
+      // 2) Fetch discovered topics (includes "added to tree" even with 0 cards)
+      const { data: discovered, error: discoveredError } = await supabase
+        .from('user_discovered_topics')
+        .select('topic_id, card_count, cards_mastered, is_newly_discovered')
+        .eq('user_id', user.id)
+        .eq('subject_id', subjectId);
+
+      if (discoveredError) throw discoveredError;
+
+      const discoveredIds = new Set<string>();
+      const progress = new Map<string, DiscoveredTopicRow>();
+      (discovered || []).forEach((row: any) => {
+        discoveredIds.add(row.topic_id);
+        progress.set(row.topic_id, {
+          topic_id: row.topic_id,
+          card_count: Number(row.card_count || 0),
+          cards_mastered: Number(row.cards_mastered || 0),
+          is_newly_discovered: !!row.is_newly_discovered,
+        });
+      });
+
+      // 3) Fallback: include legacy card topics even if discovery row missing
+      const { data: cards, error: cardsError } = await supabase
+        .from('flashcards')
+        .select('topic_id, box_number, is_overview')
+        .eq('user_id', user.id)
+        .eq('subject_name', subjectName);
+
+      if (cardsError) throw cardsError;
+
+      const cardCounts = new Map<string, number>();
+      const masteredCounts = new Map<string, number>();
+      const overviewCountMap = new Map<string, number>();
+
+      (cards || []).forEach((c: any) => {
+        const tid = c.topic_id;
+        if (!tid) return;
+        cardCounts.set(tid, (cardCounts.get(tid) || 0) + 1);
+        if (Number(c.box_number || 0) >= 4) {
+          masteredCounts.set(tid, (masteredCounts.get(tid) || 0) + 1);
+        }
+        if (c.is_overview) {
+          overviewCountMap.set(tid, (overviewCountMap.get(tid) || 0) + 1);
+        }
+      });
+
+      // Ensure any card topics appear in the tree and stats are accurate
+      cardCounts.forEach((count, tid) => {
+        discoveredIds.add(tid);
+        const existing = progress.get(tid);
+        progress.set(tid, {
+          topic_id: tid,
+          card_count: count,
+          cards_mastered: masteredCounts.get(tid) || 0,
+          is_newly_discovered: existing?.is_newly_discovered || false,
+        });
+      });
+
+      setDiscoveredTopicIds(discoveredIds);
+      setTopicProgress(progress);
+      setOverviewCounts(overviewCountMap);
+
+      // 4) Priorities for discovered topics (and any card topics)
+      const idsForPriorities = Array.from(discoveredIds);
+      if (idsForPriorities.length > 0) {
+        const { data: priorities, error: prioritiesError } = await supabase
           .from('user_topic_priorities')
           .select('topic_id, priority')
-          .eq('user_id', user?.id)
-          .in('topic_id', topicIds);
+          .eq('user_id', user.id)
+          .in('topic_id', idsForPriorities);
 
-        // Merge priorities into topics
-        const topicsWithPriorities = topics.map(topic => ({
-          ...topic,
-          priority: priorities?.find(p => p.topic_id === topic.topic_id)?.priority || null
-        }));
-
-        setDiscoveredTopics(topicsWithPriorities);
-        
-        // Calculate stats
-        const totalCards = topicsWithPriorities.reduce((sum, t) => sum + (t.card_count || 0), 0);
-        const cardsMastered = topicsWithPriorities.reduce((sum, t) => sum + (t.cards_mastered || 0), 0);
-        
-        setStats({
-          totalCards,
-          topicsDiscovered: topicsWithPriorities.length,
-          cardsMastered,
+        if (prioritiesError) throw prioritiesError;
+        const pMap = new Map<string, number | null>();
+        (priorities || []).forEach((p: any) => {
+          pMap.set(p.topic_id, p.priority ?? null);
         });
-
-        // Filter and group topics by parent name
-        const filteredTopics = filterTopicsByPriority(topicsWithPriorities);
-        const grouped = groupTopicsByHierarchy(filteredTopics);
-        setGroupedTopics(grouped);
-        
-        // Expand first section by default
-        if (grouped.length > 0) {
-          setExpandedSections(new Set([grouped[0].level1]));
-        }
+        setTopicPriorities(pMap);
+      } else {
+        setTopicPriorities(new Map());
       }
 
-      // Fetch completion percentage
-      const { data: completion, error: completionError } = await supabase
-        .rpc('calculate_subject_completion', {
-          p_user_id: user?.id,
-          p_subject_id: subjectId,
-        });
+      // 5) Stats + completion
+      const totalCards = (cards || []).length;
+      const cardsMastered = Array.from(masteredCounts.values()).reduce((s, n) => s + n, 0);
+      const topicsDiscovered = (discovered || []).length;
+
+      setStats({
+        totalCards,
+        topicsDiscovered,
+        cardsMastered,
+      });
+
+      const { data: completion, error: completionError } = await supabase.rpc('calculate_subject_completion', {
+        p_user_id: user.id,
+        p_subject_id: subjectId,
+      });
 
       if (!completionError && completion !== null) {
         setCompletionPercentage(Math.round(completion));
       }
-
     } catch (error) {
-      console.error('Error fetching discovered topics:', error);
+      console.error('Error fetching subject tree:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterTopicsByPriority = (topics: any[]): any[] => {
-    if (priorityFilter === null) return topics;
-    return topics.filter(t => t.priority === priorityFilter);
+  const toggleExpanded = (topicId: string) => {
+    setExpandedTopicIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(topicId)) next.delete(topicId);
+      else next.add(topicId);
+      return next;
+    });
   };
 
-  const groupTopicsByHierarchy = (topics: any[]): TopicGroup[] => {
-    const groups: { [key: string]: TopicGroup } = {};
+  const getDirectChildrenIds = (topicId: string): string[] => {
+    return childrenIndex.get(topicId) || [];
+  };
 
-    topics.forEach((topic) => {
-      // Four-tier progressive discovery hierarchy:
-      // Level 0: Exam Paper (great_grandparent) - e.g., "Paper 1: Factors affecting..."
-      // Level 1: Main Section (grandparent) - e.g., "Applied anatomy and physiology"
-      // Level 2: Sub-section (parent) - e.g., "Musculo-skeletal system"
-      // Level 3: Topic Header (for Level 4+) - e.g., "Levers"
-      // Level 4-5: Card Topics - e.g., "1st class lever"
-      
-      const level0 = topic.great_grandparent_name || topic.grandparent_name || topic.parent_name || topic.topic_name || 'Other Topics';
-      const level1 = topic.great_grandparent_name ? topic.grandparent_name : (topic.grandparent_name ? topic.parent_name : null);
-      const level2 = topic.great_grandparent_name && topic.grandparent_name ? topic.parent_name : null;
-      
-      // For Level 4+ topics, use parent name as Level 3 grouping header
-      const level3 = topic.topic_level >= 4 ? topic.parent_name : null;
-      
-      // Create composite key for unique grouping
-      let groupKey = level0;
-      if (level1) groupKey += `||${level1}`;
-      if (level2) groupKey += `||${level2}`;
-      if (level3) groupKey += `||${level3}`;
+  const getHasAnyChildren = (topicId: string): boolean => {
+    return (childrenIndex.get(topicId) || []).length > 0;
+  };
 
-      if (!groups[groupKey]) {
-        groups[groupKey] = {
-          level0: level0,
-          level1: level1 || '',
-          level2: level2 || undefined,
-          level3: level3 || undefined,
-          topics: [],
-        };
+  const computeVisibleIds = (): Set<string> => {
+    const visible = new Set<string>();
+
+    // Always include Level 0 roots
+    rootTopicIds.forEach((id) => visible.add(id));
+
+    // Include all discovered topics + their ancestors for context
+    discoveredTopicIds.forEach((id) => {
+      visible.add(id);
+      let currentId = id;
+      while (true) {
+        const t = topicsById.get(currentId);
+        const parentId = t?.parent_topic_id || null;
+        if (!parentId) break;
+        visible.add(parentId);
+        currentId = parentId;
       }
-
-      groups[groupKey].topics.push(topic);
     });
 
-    // Sort hierarchically: Level 0 > Level 1 > Level 2 > Level 3
-    const groupArray = Object.values(groups);
-    groupArray.sort((a, b) => {
-      if (a.level0 !== b.level0) return a.level0.localeCompare(b.level0);
-      if (a.level1 !== b.level1) return a.level1.localeCompare(b.level1);
-      if ((a.level2 || '') !== (b.level2 || '')) return (a.level2 || '').localeCompare(b.level2 || '');
-      if ((a.level3 || '') !== (b.level3 || '')) return (a.level3 || '').localeCompare(b.level3 || '');
-      return 0;
-    });
+    // Apply priority filter (hide whole branches)
+    if (priorityFilter !== null) {
+      const matches: string[] = [];
+      visible.forEach((id) => {
+        if (topicPriorities.get(id) === priorityFilter) matches.push(id);
+      });
 
-    return groupArray;
-  };
+      const filtered = new Set<string>();
+      matches.forEach((id) => {
+        filtered.add(id);
+        let currentId = id;
+        while (true) {
+          const t = topicsById.get(currentId);
+          const parentId = t?.parent_topic_id || null;
+          if (!parentId) break;
+          filtered.add(parentId);
+          currentId = parentId;
+        }
+      });
 
-  const toggleSection = (level1: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(level1)) {
-      newExpanded.delete(level1);
-    } else {
-      newExpanded.add(level1);
+      // Only keep roots that have at least one matching descendant
+      const rootsToKeep = new Set<string>();
+      filtered.forEach((id) => {
+        let currentId = id;
+        while (true) {
+          const t = topicsById.get(currentId);
+          const parentId = t?.parent_topic_id || null;
+          if (!parentId) {
+            rootsToKeep.add(currentId);
+            break;
+          }
+          currentId = parentId;
+        }
+      });
+      const out = new Set<string>();
+      filtered.forEach((id) => out.add(id));
+      rootsToKeep.forEach((id) => out.add(id));
+      return out;
     }
-    setExpandedSections(newExpanded);
+
+    return visible;
   };
 
-  // Toggle functions for each hierarchy level
-  const toggleLevel0 = (sectionName: string) => {
-    const newCollapsed = new Set(collapsedL0);
-    if (newCollapsed.has(sectionName)) {
-      newCollapsed.delete(sectionName);
-    } else {
-      newCollapsed.add(sectionName);
-    }
-    setCollapsedL0(newCollapsed);
+  const visibleIds = computeVisibleIds();
+
+  // Aggregate counts (descendants + overview cards at this node)
+  const aggregateCountMemo = new Map<string, number>();
+  const getAggregateCount = (topicId: string): number => {
+    if (aggregateCountMemo.has(topicId)) return aggregateCountMemo.get(topicId)!;
+    const ownCards = topicProgress.get(topicId)?.card_count || 0;
+    const ownOverview = overviewCounts.get(topicId) || 0;
+    const childIds = getDirectChildrenIds(topicId).filter((id) => visibleIds.has(id));
+    const sumChildren = childIds.reduce((s, cid) => s + getAggregateCount(cid), 0);
+    const total = ownCards + ownOverview + sumChildren;
+    aggregateCountMemo.set(topicId, total);
+    return total;
   };
 
-  const toggleLevel1 = (sectionName: string) => {
-    const newCollapsed = new Set(collapsedL1);
-    if (newCollapsed.has(sectionName)) {
-      newCollapsed.delete(sectionName);
-    } else {
-      newCollapsed.add(sectionName);
-    }
-    setCollapsedL1(newCollapsed);
+  const getOverviewCapForLevel = (level: number) => {
+    if (level <= 1) return 30;
+    if (level === 2) return 20;
+    return 10;
   };
 
-  const toggleLevel2 = (sectionName: string) => {
-    const newCollapsed = new Set(collapsedL2);
-    if (newCollapsed.has(sectionName)) {
-      newCollapsed.delete(sectionName);
-    } else {
-      newCollapsed.add(sectionName);
-    }
-    setCollapsedL2(newCollapsed);
-  };
+  const getOverviewChildrenTopics = async (parentTopicId: string, parentLevel: number): Promise<string[]> => {
+    const cap = getOverviewCapForLevel(parentLevel);
 
-  // Organize flat groups into hierarchical structure for rendering
-  const organizeHierarchy = (groups: TopicGroup[]) => {
-    const hierarchy: { [level0: string]: { [level1: string]: { [level2: string]: TopicGroup[] } } } = {};
+    const { data: children, error } = await supabase
+      .from('curriculum_topics')
+      .select('id, topic_name, display_name, sort_order')
+      .eq('parent_topic_id', parentTopicId)
+      .order('sort_order', { ascending: true })
+      .order('topic_name', { ascending: true });
 
-    groups.forEach(group => {
-      if (!hierarchy[group.level0]) hierarchy[group.level0] = {};
-      if (!hierarchy[group.level0][group.level1]) hierarchy[group.level0][group.level1] = {};
-      if (!hierarchy[group.level0][group.level1][group.level2 || 'direct']) {
-        hierarchy[group.level0][group.level1][group.level2 || 'direct'] = [];
+    if (error) throw error;
+
+    const list = (children || []) as any[];
+    if (list.length === 0) return [];
+
+    let selected = list;
+    const omitted = Math.max(0, list.length - cap);
+
+    if (list.length > cap) {
+      // Prefer the most exam-important children when metadata exists
+      const ids = list.map((c) => c.id);
+      const { data: meta } = await supabase
+        .from('topic_ai_metadata')
+        .select('topic_id, exam_importance')
+        .in('topic_id', ids)
+        .order('exam_importance', { ascending: false })
+        .limit(cap);
+
+      if (meta && meta.length > 0) {
+        const topIds = new Set(meta.map((m: any) => m.topic_id));
+        selected = list.filter((c) => topIds.has(c.id)).slice(0, cap);
+      } else {
+        selected = list.slice(0, cap);
       }
-      hierarchy[group.level0][group.level1][group.level2 || 'direct'].push(group);
-    });
+    } else {
+      selected = list.slice(0, cap);
+    }
 
-    return hierarchy;
+    const names = selected.map((c) => getTopicLabel(c));
+    if (omitted > 0) {
+      names.push(`(+${omitted} more subtopics not listed)`); // helps the model understand the list is capped
+    }
+    return names;
   };
 
-  // Render individual topic card
-  const renderTopicCard = (topic: DiscoveredTopic, baseColor: string, group: TopicGroup) => {
-    const topicIds = group.topics.map(t => t.topic_id);
-    const topicShade = getTopicShade(topic.topic_id, baseColor, topicIds);
-    const priorityInfo = getPriorityInfo(topic.priority);
-
-    return (
-      <TouchableOpacity
-        key={topic.topic_id}
-        style={styles.topicCard}
-        onPress={() => handleTopicPress(topic)}
-      >
-        <View style={styles.topicCardLeft}>
-          <View style={[styles.levelIndicator, { backgroundColor: topicShade }]}>
-            <Text style={styles.levelText}>L{topic.topic_level}</Text>
-          </View>
-          <View style={styles.topicInfo}>
-            <View style={styles.topicNameRow}>
-              <Text style={styles.topicName} numberOfLines={2}>
-                {abbreviateTopicName(topic.topic_name)}
-              </Text>
-              {priorityInfo && (
-                <View 
-                  style={[styles.priorityStar, { backgroundColor: priorityInfo.color }]}
-                  title={`Priority: ${priorityInfo.label}`}
-                >
-                  <Text style={styles.priorityStarText}>⭐</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.topicMeta}>
-              <Text style={styles.topicMetaText}>
-                {topic.card_count} cards
-              </Text>
-              {topic.cards_mastered > 0 && (
-                <>
-                  <Text style={styles.topicMetaDivider}>•</Text>
-                  <Text style={styles.topicMetaTextMastered}>
-                    {topic.cards_mastered} mastered
-                  </Text>
-                </>
-              )}
-              {priorityInfo && (
-                <>
-                  <Text style={styles.topicMetaDivider}>•</Text>
-                  <Text style={[styles.priorityLabel, { color: priorityInfo.color }]}>
-                    {priorityInfo.emoji} {priorityInfo.label}
-                  </Text>
-                </>
-              )}
-            </View>
-          </View>
-        </View>
-        {topic.is_newly_discovered && (
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>NEW</Text>
-          </View>
-        )}
-        <Icon name="chevron-forward" size={20} color="#999" />
-      </TouchableOpacity>
-    );
-  };
-
-  const handleTopicPress = (topic: DiscoveredTopic) => {
-    // Show options menu instead of directly studying
-    setShowTopicOptions(topic);
-  };
-  
-  const handleStudyTopic = () => {
-    if (!showTopicOptions) return;
-    setShowTopicOptions(null);
-    navigation.navigate('StudyModal', {
-      topicName: showTopicOptions.topic_name,
-      subjectName: subjectName,
-      subjectColor: safeSubjectColor,
-      topicId: showTopicOptions.topic_id,
-    });
-  };
-  
-  const handleDiscoverRelated = () => {
-    if (!showTopicOptions) return;
-    setShowTopicOptions(null);
-    // Navigate to SmartTopicDiscovery with pre-filled search
+  const handleDiscoverMore = () => {
     navigation.navigate('SmartTopicDiscovery', {
       subjectId,
       subjectName,
       subjectColor: safeSubjectColor,
       examBoard,
       examType,
-      initialSearch: showTopicOptions.parent_name || showTopicOptions.topic_name, // Parent topic or self
     });
   };
-  
+
   const handleRevealContext = () => {
     if (!showTopicOptions) return;
-    // Show the context modal for revealing curriculum structure
-    setShowContextModal(showTopicOptions);
+    setShowContextModal({ topicId: showTopicOptions.topicId, topicName: showTopicOptions.topicName });
     setShowTopicOptions(null);
   };
-  
+
+  const handleOpenAddModal = () => {
+    if (!showTopicOptions) return;
+    setShowAddModal({ topicId: showTopicOptions.topicId, topicName: showTopicOptions.topicName });
+    setShowTopicOptions(null);
+  };
+
   const handleCreateCardsFromContext = (topicId: string, topicName: string, isOverview: boolean, childrenTopics?: string[]) => {
-    // Navigate to AI Generator for card creation
     navigation.navigate('AIGenerator', {
       topicId,
-      topic: topicName, // AIGenerator expects 'topic' not 'topicName'
-      subject: subjectName, // AIGenerator expects 'subject' not 'subjectName'
+      topic: topicName,
+      subject: subjectName,
       subjectId,
       subjectName,
       subjectColor: safeSubjectColor,
@@ -497,7 +456,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       childrenTopics: childrenTopics || [],
     });
   };
-  
+
   const handleStudyTopicFromContext = (topicId: string, topicName: string) => {
     setShowContextModal(null);
     navigation.navigate('StudyModal', {
@@ -508,53 +467,256 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
     });
   };
 
-  const handleCreateOverviewForParent = async (group: TopicGroup) => {
-    // Create overview cards for the Level 0 parent topic
-    // Get all child topic names for context
-    const childrenNames = group.topics.map(t => t.topic_name);
-    
-    // Find the parent topic ID - use first topic's parent_topic_id
-    const firstTopic = group.topics[0];
-    if (!firstTopic || !firstTopic.parent_topic_id) {
-      Alert.alert('Error', 'Could not find parent topic information');
-      return;
-    }
+  const openTopicOptionsForId = (topicId: string) => {
+    const t = topicsById.get(topicId);
+    if (!t) return;
+    const label = getTopicLabel(t as any);
+    const progress = topicProgress.get(topicId);
+    const cardCount = Number(progress?.card_count || 0);
+    const overviewCount = Number(overviewCounts.get(topicId) || 0);
+    const hasChildren = getHasAnyChildren(topicId);
+    const priority = (topicPriorities.get(topicId) ?? null) as any;
 
-    // Fetch the parent topic details
-    const { data: parentTopic, error } = await supabase
-      .from('curriculum_topics')
-      .select('id, topic_name, topic_level')
-      .eq('id', firstTopic.parent_topic_id)
-      .single();
-
-    if (error || !parentTopic) {
-      Alert.alert('Error', 'Could not load parent topic details');
-      return;
-    }
-
-    // Navigate to AI Generator with overview flag
-    navigation.navigate('AIGenerator', {
-      topicId: parentTopic.id,
-      topic: parentTopic.topic_name,
-      subject: subjectName,
-      subjectId,
-      subjectName,
-      subjectColor: safeSubjectColor,
-      examBoard,
-      examType,
-      isOverviewCard: true,
-      childrenTopics: childrenNames,
+    setShowTopicOptions({
+      topicId,
+      topicName: label,
+      topicLevel: t.topic_level,
+      cardCount,
+      overviewCount,
+      hasChildren,
+      priority,
     });
   };
 
-  const handleDiscoverMore = () => {
-    navigation.navigate('SmartTopicDiscovery', {
-      subjectId,
+  const handlePressNode = (topicId: string) => {
+    const visibleChildren = getDirectChildrenIds(topicId).filter((id) => visibleIds.has(id));
+    const hasVisibleChildren = visibleChildren.length > 0;
+    const hasAnyChildren = getHasAnyChildren(topicId);
+
+    if (hasVisibleChildren) {
+      toggleExpanded(topicId);
+      return;
+    }
+
+    if (hasAnyChildren) {
+      const t = topicsById.get(topicId);
+      const label = t ? getTopicLabel(t as any) : 'Topic';
+      setShowAddModal({ topicId, topicName: label });
+      return;
+    }
+
+    openTopicOptionsForId(topicId);
+  };
+
+  const handleLongPressNode = (topicId: string) => {
+    const t = topicsById.get(topicId);
+    if (!t) return;
+    const label = getTopicLabel(t as any);
+    // Level 0: long press opens Add-to-tree for immediate children (lets user add multiple children even after expanding)
+    if (!t.parent_topic_id) {
+      setShowAddModal({ topicId, topicName: label });
+      return;
+    }
+    // Non-root: long press opens the curriculum context (parents/grandparents + overview generation).
+    setShowContextModal({ topicId, topicName: label });
+  };
+
+  const handleStudyLeafCards = () => {
+    if (!showTopicOptions) return;
+    const { topicId, topicName } = showTopicOptions;
+    setShowTopicOptions(null);
+    navigation.navigate('StudyModal', {
+      topicId,
+      topicName,
       subjectName,
-      subjectColor,
+      subjectColor: safeSubjectColor,
+    });
+  };
+
+  const handleCreateLeafCards = () => {
+    if (!showTopicOptions) return;
+    const { topicId, topicName } = showTopicOptions;
+    setShowTopicOptions(null);
+    navigation.navigate('CardCreationChoice', {
+      topicId,
+      topicName,
+      subjectName,
       examBoard,
       examType,
+      subjectId,
+      discoveryMethod: 'tree',
     });
+  };
+
+  const handleStudyOverviewCards = () => {
+    if (!showTopicOptions) return;
+    const { topicId, topicName } = showTopicOptions;
+    setShowTopicOptions(null);
+    navigation.navigate('StudyModal', {
+      topicId,
+      topicName,
+      subjectName,
+      subjectColor: safeSubjectColor,
+      overviewOnly: true,
+    });
+  };
+
+  const handleCreateOverviewCards = async () => {
+    if (!showTopicOptions) return;
+    const { topicId, topicName, topicLevel } = showTopicOptions;
+    setShowTopicOptions(null);
+    try {
+      const childrenTopics = await getOverviewChildrenTopics(topicId, topicLevel);
+      navigation.navigate('AIGenerator', {
+        topicId,
+        topic: topicName,
+        subject: subjectName,
+        subjectId,
+        subjectName,
+        subjectColor: safeSubjectColor,
+        examBoard,
+        examType,
+        isOverviewCard: true,
+        childrenTopics,
+      });
+    } catch (e) {
+      console.error('Error preparing overview generation:', e);
+      Alert.alert('Error', 'Could not load subtopics for overview generation.');
+    }
+  };
+
+  const renderTreeNode = (topicId: string, depth: number, siblingIndex: number): React.ReactNode => {
+    const t = topicsById.get(topicId);
+    if (!t) return null;
+
+    if (!visibleIds.has(topicId)) return null;
+
+    const progress = topicProgress.get(topicId);
+    const isNew = !!progress?.is_newly_discovered;
+    const cardCount = Number(progress?.card_count || 0);
+    const mastered = Number(progress?.cards_mastered || 0);
+    const overviewCount = Number(overviewCounts.get(topicId) || 0);
+    const priority = (topicPriorities.get(topicId) ?? null) as any;
+    const priorityInfo = getTopicPriorityInfo(priority);
+
+    const anyChildren = getDirectChildrenIds(topicId);
+    const visibleChildren = anyChildren.filter((id) => visibleIds.has(id));
+    const hasVisibleChildren = visibleChildren.length > 0;
+    const hasAnyChildren = anyChildren.length > 0;
+    const isExpanded = expandedTopicIds.has(topicId);
+
+    const label = getTopicLabel(t as any);
+    const badgeCount = getAggregateCount(topicId);
+
+    const depthPalette =
+      depth === 0
+        ? colorPalette.level0
+        : depth === 1
+          ? colorPalette.level1
+          : colorPalette.level2;
+    const baseColor = depthPalette[siblingIndex % depthPalette.length];
+
+    const rowStyle =
+      depth === 0
+        ? [
+            styles.groupHeader,
+            styles.level0Header,
+            {
+              backgroundColor: `${baseColor}35`,
+              borderLeftColor: baseColor,
+              borderLeftWidth: 5,
+            },
+          ]
+        : [
+            styles.topicCard,
+            {
+              marginLeft: Math.min(48, depth * 14),
+              borderLeftWidth: 3,
+              borderLeftColor: baseColor,
+            },
+          ];
+
+    return (
+      <View key={topicId} style={depth === 0 ? styles.topicGroup : undefined}>
+        <TouchableOpacity
+          style={rowStyle as any}
+          onPress={() => handlePressNode(topicId)}
+          onLongPress={() => handleLongPressNode(topicId)}
+          delayLongPress={350}
+        >
+          <View style={styles.groupHeaderLeft}>
+            <Icon
+              name={
+                depth === 0
+                  ? isExpanded
+                    ? 'document-text-outline'
+                    : 'document-text'
+                  : hasAnyChildren
+                    ? isExpanded
+                      ? 'folder-open'
+                      : 'folder'
+                    : 'document-text-outline'
+              }
+              size={depth === 0 ? 24 : 20}
+              color={baseColor}
+            />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={[styles.groupTitle, depth === 0 ? styles.level0Title : styles.topicName]} numberOfLines={2}>
+                {depth === 0 ? abbreviateTopicName(label) : sanitizeTopicLabel(label)}
+              </Text>
+              {depth > 0 && (
+                <View style={styles.topicMeta}>
+                  <Text style={styles.topicMetaText}>{cardCount} cards</Text>
+                  {overviewCount > 0 ? (
+                    <>
+                      <Text style={styles.topicMetaDivider}>•</Text>
+                      <Text style={styles.topicMetaText}>🏔️ {overviewCount} overview</Text>
+                    </>
+                  ) : null}
+                  {mastered > 0 ? (
+                    <>
+                      <Text style={styles.topicMetaDivider}>•</Text>
+                      <Text style={styles.topicMetaTextMastered}>{mastered} mastered</Text>
+                    </>
+                  ) : null}
+                </View>
+              )}
+            </View>
+            {priorityInfo ? (
+              <View style={[styles.priorityStar, { backgroundColor: priorityInfo.color }]}>
+                <Text style={styles.priorityStarText}>⭐</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.groupHeaderRight}>
+            <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: baseColor, borderWidth: 2 }]}>
+              <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{badgeCount}</Text>
+            </View>
+            {hasAnyChildren ? (
+              <Icon
+                name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                size={depth === 0 ? 20 : 18}
+                color={baseColor}
+              />
+            ) : (
+              <Icon name="chevron-forward" size={18} color="#999" />
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {isNew && depth > 0 ? (
+          <View style={[styles.newBadge, { marginLeft: Math.min(48, depth * 14) + 12, marginTop: -6 }]}>
+            <Text style={styles.newBadgeText}>NEW</Text>
+          </View>
+        ) : null}
+
+        {isExpanded && hasVisibleChildren ? (
+          <View style={depth === 0 ? styles.level0Content : undefined}>
+            {visibleChildren.map((cid, idx) => renderTreeNode(cid, depth + 1, idx))}
+          </View>
+        ) : null}
+      </View>
+    );
   };
 
   if (loading) {
@@ -616,272 +778,139 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           </View>
         </LinearGradient>
 
-        {/* Empty State */}
-        {discoveredTopics.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Icon name="telescope-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyTitle}>Start Your Journey!</Text>
-            <Text style={styles.emptyText}>
-              You haven't created any cards for {subjectName} yet.
-            </Text>
-            <Text style={styles.emptyText}>
-              Search for topics you're studying and create flashcards to build your knowledge base.
-            </Text>
-            <TouchableOpacity style={[styles.discoverButton, { backgroundColor: safeSubjectColor }]} onPress={handleDiscoverMore}>
-              <Icon name="search" size={20} color="#fff" />
-              <Text style={styles.discoverButtonText}>Discover Topics</Text>
+        {/* Priority Filter Buttons - Compact Number System */}
+        <View style={styles.filterSection}>
+          <View style={styles.filterTitleRow}>
+            <Text style={styles.filterTitle}>FILTER BY PRIORITY</Text>
+            <TouchableOpacity onPress={() => setShowPriorityExplainer(true)} style={styles.filterInfoButton}>
+              <Icon name="help-circle-outline" size={18} color={theme === 'cyber' ? colors.text : '#333'} />
             </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            {/* Priority Filter Buttons - Compact Number System */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterTitle}>FILTER BY PRIORITY</Text>
-              <View style={styles.filterButtonsRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.filterNumberButton,
-                    priorityFilter === null && styles.filterNumberButtonActive
-                  ]}
-                  onPress={() => setPriorityFilter(null)}
-                >
-                  <Text style={[
-                    styles.filterNumberText,
-                    priorityFilter === null && styles.filterNumberTextActive
-                  ]}>
-                    ALL
-                  </Text>
-                </TouchableOpacity>
-                {PRIORITY_LEVELS.map(level => (
-                  <TouchableOpacity
-                    key={level.value}
-                    style={[
-                      styles.filterNumberButton,
-                      { borderColor: level.color },
-                      priorityFilter === level.value && [
-                        styles.filterNumberButtonActive, 
-                        { backgroundColor: level.color, borderColor: level.color }
-                      ]
-                    ]}
-                    onPress={() => setPriorityFilter(level.value)}
-                    onLongPress={() => {
-                      setShowPriorityTooltip(level.value);
-                      setTimeout(() => setShowPriorityTooltip(null), 2500);
-                    }}
-                  >
-                    <Text style={[
-                      styles.filterNumberText,
-                      { color: level.color },
-                      priorityFilter === level.value && styles.filterNumberTextActive
-                    ]}>
-                      {level.number}
-                    </Text>
-                    {showPriorityTooltip === level.value && (
-                      <View style={[styles.priorityTooltip, { backgroundColor: level.color }]}>
-                        <Text style={styles.priorityTooltipText}>{level.description}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Topic Tree - 4-Tier Progressive Discovery */}
-            <View style={styles.topicsSection}>
-              <Text style={styles.sectionTitle}>Your Discovered Topics</Text>
-              
-              {(() => {
-                const hierarchy = organizeHierarchy(groupedTopics);
-                
-                return Object.keys(hierarchy).sort().map((level0Name, level0Index) => {
-                  const level0Collapsed = collapsedL0.has(level0Name);
-                  const level0CardCount = groupedTopics
-                    .filter(g => g.level0 === level0Name)
-                    .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
-                  
-                  // Get unique color for this Level 0 section
-                  const level0Color = colorPalette.level0[level0Index % colorPalette.level0.length];
-
-                  return (
-                    <View key={level0Name} style={styles.topicGroup}>
-                      {/* LEVEL 0: Exam Paper */}
-                      <TouchableOpacity
-                        style={[
-                          styles.groupHeader, 
-                          styles.level0Header,
-                          { 
-                            backgroundColor: `${level0Color}35`,  // 35% opacity - clearly visible!
-                            borderLeftColor: level0Color, 
-                            borderLeftWidth: 5 
-                          }
-                        ]}
-                        onPress={() => toggleLevel0(level0Name)}
-                      >
-                        <View style={styles.groupHeaderLeft}>
-                          <Icon
-                            name={level0Collapsed ? "document-text" : "document-text-outline"}
-                            size={24}
-                            color={level0Color}
-                          />
-                          <Text style={[styles.groupTitle, styles.level0Title]}>
-                            {abbreviateTopicName(level0Name)}
-                          </Text>
-                        </View>
-                        <View style={styles.groupHeaderRight}>
-                          <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: level0Color, borderWidth: 2 }]}>
-                            <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{level0CardCount}</Text>
-                          </View>
-                          <Icon
-                            name={level0Collapsed ? "chevron-down" : "chevron-up"}
-                            size={20}
-                            color={level0Color}
-                          />
-                        </View>
-                      </TouchableOpacity>
-
-                      {/* LEVEL 0 CONTENT */}
-                      {!level0Collapsed && (
-                        <View style={styles.level0Content}>
-                          {Object.keys(hierarchy[level0Name]).sort().map((level1Name, level1Index) => {
-                            if (!level1Name) return null;
-                            
-                            const level1Collapsed = collapsedL1.has(`${level0Name}||${level1Name}`);
-                            const level1CardCount = groupedTopics
-                              .filter(g => g.level0 === level0Name && g.level1 === level1Name)
-                              .reduce((sum, g) => sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
-                            
-                            // Get unique color for this Level 1 section
-                            const level1Color = colorPalette.level1[level1Index % colorPalette.level1.length];
-
-                            return (
-                              <View key={level1Name} style={styles.level1Section}>
-                                {/* LEVEL 1: Main Section */}
-                                <TouchableOpacity
-                                  style={[
-                                    styles.groupHeader, 
-                                    styles.level1Header,
-                                    { 
-                                      backgroundColor: `${level1Color}30`,  // 30% opacity - clearly visible!
-                                      borderLeftColor: level1Color, 
-                                      borderLeftWidth: 4 
-                                    }
-                                  ]}
-                                  onPress={() => toggleLevel1(`${level0Name}||${level1Name}`)}
-                                >
-                                  <View style={styles.groupHeaderLeft}>
-                                    <Icon
-                                      name={level1Collapsed ? "folder" : "folder-open"}
-                                      size={22}
-                                      color={level1Color}
-                                    />
-                                    <Text style={[styles.groupTitle, styles.level1Title]}>
-                                      {abbreviateTopicName(level1Name)}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.groupHeaderRight}>
-                                    <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: level1Color, borderWidth: 1.5 }]}>
-                                      <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{level1CardCount}</Text>
-                                    </View>
-                                    <Icon
-                                      name={level1Collapsed ? "chevron-down" : "chevron-up"}
-                                      size={18}
-                                      color={level1Color}
-                                    />
-                                  </View>
-                                </TouchableOpacity>
-
-                                {/* LEVEL 1 CONTENT */}
-                                {!level1Collapsed && (
-                                  <View style={styles.level1Content}>
-                                    {Object.keys(hierarchy[level0Name][level1Name]).sort().map((level2Name, level2Index) => {
-                                      const level2Groups = hierarchy[level0Name][level1Name][level2Name];
-                                      const level2Collapsed = collapsedL2.has(`${level0Name}||${level1Name}||${level2Name}`);
-                                      const level2CardCount = level2Groups.reduce((sum, g) => 
-                                        sum + g.topics.reduce((s, t) => s + (t.card_count || 0), 0), 0);
-                                      
-                                      // Get unique color for this Level 2 section
-                                      const level2Color = colorPalette.level2[level2Index % colorPalette.level2.length];
-
-                                      // Skip "direct" if no Level 2 exists
-                                      if (level2Name === 'direct' && level2Groups[0]?.level2 === undefined) {
-                                        // Render topics directly without Level 2 wrapper (use level1 color)
-                                        return level2Groups.map(group => 
-                                          group.topics.map(topic => renderTopicCard(topic, level1Color, group))
-                                        );
-                                      }
-
-                                      return (
-                                        <View key={level2Name} style={styles.level2Section}>
-                                          {/* LEVEL 2: Sub-section */}
-                                          <TouchableOpacity
-                                            style={[
-                                              styles.groupHeader, 
-                                              styles.level2Header,
-                                              { 
-                                                backgroundColor: `${level2Color}25`,  // 25% opacity - clearly visible!
-                                                borderLeftColor: level2Color, 
-                                                borderLeftWidth: 3 
-                                              }
-                                            ]}
-                                            onPress={() => toggleLevel2(`${level0Name}||${level1Name}||${level2Name}`)}
-                                          >
-                                            <View style={styles.groupHeaderLeft}>
-                                              <Icon
-                                                name={level2Collapsed ? "list" : "list-outline"}
-                                                size={20}
-                                                color={level2Color}
-                                              />
-                                              <Text style={[styles.groupTitle, styles.level2Title]}>
-                                                {abbreviateTopicName(level2Name)}
-                                              </Text>
-                                            </View>
-                                            <View style={styles.groupHeaderRight}>
-                                              <Text style={[styles.cardCountText, { color: '#00F5FF', fontWeight: '700' }]}>{level2CardCount}</Text>
-                                              <Icon
-                                                name={level2Collapsed ? "add" : "remove"}
-                                                size={16}
-                                                color={level2Color}
-                                              />
-                                            </View>
-                                          </TouchableOpacity>
-
-                                          {/* LEVEL 2 CONTENT */}
-                                          {!level2Collapsed && (
-                                            <View style={styles.level2Content}>
-                                              {level2Groups.map(group => 
-                                                group.topics.map(topic => renderTopicCard(topic, level2Color, group))
-                                              )}
-                                            </View>
-                                          )}
-                                        </View>
-                                      );
-                                    })}
-                                  </View>
-                                )}
-                              </View>
-                            );
-                          })}
-                        </View>
-                      )}
-                    </View>
-                  );
-                });
-              })()}
-            </View>
-
-            {/* Discover More CTA */}
+          <View style={styles.filterButtonsRow}>
             <TouchableOpacity
-              style={styles.discoverMoreButton}
-              onPress={handleDiscoverMore}
+              style={[
+                styles.filterNumberButton,
+                priorityFilter === null && styles.filterNumberButtonActive,
+              ]}
+              onPress={() => setPriorityFilter(null)}
             >
-              <Icon name="add-circle" size={24} color={safeSubjectColor} />
-              <Text style={[styles.discoverMoreText, { color: safeSubjectColor }]}>
-                Discover More Topics
+              <Text
+                style={[
+                  styles.filterNumberText,
+                  priorityFilter === null && styles.filterNumberTextActive,
+                ]}
+              >
+                ALL
               </Text>
             </TouchableOpacity>
-          </>
-        )}
+            {TOPIC_PRIORITY_LEVELS.map((level) => (
+              <TouchableOpacity
+                key={level.value}
+                style={[
+                  styles.filterNumberButton,
+                  { borderColor: level.color },
+                  priorityFilter === level.value && [
+                    styles.filterNumberButtonActive,
+                    { backgroundColor: level.color, borderColor: level.color },
+                  ],
+                ]}
+                onPress={() => setPriorityFilter(level.value)}
+                onLongPress={() => {
+                  setShowPriorityTooltip(level.value);
+                  setTimeout(() => setShowPriorityTooltip(null), 2500);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.filterNumberText,
+                    { color: level.color },
+                    priorityFilter === level.value && styles.filterNumberTextActive,
+                  ]}
+                >
+                  {level.number}
+                </Text>
+                {showPriorityTooltip === level.value && (
+                  <View style={[styles.priorityTooltip, { backgroundColor: level.color }]}>
+                    <Text style={styles.priorityTooltipText}>{level.description}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Discover Topics CTA (moved above the tree) */}
+        <TouchableOpacity style={styles.discoverMoreButton} onPress={handleDiscoverMore}>
+          <Icon name="search" size={24} color={safeSubjectColor} />
+          <Text style={[styles.discoverMoreText, { color: safeSubjectColor }]}>Discover Topics</Text>
+        </TouchableOpacity>
+
+        {/* Topic Tree */}
+        <View style={styles.topicsSection}>
+          <Text style={styles.sectionTitle}>Topics</Text>
+
+          {rootTopicIds.filter((id) => visibleIds.has(id)).length === 0 ? (
+            <View style={styles.emptyState}>
+              <Icon name="list-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyTitle}>No topics to show</Text>
+              <Text style={styles.emptyText}>
+                Try clearing the priority filter, or discover topics to start building your tree.
+              </Text>
+            </View>
+          ) : (
+            rootTopicIds
+              .filter((id) => visibleIds.has(id))
+              .map((id, idx) => renderTreeNode(id, 0, idx))
+          )}
+        </View>
       </ScrollView>
+
+      {/* Priority explainer modal */}
+      <Modal
+        visible={showPriorityExplainer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPriorityExplainer(false)}
+      >
+        <TouchableOpacity
+          style={styles.optionsOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPriorityExplainer(false)}
+        >
+          <View style={styles.optionsCard}>
+            <Text style={styles.optionsTitle}>Priority levels</Text>
+            <Text style={styles.optionsSubtitle}>1 is the highest priority.</Text>
+
+            {TOPIC_PRIORITY_LEVELS.map((p) => (
+              <View key={p.value} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: p.color,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '900' }}>{p.number}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '800', color: theme === 'cyber' ? colors.text : '#111827' }}>{p.label}</Text>
+                  <Text style={{ color: theme === 'cyber' ? colors.textSecondary : '#6B7280', marginTop: 2 }}>
+                    {p.description}
+                  </Text>
+                </View>
+              </View>
+            ))}
+
+            <TouchableOpacity style={styles.optionCancel} onPress={() => setShowPriorityExplainer(false)}>
+              <Text style={styles.optionCancelText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
       
       {/* Topic Options Modal */}
       <Modal
@@ -897,18 +926,56 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
         >
           <View style={styles.optionsCard}>
             <Text style={styles.optionsTitle}>
-              {showTopicOptions?.topic_name}
+              {showTopicOptions?.topicName}
             </Text>
             <Text style={styles.optionsSubtitle}>
-              {showTopicOptions?.card_count} cards created
+              {showTopicOptions?.hasChildren
+                ? (showTopicOptions?.overviewCount || 0) > 0
+                  ? `${showTopicOptions?.overviewCount} overview cards`
+                  : 'No overview cards yet'
+                : `${showTopicOptions?.cardCount || 0} cards created`}
             </Text>
             
             <TouchableOpacity
               style={[styles.optionButton, styles.optionPrimary]}
-              onPress={handleStudyTopic}
+              onPress={() => {
+                if (!showTopicOptions) return;
+                const isParent = !!showTopicOptions.hasChildren && (showTopicOptions.topicLevel || 0) >= 1;
+                if (isParent) {
+                  if ((showTopicOptions.overviewCount || 0) > 0) {
+                    handleStudyOverviewCards();
+                  } else {
+                    void handleCreateOverviewCards();
+                  }
+                } else {
+                  if ((showTopicOptions.cardCount || 0) > 0) {
+                    handleStudyLeafCards();
+                  } else {
+                    handleCreateLeafCards();
+                  }
+                }
+              }}
             >
-              <Icon name="play-circle" size={24} color="#fff" />
-              <Text style={styles.optionButtonText}>Study These Cards</Text>
+              <Icon
+                name={
+                  showTopicOptions?.hasChildren
+                    ? 'layers'
+                    : (showTopicOptions?.cardCount || 0) > 0
+                      ? 'play-circle'
+                      : 'add-circle'
+                }
+                size={24}
+                color="#fff"
+              />
+              <Text style={styles.optionButtonText}>
+                {showTopicOptions?.hasChildren
+                  ? (showTopicOptions?.overviewCount || 0) > 0
+                    ? 'Study Overview Cards'
+                    : 'Create Overview Cards'
+                  : (showTopicOptions?.cardCount || 0) > 0
+                    ? 'Study These Cards'
+                    : 'Create Cards'}
+              </Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -923,11 +990,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             
             <TouchableOpacity
               style={[styles.optionButton, styles.optionSecondary]}
-              onPress={handleDiscoverRelated}
+              onPress={handleOpenAddModal}
             >
-              <Icon name="search" size={24} color={safeSubjectColor} />
+              <Icon name="add-circle" size={24} color={safeSubjectColor} />
               <Text style={[styles.optionButtonTextSecondary, { color: safeSubjectColor }]}>
-                Add More Topics
+                Add to Tree
               </Text>
             </TouchableOpacity>
             
@@ -936,8 +1003,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
               onPress={() => {
                 setShowTopicOptions(null);
                 navigation.navigate('ManageTopic', {
-                  topicId: showTopicOptions?.topic_id,
-                  topicName: showTopicOptions?.topic_name,
+                  topicId: showTopicOptions?.topicId,
+                  topicName: showTopicOptions?.topicName,
                   subjectName,
                   subjectColor: safeSubjectColor,
                   examBoard,
@@ -965,8 +1032,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       {showContextModal && (
         <TopicContextModal
           visible={!!showContextModal}
-          topicId={showContextModal.topic_id}
-          topicName={showContextModal.topic_name}
+          topicId={showContextModal.topicId}
+          topicName={showContextModal.topicName}
           subjectId={subjectId}
           subjectName={subjectName}
           subjectColor={safeSubjectColor}
@@ -978,6 +1045,31 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           onDiscoverMore={handleDiscoverMore}
         />
       )}
+
+      {/* Add-to-tree modal */}
+      {showAddModal && user?.id ? (
+        <TopicChildrenPickerModal
+          visible={!!showAddModal}
+          userId={user.id}
+          subjectId={subjectId}
+          subjectColor={safeSubjectColor}
+          startTopicId={showAddModal.topicId}
+          startTopicName={showAddModal.topicName}
+          discoveredTopicIds={discoveredTopicIds}
+          onClose={() => setShowAddModal(null)}
+          onTopicAdded={(addedTopicId) => {
+            // Refresh and keep the current branch open for visibility
+            setExpandedTopicIds((prev) => {
+              const next = new Set(prev);
+              next.add(showAddModal.topicId);
+              // Also expand the newly added topic's parent branch if needed
+              if (addedTopicId) next.add(addedTopicId);
+              return next;
+            });
+            void fetchDiscoveredTopics();
+          }}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1146,6 +1238,19 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
     borderBottomWidth: 1,
     borderBottomColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+  },
+  filterTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterInfoButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    ...(theme === 'cyber'
+      ? { backgroundColor: 'rgba(255,255,255,0.06)' }
+      : { backgroundColor: '#F3F4F6' }),
   },
   filterTitle: {
     fontSize: 14,
