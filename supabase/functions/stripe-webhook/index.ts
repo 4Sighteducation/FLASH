@@ -128,8 +128,9 @@ function formatClaimCode(code: string): string {
 async function sendSendGridEmail(params: { to: string; subject: string; html: string; fromEmail: string }): Promise<void> {
   const sendGridKey = Deno.env.get('SENDGRID_API_KEY') || '';
   if (!sendGridKey) {
-    console.warn('[stripe-webhook] SENDGRID_API_KEY not set; skipping email');
-    return;
+    // This webhook is responsible for delivering redeem codes. If this is misconfigured,
+    // we want Stripe to retry and Surface the failure in Stripe webhook logs.
+    throw new Error('[SendGrid] SENDGRID_API_KEY not set');
   }
 
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -152,7 +153,7 @@ async function sendSendGridEmail(params: { to: string; subject: string; html: st
 
   if (!res.ok) {
     const text = await res.text();
-    console.warn('[stripe-webhook] SendGrid send failed (non-fatal):', res.status, text);
+    throw new Error(`[SendGrid] ${res.status} ${text}`);
   }
 }
 
@@ -200,7 +201,7 @@ serve(async (req) => {
         break;
 
       case 'invoice.paid':
-        try {
+        {
           const invObj = (evt?.data as any)?.object;
           if (!isStripeInvoice(invObj)) {
             console.warn('[stripe-webhook] invoice.paid: unexpected payload');
@@ -252,28 +253,37 @@ serve(async (req) => {
             const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
             const supabase = createClient(supabaseUrl, serviceKey);
 
+            const invoiceId = String((invObj as any)?.id ?? '');
+            const customerId = String((invObj as any)?.customer ?? '');
+
             const { data: claim, error: updErr } = await supabase
               .from('parent_claims')
               .update({
                 status: 'paid',
                 stripe_subscription_id: subscriptionId,
-                stripe_invoice_id: (invObj as any)?.id ?? null,
-                stripe_customer_id: (invObj as any)?.customer ?? null,
+                stripe_invoice_id: invoiceId || null,
+                stripe_customer_id: customerId || null,
                 livemode: !!invObj.livemode,
                 paid_expires_at_ms: expiresAtMs,
                 paid_at: new Date().toISOString(),
-              })
+              } as any)
               .eq('id', parentClaimId)
               .neq('status', 'claimed')
-              .select('id, child_email, claim_code, status')
+              .select('id, child_email, claim_code, status, redeem_email_sent_at, redeem_email_attempts')
               .maybeSingle();
 
             if (updErr) {
               console.error('[stripe-webhook] invoice.paid: failed to update parent_claims', updErr);
-              break;
+              throw updErr;
             }
             if (!claim?.id) {
               console.warn('[stripe-webhook] invoice.paid: parent_claim_id not found or already claimed', { parentClaimId });
+              break;
+            }
+
+            // If we've already successfully sent the redeem email, don't send again.
+            if ((claim as any).redeem_email_sent_at) {
+              console.log('[stripe-webhook] invoice.paid: redeem email already sent; skipping', { parentClaimId });
               break;
             }
 
@@ -288,11 +298,12 @@ serve(async (req) => {
               Deno.env.get('SENDGRID_FROM_EMAIL') ||
               'support@fl4shcards.com';
 
-            await sendSendGridEmail({
-              to: toEmail,
-              fromEmail,
-              subject: 'Your FL4SH Pro access is ready',
-              html: `
+            try {
+              await sendSendGridEmail({
+                to: toEmail,
+                fromEmail,
+                subject: 'Your FL4SH Pro access is ready',
+                html: `
                 <!doctype html>
                 <html lang=\"en\">
                   <head>
@@ -359,13 +370,29 @@ serve(async (req) => {
                   </body>
                 </html>
               `,
-            });
+              });
 
-            console.log('[stripe-webhook] invoice.paid: parent-claim marked paid + emailed child', {
-              parentClaimId,
-              toEmail,
-            });
-            break;
+              await supabase
+                .from('parent_claims')
+                .update({ redeem_email_sent_at: new Date().toISOString(), redeem_email_last_error: null })
+                .eq('id', parentClaimId);
+
+              console.log('[stripe-webhook] invoice.paid: parent-claim marked paid + emailed child', {
+                parentClaimId,
+                toEmail,
+              });
+              break;
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              const prevAttempts = Number((claim as any).redeem_email_attempts || 0);
+              await supabase
+                .from('parent_claims')
+                .update({ redeem_email_attempts: prevAttempts + 1, redeem_email_last_error: msg })
+                .eq('id', parentClaimId);
+
+              // Fail the webhook so Stripe retries and you see the error in Stripe.
+              throw e;
+            }
           }
 
           if (!studentUserId) {
@@ -426,8 +453,6 @@ serve(async (req) => {
             apiKey: rcApiKey,
             body: { entitlement_id: rcProEntitlementId, expires_at: expiresAtMs },
           });
-        } catch (e) {
-          console.error('[stripe-webhook] invoice.paid handler failed', e);
         }
         break;
 
