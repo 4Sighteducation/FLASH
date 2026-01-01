@@ -22,8 +22,10 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { AIService, GeneratedCard } from '../../services/aiService';
 import FlashcardCard from '../../components/FlashcardCard';
+import { ensureCanAddCards } from '../../utils/usageLimits';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
 
@@ -70,6 +72,7 @@ export default function ImageCardGeneratorScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { topicId, topicName, subjectName, examBoard, examType } = route.params as any;
 
   const [image, setImage] = useState<string | null>(null);
@@ -212,6 +215,21 @@ export default function ImageCardGeneratorScreen() {
 
   const saveCards = async () => {
     if (!user || !selectedCardType) return;
+
+    // Free plan gatekeeping (authoritative, DB-count based)
+    try {
+      const ok = await ensureCanAddCards({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: generatedCards.length,
+        navigation,
+      });
+      if (!ok) return;
+    } catch (e) {
+      console.warn('[ImageCardGenerator] ensureCanAddCards failed; blocking save:', e);
+      return;
+    }
 
     setIsSaving(true);
     try {

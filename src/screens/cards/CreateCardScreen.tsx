@@ -19,6 +19,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { ensureCanAddCards } from '../../utils/usageLimits';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 
@@ -54,7 +55,7 @@ export default function CreateCardScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { tier, checkLimits } = useSubscription();
+  const { tier, limits, checkLimits } = useSubscription();
   const { topicId, topicName, subjectName } = route.params as {
     topicId: string;
     topicName: string;
@@ -78,23 +79,16 @@ export default function CreateCardScreen() {
       return;
     }
 
-    // Check card limits for Free users
-    if (tier === 'free') {
-      const { data: userCards, error } = await supabase
-        .from('flashcards')
-        .select('id')
-        .eq('user_id', user?.id);
-      
-      const currentCardCount = userCards?.length || 0;
-      
-      if (!checkLimits('card', currentCardCount + 1)) {
-        showUpgradePrompt({
-          message:
-            "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
-          navigation,
-        });
-        return;
-      }
+    // Authoritative gatekeeping (DB-count based). Prevents iOS/TestFlight stale tier issues.
+    if (user?.id) {
+      const ok = await ensureCanAddCards({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: 1,
+        navigation,
+      });
+      if (!ok) return;
     }
 
     if (cardType === 'multiple_choice') {

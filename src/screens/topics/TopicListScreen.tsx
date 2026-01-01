@@ -233,6 +233,18 @@ export default function TopicListScreen() {
   const buildTopicTree = (topics: CurriculumTopic[]): TopicNode[] => {
     const topicMap = new Map<string, TopicNode>();
     const rootNodes: TopicNode[] = [];
+    
+    // Heuristic helpers:
+    // We collapse "module=topic" only when the shared label is actually meaningful.
+    // If scraped data has poor names like "1", collapsing destroys the visible hierarchy (looks like missing topics).
+    const isMeaningfulCollapseLabel = (name?: string | null): boolean => {
+      const n = String(name || '').trim();
+      if (!n) return false;
+      if (n.length <= 2) return false;
+      // Pure numeric or numeric-dot patterns (e.g. "1", "1.1", "3.4.5") are NOT meaningful labels.
+      if (/^\d+(?:\.\d+)*$/.test(n)) return false;
+      return true;
+    };
 
     // First, create all nodes
     topics.forEach(topic => {
@@ -258,7 +270,12 @@ export default function TopicListScreen() {
         const parent = topicMap.get(topic.parent_topic_id);
         if (parent) {
           // Check if parent has same name (module = topic case)
-          if (parent.name === node.name && parent.level === 1 && node.level === 2) {
+          if (
+            parent.name === node.name &&
+            parent.level === 1 &&
+            node.level === 2 &&
+            isMeaningfulCollapseLabel(parent.name)
+          ) {
             // Collapse this level - move children up
             node.isCollapsed = true;
             parent.isCollapsed = true;

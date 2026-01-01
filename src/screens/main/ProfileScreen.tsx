@@ -56,6 +56,9 @@ export default function ProfileScreen() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [difficultyVisible, setDifficultyVisible] = useState(false);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [parentInviteVisible, setParentInviteVisible] = useState(false);
+  const [parentInviteEmail, setParentInviteEmail] = useState('');
+  const [sendingParentInvite, setSendingParentInvite] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +166,50 @@ export default function ProfileScreen() {
       navigation.setParams({ openDifficulty: undefined } as any);
     }
   }, [route, navigation, canUseDifficultyMode]);
+
+  // Open Parent Invite modal if requested via navigation param (Free plan CTA)
+  useEffect(() => {
+    const params: any = (route as any)?.params;
+    if (params?.openParentInvite === true) {
+      setParentInviteVisible(true);
+      navigation.setParams({ openParentInvite: undefined } as any);
+    }
+  }, [route, navigation]);
+
+  const handleSendParentInvite = async () => {
+    const email = parentInviteEmail.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Invalid email', 'Please enter a valid parent/guardian email address.');
+      return;
+    }
+
+    setSendingParentInvite(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-parent', {
+        body: { parentEmail: email },
+      });
+
+      if (error) {
+        const msg = (error as any)?.message || 'Failed to send invite';
+        Alert.alert('Could not send invite', msg);
+        return;
+      }
+
+      // Edge Functions can return 200 with ok:false, so handle both.
+      if (data?.ok === false) {
+        Alert.alert('Could not send invite', data?.error || 'Failed to send invite');
+        return;
+      }
+
+      Alert.alert('Invite sent!', 'We’ve emailed your parent/guardian instructions to unlock Pro for your account.');
+      setParentInviteVisible(false);
+      setParentInviteEmail('');
+    } catch (e: any) {
+      Alert.alert('Could not send invite', String(e?.message || e));
+    } finally {
+      setSendingParentInvite(false);
+    }
+  };
 
   const handleNotificationToggle = async (value: boolean) => {
     try {
@@ -465,6 +512,15 @@ export default function ProfileScreen() {
                 </Text>
               </TouchableOpacity>
 
+              {tier === 'free' && (
+                <TouchableOpacity
+                  style={styles.manageStoreButton}
+                  onPress={() => setParentInviteVisible(true)}
+                >
+                  <Text style={styles.manageStoreButtonText}>Invite parent / guardian</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity style={styles.restoreButton} onPress={restorePurchases}>
                 <Text style={styles.restoreButtonText}>Restore Purchases</Text>
               </TouchableOpacity>
@@ -731,6 +787,52 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.modalButtonPrimary} onPress={saveProfile} disabled={savingProfile}>
                   <Text style={styles.modalButtonPrimaryText}>{savingProfile ? 'Saving…' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Parent Invite Modal (Free plan) */}
+        <Modal
+          visible={parentInviteVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setParentInviteVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Invite a parent/guardian</Text>
+              <Text style={styles.modalLabel}>Parent / guardian email</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={parentInviteEmail}
+                onChangeText={setParentInviteEmail}
+                placeholder="parent@example.com"
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!sendingParentInvite}
+              />
+              <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
+                We’ll email them a link to the parent page. If they purchase, you’ll receive a code to redeem in the app.
+              </Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalButtonSecondary}
+                  onPress={() => setParentInviteVisible(false)}
+                  disabled={sendingParentInvite}
+                >
+                  <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalButtonPrimary}
+                  onPress={handleSendParentInvite}
+                  disabled={sendingParentInvite}
+                >
+                  <Text style={styles.modalButtonPrimaryText}>
+                    {sendingParentInvite ? 'Sending…' : 'Send invite'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

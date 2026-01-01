@@ -30,6 +30,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const maybeSendWelcomeEmail = async (u: User) => {
+    try {
+      if (!u?.id) return;
+      const key = `welcomeEmailSent:${u.id}`;
+      const already = await AsyncStorage.getItem(key);
+      if (already === 'true') return;
+
+      // Best-effort: edge function is idempotent server-side; we also cache locally to avoid repeated calls.
+      await supabase.functions.invoke('welcome-email', { body: {} });
+      await AsyncStorage.setItem(key, 'true');
+    } catch (e) {
+      console.warn('[Auth] Welcome email skipped (non-fatal):', e);
+    }
+  };
+
   // Function to handle session updates
   const handleSession = async (newSession: Session | null) => {
     setSession(newSession);
@@ -66,6 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {
         console.warn('[Auth] Push registration skipped:', e);
       }
+
+      // Best-effort: send welcome email after the first successful sign-in (works for verified users).
+      // Do not block the UI on email delivery.
+      void maybeSendWelcomeEmail(newSession.user);
     }
   };
 

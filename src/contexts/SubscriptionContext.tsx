@@ -84,6 +84,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const unsubscribeRef = React.useRef<null | (() => void)>(null);
 
+  const tierStorageKey = (userId?: string | null) => `subscriptionTier:${userId || 'anon'}`;
+
   const TEST_EMAILS = new Set([
     'appletester@fl4sh.cards',
     'stu1@fl4sh.cards',
@@ -131,6 +133,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     if (user) {
+      // Defensive: reset to Free on user change until we verify entitlement for THIS user.
+      // This avoids stale AsyncStorage upgrades leaking across accounts/builds (common on iOS TestFlight updates).
+      setTier('free');
+      setIsLoading(true);
       initializeIAP();
       // Prefer RevenueCat if available; fallback to DB/local for dev/web.
       initializeRevenueCat();
@@ -172,8 +178,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const checkSubscriptionStatus = async () => {
     try {
-      // Check local storage first
-      const localTierRaw = await AsyncStorage.getItem('subscriptionTier');
+      // We store tier PER USER (not globally), to avoid cross-account leakage.
+      const localTierRaw = await AsyncStorage.getItem(tierStorageKey(user?.id));
       const localTier = normalizeTier(localTierRaw);
       
       // Then verify with backend
@@ -181,15 +187,17 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .from('user_subscriptions')
         .select('tier, expires_at')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
         const resolved = isExpired ? 'free' : normalizeTier(data.tier);
         setTier(resolved);
-        await AsyncStorage.setItem('subscriptionTier', resolved);
+        await AsyncStorage.setItem(tierStorageKey(user?.id), resolved);
       } else {
-        setTier(localTier);
+        // IMPORTANT: if we can't verify entitlement, do NOT "upgrade" from local storage.
+        // Default to Free unless the stored value is already Free.
+        setTier(localTier === 'free' ? 'free' : 'free');
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -200,7 +208,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const applyTier = async (next: SubscriptionTier, expiresAtIso: string | null) => {
     setTier(next);
-    await AsyncStorage.setItem('subscriptionTier', next);
+    await AsyncStorage.setItem(tierStorageKey(user?.id), next);
 
     // Best-effort sync to backend (source of truth will eventually be RevenueCat webhooks).
     // This keeps your existing DB checks working during the transition.
@@ -268,7 +276,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (!error) {
         setTier('pro');
-        await AsyncStorage.setItem('subscriptionTier', 'pro');
+        await AsyncStorage.setItem(tierStorageKey(user?.id), 'pro');
         Alert.alert('Success!', 'You now have Pro access to FLASH!');
       }
 

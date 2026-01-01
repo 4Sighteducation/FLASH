@@ -39,6 +39,7 @@ import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
 import PrioritySupportFab from '../components/support/PrioritySupportFab';
+import ParentInviteFab from '../components/support/ParentInviteFab';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -341,6 +342,9 @@ export default function MainNavigator() {
 
       {/* Pro-only floating button for priority support */}
       <PrioritySupportFab />
+
+      {/* Free-only floating CTA to invite a parent/guardian */}
+      <ParentInviteFab />
     </View>
   );
 } 

@@ -106,6 +106,9 @@ export function sanitizeTopicLabel(
 export function getTopicLabel(topic: {
   display_name?: string | null;
   topic_name?: string | null;
+  // Some tables include `topic_code` (e.g., "1.1.1" or "C1T1S1"). We treat it as a last-resort label fallback.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
 }): string {
   const display = (topic.display_name || '').trim();
   if (display) {
@@ -116,7 +119,18 @@ export function getTopicLabel(topic: {
   }
 
   const sanitized = sanitizeTopicLabel(topic.topic_name);
-  if (sanitized) return sanitized;
+  if (sanitized) {
+    // If the topic name is clearly unusable (e.g., just "1"), try using topic_code as a better fallback.
+    const looksBad = sanitized.length <= 2 || /^[0-9]+$/.test(sanitized);
+    if (looksBad) {
+      const code = String((topic as any)?.topic_code || '').trim();
+      if (code && code !== sanitized) {
+        const codeSanitized = sanitizeTopicLabel(code, { maxLength: 48 });
+        if (codeSanitized && codeSanitized !== sanitized) return codeSanitized;
+      }
+    }
+    return sanitized;
+  }
 
   return (topic.topic_name || 'Untitled topic').trim() || 'Untitled topic';
 }

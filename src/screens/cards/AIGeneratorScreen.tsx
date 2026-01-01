@@ -20,10 +20,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, CardGenerationParams, GeneratedCard } from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ensureCanAddCards } from '../../utils/usageLimits';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -77,6 +79,7 @@ export default function AIGeneratorScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { subject, topic, topicId, examBoard, examType, isOverviewCard, childrenTopics } = route.params as any;
 
   const [selectedType, setSelectedType] = useState<CardType | null>(null);
@@ -232,6 +235,22 @@ export default function AIGeneratorScreen() {
     
     if (!user || !selectedType || selectedType === 'notes') {
       console.log('❌ Save cancelled - missing requirements');
+      return;
+    }
+
+    // Free plan gatekeeping (authoritative, DB-count based)
+    try {
+      const ok = await ensureCanAddCards({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: generatedCards.length,
+        navigation,
+      });
+      if (!ok) return;
+    } catch (e) {
+      // Non-fatal: if the count check fails, be safe and block adding more cards.
+      console.warn('[AIGenerator] ensureCanAddCards failed; blocking save:', e);
       return;
     }
 

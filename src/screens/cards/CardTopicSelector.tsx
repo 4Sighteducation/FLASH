@@ -102,6 +102,16 @@ export default function CardTopicSelector() {
   const buildTopicTree = (topics: CurriculumTopic[]): TopicNode[] => {
     const topicMap = new Map<string, TopicNode>();
     const rootNodes: TopicNode[] = [];
+    
+    // Only collapse "module=topic" if the label is meaningful.
+    // Poor scraped names like "1" would otherwise collapse structure and look like missing topics.
+    const isMeaningfulCollapseLabel = (name?: string | null): boolean => {
+      const n = String(name || '').trim();
+      if (!n) return false;
+      if (n.length <= 2) return false;
+      if (/^\d+(?:\.\d+)*$/.test(n)) return false;
+      return true;
+    };
 
     // First, create all nodes
     topics.forEach(topic => {
@@ -123,7 +133,12 @@ export default function CardTopicSelector() {
         const parent = topicMap.get(topic.parent_topic_id);
         if (parent) {
           // Check if parent has same name (module = topic case)
-          if (parent.name === node.name && parent.level === 1 && node.level === 2) {
+          if (
+            parent.name === node.name &&
+            parent.level === 1 &&
+            node.level === 2 &&
+            isMeaningfulCollapseLabel(parent.name)
+          ) {
             // Collapse this level - move children up
             node.isCollapsed = true;
             parent.isCollapsed = true;

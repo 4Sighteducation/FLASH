@@ -62,9 +62,17 @@ export default function SubjectSearchScreen() {
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
 
   const searchDebounceRef = useRef<NodeJS.Timeout>();
+  const mountedRef = useRef(true);
 
   const resolvedPrimary = normalizeExamTrackId(primaryTrack) || 'GCSE';
   const resolvedSecondary = normalizeExamTrackId(secondaryTrack || null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Subject abbreviation/synonym mapping
   const subjectSynonyms: { [key: string]: string } = {
@@ -309,6 +317,40 @@ export default function SubjectSearchScreen() {
     setSelectedSubjects(selectedSubjects.filter((s) => s.subject_id !== subjectId));
   };
 
+  const navigateAfterSave = () => {
+    // This screen is used in both onboarding + home (modal).
+    // On home, "OnboardingComplete" doesn't exist, so navigation silently fails and the button spinner hangs.
+    try {
+      const state = (navigation as any).getState?.();
+      const routeNames: string[] = Array.isArray(state?.routeNames) ? state.routeNames : [];
+      const parentRouteNames: string[] = Array.isArray((navigation as any).getParent?.()?.getState?.()?.routeNames)
+        ? (navigation as any).getParent().getState().routeNames
+        : [];
+
+      const canGoToOnboardingComplete =
+        routeNames.includes('OnboardingComplete') || parentRouteNames.includes('OnboardingComplete');
+
+      if (canGoToOnboardingComplete) {
+        (navigation as any).navigate('OnboardingComplete');
+        return;
+      }
+
+      if ((navigation as any).canGoBack?.()) {
+        (navigation as any).goBack();
+        return;
+      }
+
+      (navigation as any).navigate('HomeMain');
+    } catch (e) {
+      // Worst-case: just try to go back.
+      try {
+        (navigation as any).goBack?.();
+      } catch {
+        // ignore
+      }
+    }
+  };
+
   const handleContinue = async () => {
     if (selectedSubjects.length === 0) {
       Alert.alert('Select a Subject', 'Please select at least one subject to continue');
@@ -331,7 +373,6 @@ export default function SubjectSearchScreen() {
         navigation,
       });
       if (!ok) {
-        setIsSaving(false);
         return;
       }
 
@@ -395,10 +436,8 @@ export default function SubjectSearchScreen() {
       }
 
       console.log('✅ User exam tracks updated!');
-      console.log('🚀 Navigating to OnboardingComplete...');
-
-      // Navigate to onboarding complete
-      navigation.navigate('OnboardingComplete' as never);
+      console.log('🚀 Navigating after subject save...');
+      navigateAfterSave();
     } catch (error) {
       console.error('❌ Error saving subjects:', error);
       Alert.alert(
@@ -420,7 +459,9 @@ export default function SubjectSearchScreen() {
           },
         ]
       );
-      setIsSaving(false);
+    } finally {
+      // If the navigation target doesn't exist (Home modal), this keeps the UI from "hanging" in loading state.
+      if (mountedRef.current) setIsSaving(false);
     }
   };
 
