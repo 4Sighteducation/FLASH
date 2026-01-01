@@ -63,3 +63,4 @@ COMMENT ON COLUMN paper_progress.current_question_index IS 'Zero-based index of 
 COMMENT ON COLUMN paper_progress.current_answer IS 'Answer in progress when paper was paused';
 COMMENT ON COLUMN paper_progress.timer_seconds IS 'Timer value when paper was paused';
 
+

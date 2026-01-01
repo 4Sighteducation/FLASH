@@ -69,3 +69,4 @@ delete from public.user_subjects where user_id in (select user_id from victims);
 */
 
 
+

@@ -52,3 +52,4 @@ CREATE POLICY "Users can delete their own paper xp awards"
 COMMENT ON TABLE paper_xp_awards IS 'One-time XP awards for completing an exam paper; prevents double counting per user+paper.';
 
 
+

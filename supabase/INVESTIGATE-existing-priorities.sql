@@ -39,3 +39,4 @@ SELECT
 FROM pg_indexes
 WHERE tablename = 'user_topic_priorities';
 
+
