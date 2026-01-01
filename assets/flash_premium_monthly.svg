@@ -1,0 +1,83 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E22"/>
+      <stop offset="0.55" stop-color="#070A19"/>
+      <stop offset="1" stop-color="#050616"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(240 220) rotate(45) scale(600 600)">
+      <stop offset="0" stop-color="#19FFA2" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#19FFA2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(860 820) rotate(225) scale(680 680)">
+      <stop offset="0" stop-color="#00E5FF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border" x1="128" y1="112" x2="896" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19FFA2"/>
+      <stop offset="0.55" stop-color="#00E5FF"/>
+      <stop offset="1" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <linearGradient id="iconBorder" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19FFA2"/>
+      <stop offset="1" stop-color="#00E5FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.70 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cardShadow" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowA)"/>
+  <rect width="1024" height="1024" fill="url(#glowB)"/>
+
+  <!-- Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="128" y="112" width="768" height="800" rx="44" fill="#0B1228" fill-opacity="0.94"/>
+    <rect x="128" y="112" width="768" height="800" rx="44" stroke="url(#border)" stroke-width="6" opacity="0.92"/>
+  </g>
+
+  <!-- Simple logo mark -->
+  <g filter="url(#softGlow)">
+    <rect x="452" y="162" width="120" height="120" rx="28" fill="#0A1632" stroke="url(#iconBorder)" stroke-width="4" opacity="0.98"/>
+    <path d="M520 188 L488 246 H520 L504 292 L556 224 H524 L540 188 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Title -->
+  <text x="512" y="410" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="104" font-weight="900" fill="#FFFFFF">Go Premium</text>
+
+  <!-- Subtitle -->
+  <text x="512" y="482" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="56" font-weight="900" fill="#EAF0FF" opacity="0.92">Monthly</text>
+
+  <!-- Single benefit line -->
+  <g filter="url(#softGlow)">
+    <text x="512" y="596" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="54" font-weight="900" fill="#EAF0FF">Unlimited flashcards + AI</text>
+  </g>
+
+  <!-- CTA chip -->
+  <g filter="url(#softGlow)">
+    <rect x="252" y="672" width="520" height="110" rx="30" fill="#0A1632" fill-opacity="0.78" stroke="#00E5FF" stroke-opacity="0.28" stroke-width="2"/>
+    <text x="512" y="742" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="40" font-weight="900" fill="#FFFFFF">Cancel anytime</text>
+  </g>
+</svg>
+
