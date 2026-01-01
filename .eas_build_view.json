@@ -1,0 +1,51 @@
+{
+  "id": "327345a0-06ee-4b76-8351-2c044cf50c75",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "UNKNOWN_ERROR",
+    "message": "Unknown error. See logs of the Bundle JavaScript build phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "930a986a-0f33-478d-ad76-858c3bdbd609",
+    "hash": "7bed473171477404a0565bbcbb3f7531565612a0"
+  },
+  "initiatingActor": {
+    "id": "b8b84f5e-b6af-47d2-874c-7ad2a2ddc974",
+    "displayName": "tonydennis"
+  },
+  "logFiles": [
+    "https://job-logs.eascdn.net/production/327345a0-06ee-4b76-8351-2c044cf50c75/1766507123818-b06286cf-59fe-40e1-8e10-35e725636486.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20251223%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251223T162923Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=a6b63b9a936baa51e1baa172cb2cd0adbcfef09c41717d89df671d6742d01ce2bcd1b3f4e21ddfdc1b57fd8d6268687d256371cb3215ea6b12f4d43a5f270706c5fc7c6b40cb5f0cd96e72844c157b20caa1cf22c1ea57561bfac3cc5cfb1fba1c863f3351579e6ac6ec152a73f22052af53c1839f89f304aeceee2da541e9e7acf6e0759bb95e32127b90d4ed1976c759e82b3fac704bba3056253ba3b03accbf50031c14af00c42e7f1254cd2a1db8487acffd57d2a0caf427f4b3df7b163c236b494ce382667ff22b64d17cf8fe4ce124d7aa19351172c6db9df0816b7e7f18a39552788e55773a63f100841b61bb0cd9a0119a4a2185c061619aff189d0e",
+    "https://job-logs.eascdn.net/production/327345a0-06ee-4b76-8351-2c044cf50c75/1766507124892-548d321f-3ff8-431e-9836-092ed5aabfcc.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20251223%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251223T162923Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=23b48ab66d93b724ecabe7ef66132b2a4b52f9f843ab1ad2f03c5456790f3a580f8a00379ed854be84567c24cd5ba0f2df42bdd3f6a7f5f69ef72c33d1f6be5d464f95f1cf4a7ffdb5d93793f389bcbeaf4b9ae0b8b70a9b76e90feaf0ce7a3428eb1f146b3585c61b983f0c8b1defc918758042919c20f602ec92610c64f6d050b942d33678f86aea6cd304e14dc788015ef56627ce6d7ae1c09175095bef22f9bd96a9007f56f69605424912c1d7a13ed01de88ddbab703a2073a7abfd73a039b6e40e7614935ae0ece52ec05377ae70befd255143cb91357c8a8b4656900237c25d7a07cc44ce8ae4868cf9cc9ecb45d817d3127066707fc856a80a147868",
+    "https://job-logs.eascdn.net/production/327345a0-06ee-4b76-8351-2c044cf50c75/1766507125123-19c4c89e-4f04-436d-b280-265e8dd1f48f.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20251223%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251223T162923Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=b6cc3d7936c8ddd758f79ae1bd61f518d81a0df8c47e57ed06083d2017ff5e37afb3a28d75a1dabff3a4650df5101706e3077ebd489eae719a23f3f0dbc4d83510a43df6075faa2704a648886d6481e7144376e94beed5b191e037d49de8293edf695bf20f7e127bb85ce6bc80995531b3437e7b4964498e37209bb88e41f793710954f6c82852296faeb83e17d55da1fe3399caaef58296358882e86213d14cb0c67a0b30e7e8ac3762f4561626a06f3b86f6ea77c669f6483465a8e9b6cd6acf91fd765a9f66998072bc618d30f9d936e5dc5adc8b067655d9d6ff14b9ed0178fead9e45e8a8205c543f18285e6897dc36a3da19db6358e834117fedc53060",
+    "https://job-logs.eascdn.net/production/327345a0-06ee-4b76-8351-2c044cf50c75/1766507125290-119381c4-7ce3-4ad1-a5c5-36c34773c119.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20251223%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251223T162923Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=b0a89273d29822aa9fd0d16b8d72ea2cb259e29d0d6bf3becc8ea28faca5aedd5b8e677e2ad73017095a781ceaa5f3ce817267d7b940041f01f74013b0cd3d677bacb7ae65851514ffb0450bd4f0f53b3d46ae172a4043edbf816771ac58f258b7d1a52c8124992a69c72af8e66aab9e140ea67fc23c4b9b576ebcf728a3402dbd6879868964f0bed0656a6c599512d7a9840f22fa73f936959edcf54e948c3a52eaa708b0c8e42684851bb7bdef93b691c819f7e34a80ee0004f8e2d54a10041142f7985f62b4c0bbfa7649b0e5c63430f114625298af35e6856d240e2bbfd4bcc908d6f9122b68f240912974c7a0a1c9afe2401099a97025d5a1c59f4f41fa"
+  ],
+  "project": {
+    "id": "9bc8cac1-4205-4936-8f04-1834449f28a5",
+    "name": "FLASH",
+    "slug": "flash",
+    "ownerAccount": {
+      "id": "259a734b-3208-407e-b24c-45fcb784d8a1",
+      "name": "tonydennis"
+    }
+  },
+  "distribution": "STORE",
+  "buildProfile": "production",
+  "sdkVersion": "54.0.0",
+  "appVersion": "1.0.4",
+  "appBuildVersion": "9",
+  "gitCommitHash": "971a1e62ae0e746e66df27c5ea166a71228a7139",
+  "gitCommitMessage": "Chore: ignore local EAS log artifacts",
+  "priority": "HIGH",
+  "createdAt": "2025-12-23T16:25:23.589Z",
+  "updatedAt": "2025-12-23T16:27:26.091Z",
+  "completedAt": "2025-12-23T16:27:03.901Z",
+  "expirationDate": "2026-01-22T16:25:23.617Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 135,
+    "buildQueueTime": 43034,
+    "buildDuration": 56941
+  }
+}

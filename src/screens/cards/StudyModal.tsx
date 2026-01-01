@@ -23,6 +23,7 @@ import FrozenCard from '../../components/FrozenCard';
 import PointsAnimation from '../../components/PointsAnimation';
 import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { gamificationService } from '../../services/gamificationService';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -50,6 +51,8 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     };
   }, [navigation]);
   const { topicName, subjectName, subjectColor, boxNumber } = route.params;
+  const headerTopicLabel =
+    topicName === 'Daily Review' ? 'Daily Review' : (sanitizeTopicLabel(topicName, { maxLength: 140 }) || topicName);
   const { user } = useAuth();
   const [flashcards, setFlashcards] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -707,7 +710,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Icon name="close" size={28} color="#333" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
+            <Text style={styles.headerTitle}>{headerTopicLabel}</Text>
             <View style={{ minWidth: 50 }} />
           </View>
           <View style={styles.emptyContainer}>
@@ -728,7 +731,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
             <Icon name="close" size={28} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>{topicName === 'Daily Review' ? 'Daily Review' : topicName}</Text>
+            <Text style={styles.headerTitle}>{headerTopicLabel}</Text>
             {previewMode && <Text style={styles.previewBadge}>👀 PREVIEW</Text>}
           </View>
           <View style={styles.progressInfo}>

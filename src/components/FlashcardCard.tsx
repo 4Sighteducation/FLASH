@@ -259,7 +259,9 @@ export default function FlashcardCard({
             <View style={styles.cardHeader}>
               <View style={styles.cardHeaderLeft}>
                 {card.topic && (
-                  <Text style={[styles.topicLabel, { color }]}>{stripExamType(card.topic)}</Text>
+                  <Text style={[styles.topicLabel, { color }]}>
+                    {sanitizeTopicLabel(stripExamType(card.topic), { maxLength: 80 }) || stripExamType(card.topic)}
+                  </Text>
                 )}
               </View>
               <View style={[

@@ -88,3 +88,4 @@ INNER JOIN exam_board_subjects ebs ON ebs.id = t.exam_board_subject_id
 GROUP BY ebs.subject_name
 ORDER BY matching_topics DESC;
 
+

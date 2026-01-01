@@ -1,0 +1,107 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B0E1F"/>
+      <stop offset="0.55" stop-color="#070A18"/>
+      <stop offset="1" stop-color="#050615"/>
+    </linearGradient>
+    <radialGradient id="glowL" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 540) rotate(0) scale(560 560)">
+      <stop offset="0" stop-color="#00E5FF" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowR" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(900 420) rotate(0) scale(620 620)">
+      <stop offset="0" stop-color="#FF3D8A" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#FF3D8A" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border" x1="128" y1="112" x2="896" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E5FF"/>
+      <stop offset="0.55" stop-color="#19FFA2"/>
+      <stop offset="1" stop-color="#FF3D8A"/>
+    </linearGradient>
+    <linearGradient id="headline" x1="260" y1="0" x2="760" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00E5FF"/>
+      <stop offset="0.5" stop-color="#19FFA2"/>
+      <stop offset="1" stop-color="#FF3D8A"/>
+    </linearGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.72 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cardShadow" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowL)"/>
+  <rect width="1024" height="1024" fill="url(#glowR)"/>
+
+  <!-- Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="128" y="112" width="768" height="800" rx="44" fill="#0B1228" fill-opacity="0.92"/>
+    <rect x="128" y="112" width="768" height="800" rx="44" stroke="url(#border)" stroke-width="6" opacity="0.92"/>
+  </g>
+
+  <!-- Top badge -->
+  <g filter="url(#softGlow)">
+    <rect x="318" y="148" width="388" height="62" rx="31" fill="#0A1632" stroke="#19FFA2" stroke-opacity="0.6" stroke-width="2"/>
+    <text x="512" y="189" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="22" font-weight="800" fill="#CFFFEF" letter-spacing="2.1">PREMIUM • ANNUAL</text>
+  </g>
+
+  <!-- Title -->
+  <text x="512" y="306" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="86" font-weight="800" fill="#FFFFFF">Go Premium</text>
+
+  <!-- Headline -->
+  <g filter="url(#softGlow)">
+    <text x="512" y="398" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="46" font-weight="800" fill="url(#headline)">AI that knows your exam board</text>
+  </g>
+
+  <!-- Feature chips -->
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial">
+    <!-- Main feature chip -->
+    <g filter="url(#softGlow)">
+      <rect x="200" y="466" width="624" height="80" rx="22" fill="#0A1632" fill-opacity="0.75" stroke="#00E5FF" stroke-opacity="0.25"/>
+      <text x="512" y="518" text-anchor="middle" font-size="32" font-weight="800" fill="#EAF0FF">Fl4shcards built from real specs</text>
+    </g>
+
+    <!-- Two column chips -->
+    <g>
+      <rect x="200" y="570" width="300" height="92" rx="24" fill="#0A1632" fill-opacity="0.55" stroke="#19FFA2" stroke-opacity="0.35"/>
+      <text x="350" y="606" text-anchor="middle" font-size="26" font-weight="800" fill="#EAF0FF">AQA • Edexcel • OCR</text>
+      <text x="350" y="638" text-anchor="middle" font-size="22" font-weight="600" fill="#9FB0D8">WJEC • SQA + more</text>
+    </g>
+    <g>
+      <rect x="524" y="570" width="300" height="92" rx="24" fill="#0A1632" fill-opacity="0.55" stroke="#FF3D8A" stroke-opacity="0.35"/>
+      <text x="674" y="606" text-anchor="middle" font-size="26" font-weight="800" fill="#EAF0FF">Text or photo</text>
+      <text x="674" y="638" text-anchor="middle" font-size="22" font-weight="600" fill="#9FB0D8">→ instant Fl4shcards</text>
+    </g>
+
+    <!-- Bottom chip -->
+    <g>
+      <rect x="200" y="686" width="624" height="92" rx="24" fill="#0A1632" fill-opacity="0.55" stroke="#7C4DFF" stroke-opacity="0.3"/>
+      <text x="512" y="722" text-anchor="middle" font-size="26" font-weight="800" fill="#EAF0FF">MCQ • Short Answer • Essay • Acronym</text>
+      <text x="512" y="756" text-anchor="middle" font-size="22" font-weight="600" fill="#9FB0D8">Every question type you'll face</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="512" y="852" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="20" font-weight="600" fill="#9FB0D8" opacity="0.95">
+    Unlimited Fl4shcards • Smart scheduling • 10,000+ topics
+  </text>
+</svg>

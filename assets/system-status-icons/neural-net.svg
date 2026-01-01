@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <filter id="glowNeural" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glowNeuralStrong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="neuralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M50 15 Q75 15 80 35 Q85 55 75 70 Q65 85 50 85 Q35 85 25 70 Q15 55 20 35 Q25 15 50 15"
+        fill="none" stroke="url(#neuralGrad)" stroke-width="2" filter="url(#glowNeuralStrong)"/>
+
+  <path d="M50 20 Q52 50 50 80" fill="none" stroke="#14b8a6" stroke-width="1" opacity="0.5"/>
+
+  <path d="M30 35 L40 35 L40 45" fill="none" stroke="#14b8a6" stroke-width="1.5" filter="url(#glowNeural)"/>
+  <path d="M25 50 L35 50 L35 60 L45 60" fill="none" stroke="#14b8a6" stroke-width="1.5" filter="url(#glowNeural)"/>
+  <path d="M30 70 L40 70 L40 65" fill="none" stroke="#14b8a6" stroke-width="1.5" filter="url(#glowNeural)"/>
+
+  <path d="M70 35 L60 35 L60 45" fill="none" stroke="#ec4899" stroke-width="1.5" filter="url(#glowNeural)"/>
+  <path d="M75 50 L65 50 L65 60 L55 60" fill="none" stroke="#ec4899" stroke-width="1.5" filter="url(#glowNeural)"/>
+  <path d="M70 70 L60 70 L60 65" fill="none" stroke="#ec4899" stroke-width="1.5" filter="url(#glowNeural)"/>
+
+  <path d="M40 45 L50 50 L60 45" fill="none" stroke="#14b8a6" stroke-width="1" opacity="0.7" filter="url(#glowNeural)"/>
+  <path d="M45 60 L50 55 L55 60" fill="none" stroke="#ec4899" stroke-width="1" opacity="0.7" filter="url(#glowNeural)"/>
+
+  <circle cx="30" cy="35" r="4" fill="#14b8a6" filter="url(#glowNeuralStrong)"/>
+  <circle cx="40" cy="45" r="3" fill="#14b8a6" filter="url(#glowNeural)"/>
+  <circle cx="25" cy="50" r="3" fill="#14b8a6" filter="url(#glowNeural)"/>
+  <circle cx="35" cy="60" r="3" fill="#14b8a6" filter="url(#glowNeural)"/>
+  <circle cx="30" cy="70" r="4" fill="#14b8a6" filter="url(#glowNeuralStrong)"/>
+
+  <circle cx="70" cy="35" r="4" fill="#ec4899" filter="url(#glowNeuralStrong)"/>
+  <circle cx="60" cy="45" r="3" fill="#ec4899" filter="url(#glowNeural)"/>
+  <circle cx="75" cy="50" r="3" fill="#ec4899" filter="url(#glowNeural)"/>
+  <circle cx="65" cy="60" r="3" fill="#ec4899" filter="url(#glowNeural)"/>
+  <circle cx="70" cy="70" r="4" fill="#ec4899" filter="url(#glowNeuralStrong)"/>
+
+  <circle cx="50" cy="50" r="6" fill="#0d9488" stroke="#ec4899" stroke-width="2" filter="url(#glowNeuralStrong)"/>
+  <circle cx="50" cy="50" r="3" fill="#fff"/>
+
+  <circle cx="35" cy="35" r="2" fill="#fff" opacity="0.9"/>
+  <circle cx="65" cy="50" r="2" fill="#fff" opacity="0.9"/>
+  <circle cx="50" cy="55" r="2" fill="#fff" opacity="0.9"/>
+</svg>
+
+

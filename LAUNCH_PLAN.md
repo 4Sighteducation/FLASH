@@ -24,6 +24,7 @@ Status (as of Dec 17, 2025)
   - [ ] Restore purchases on fresh install
 - [ ] Post-launch ops: build a minimal **Admin dashboard** (web) for user/subscription ops + curriculum/papers tooling (extend existing marketing admin + data viewer)
 - [ ] Android: set up Play Console products + RevenueCat Android app + EAS build
+  - [ ] Add `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` (EAS env/secret) + verify Android store build can purchase/restore
 - [ ] Decide subscription “source of truth” (RevenueCat webhooks vs best-effort app sync only)
 0) This week (now → Dec 23): “Decisions + stability first”
 Payments decision (must unblock everything)

@@ -35,6 +35,7 @@ import PastPapersLibraryScreen from '../screens/papers/PastPapersLibraryScreen';
 import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
+import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -219,6 +220,14 @@ function ProfileStack() {
       <Stack.Screen
         name="Paywall"
         component={PaywallScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
         options={{
           headerShown: false,
           presentation: 'modal',

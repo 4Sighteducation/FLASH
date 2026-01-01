@@ -59,6 +59,8 @@ Ship a stable v1 to **App Store + Google Play** by **Feb 1, 2026**, with:
   - Checks entitlements on app start
   - Handles purchase + restore reliably
   - Syncs tier to Supabase (best-effort; webhooks can become source of truth later)
+- Android wiring:
+  - Add `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` in EAS env/secrets and verify Android store builds can purchase/restore
 - Add a “Paywall” screen/modal that’s consistent with your theme
 
 ---

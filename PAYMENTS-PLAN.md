@@ -234,3 +234,4 @@ These can be implemented as additional entitlements, but keep v1 simple.
 - [ ] Design school licensing v1.5 (codes + seat tracking)
 
 
+

@@ -16,7 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import { abbreviateTopicName, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import TopicContextModal from '../../components/TopicContextModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateHierarchyPalette, getHierarchyColor } from '../../utils/colorPaletteGenerator';
@@ -897,7 +897,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
         >
           <View style={styles.optionsCard}>
             <Text style={styles.optionsTitle}>
-              {showTopicOptions?.topic_name}
+              {sanitizeTopicLabel(showTopicOptions?.topic_name, { maxLength: 140 }) || showTopicOptions?.topic_name}
             </Text>
             <Text style={styles.optionsSubtitle}>
               {showTopicOptions?.card_count} cards created

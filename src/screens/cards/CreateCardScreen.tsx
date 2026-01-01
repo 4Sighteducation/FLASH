@@ -19,6 +19,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 type CardType = 'short_answer' | 'essay' | 'multiple_choice' | 'manual';
 
@@ -372,7 +373,9 @@ export default function CreateCardScreen() {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.topicInfo}>
             <Text style={styles.subjectName}>{subjectName}</Text>
-            <Text style={styles.topicName}>{topicName}</Text>
+            <Text style={styles.topicName}>
+              {sanitizeTopicLabel(topicName, { maxLength: 140 }) || topicName}
+            </Text>
           </View>
 
           <TouchableOpacity 

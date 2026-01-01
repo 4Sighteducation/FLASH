@@ -59,7 +59,7 @@ export default function TopicEditModal({
       // First check if user already has custom topics for this subject
       const { data: customTopics, error: customError } = await supabase
         .from('user_custom_topics')
-        .select('*')
+        .select('id, title, parent_topic_id, is_custom, is_deleted, sort_order')
         .eq('user_id', user?.id)
         .eq('subject_id', subject.subjectId)
         .order('sort_order');
@@ -86,7 +86,7 @@ export default function TopicEditModal({
         // Load curriculum topics for this subject
         const { data: curriculumTopics, error: curriculumError } = await supabase
           .from('curriculum_topics')
-          .select('*')
+          .select('id, topic_name, display_name, parent_topic_id, sort_order')
           .eq('exam_board_subject_id', subject.subjectId)
           .order('sort_order');
 

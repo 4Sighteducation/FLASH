@@ -12,6 +12,7 @@ import Icon from './Icon';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { sanitizeTopicLabel } from '../utils/topicNameUtils';
 
 interface SubjectBoxStats {
   subjectName: string;
@@ -262,7 +263,9 @@ export default function StudySubjectAccordion({
                       boxNumber
                     )}
                   >
-                    <Text style={styles.topicName}>{topic.topicName}</Text>
+                    <Text style={styles.topicName}>
+                      {sanitizeTopicLabel(topic.topicName, { maxLength: 80 }) || topic.topicName}
+                    </Text>
                     <View style={styles.topicStats}>
                       <Text style={styles.topicCardCount}>{topic.cardCount} cards</Text>
                       {topic.dueCount > 0 && (

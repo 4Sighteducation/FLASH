@@ -6,12 +6,11 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from './Icon';
-import { getAvatarLadder } from '../services/avatarService';
-import { getRankForXp } from '../services/gamificationService';
+import SystemStatusRankIcon from './SystemStatusRankIcon';
+import { getRankForXp, ranks } from '../services/gamificationService';
 
 type Props = {
   visible: boolean;
@@ -20,7 +19,7 @@ type Props = {
 };
 
 export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: Props) {
-  const ladder = useMemo(() => getAvatarLadder(), []);
+  const ladder = useMemo(() => ranks, []);
   const { current } = getRankForXp(totalPoints);
 
   return (
@@ -29,9 +28,9 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
         <View style={styles.modalContainer}>
           <LinearGradient colors={['rgba(0,245,255,0.10)', 'rgba(0,0,0,0.25)']} style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.headerTitle}>Skins Vault</Text>
+              <Text style={styles.headerTitle}>System Status</Text>
               <Text style={styles.headerSubtitle}>
-                Your desk evolves with you. Current: <Text style={[styles.headerSubtitleStrong, { color: current.color }]}>{current.name}</Text>
+                Your system evolves with you. Current: <Text style={[styles.headerSubtitleStrong, { color: current.color }]}>{current.name}</Text>
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -43,11 +42,11 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
             <View style={styles.introCard}>
               <Text style={styles.introTitle}>How it works</Text>
               <Text style={styles.introText}>
-                Earn XP → rank up → unlock the next “desk item” skin. No store, no grind traps — just progress.
+                Earn XP → level up → upgrade your System Status. No store, no grind traps — just progress.
               </Text>
             </View>
 
-            {ladder.map(({ rank, avatar }) => {
+            {ladder.map((rank) => {
               const unlocked = totalPoints >= rank.minXp;
               const isCurrent = rank.key === current.key;
               return (
@@ -60,7 +59,9 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
                   ]}
                 >
                   <View style={[styles.iconWrap, { borderColor: unlocked ? rank.color : 'rgba(255,255,255,0.14)' }]}>
-                    <Image source={avatar.source} style={[styles.icon, !unlocked && styles.iconLocked]} resizeMode="contain" />
+                    <View style={!unlocked ? styles.iconLocked : undefined}>
+                      <SystemStatusRankIcon rankKey={rank.key} size={44} />
+                    </View>
                   </View>
 
                   <View style={styles.rowText}>
@@ -83,8 +84,7 @@ export default function UnlockedAvatarsModal({ visible, onClose, totalPoints }: 
                       )}
                     </View>
 
-                    <Text style={styles.avatarLabel}>{avatar.label}</Text>
-                    {avatar.subtitle ? <Text style={styles.avatarSubtitle}>{avatar.subtitle}</Text> : null}
+                    <Text style={styles.avatarLabel}>{rank.tagline}</Text>
                   </View>
                 </View>
               );
@@ -181,21 +181,27 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    // Darker "stage" so neon icons pop
+    backgroundColor: 'rgba(2, 6, 23, 0.78)',
     borderWidth: 1,
     marginBottom: 10,
   },
   rowCurrent: {
-    backgroundColor: 'rgba(0,245,255,0.06)',
+    backgroundColor: 'rgba(20, 184, 166, 0.10)',
   },
   iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#14b8a6',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   icon: {
     width: 44,

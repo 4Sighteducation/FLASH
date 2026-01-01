@@ -1,0 +1,100 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A0E22"/>
+      <stop offset="0.55" stop-color="#070A19"/>
+      <stop offset="1" stop-color="#050616"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(260 240) rotate(45) scale(540 540)">
+      <stop offset="0" stop-color="#19FFA2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#19FFA2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(820 820) rotate(225) scale(620 620)">
+      <stop offset="0" stop-color="#00E5FF" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border" x1="128" y1="112" x2="896" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19FFA2"/>
+      <stop offset="0.55" stop-color="#00E5FF"/>
+      <stop offset="1" stop-color="#7C4DFF"/>
+    </linearGradient>
+    <linearGradient id="headline" x1="300" y1="0" x2="724" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19FFA2"/>
+      <stop offset="1" stop-color="#00E5FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.72 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cardShadow" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowA)"/>
+  <rect width="1024" height="1024" fill="url(#glowB)"/>
+
+  <!-- Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="128" y="112" width="768" height="800" rx="44" fill="#0B1228" fill-opacity="0.92"/>
+    <rect x="128" y="112" width="768" height="800" rx="44" stroke="url(#border)" stroke-width="6" opacity="0.92"/>
+  </g>
+
+  <!-- Clean top badge (matching annual style) -->
+  <g filter="url(#softGlow)">
+    <rect x="298" y="148" width="428" height="62" rx="31" fill="#0A1632" stroke="#19FFA2" stroke-opacity="0.6" stroke-width="2"/>
+    <text x="512" y="189" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="22" font-weight="800" fill="#CFFFEF" letter-spacing="2.2">PREMIUM • MONTHLY</text>
+  </g>
+
+  <!-- Title -->
+  <text x="512" y="306" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="86" font-weight="800" fill="#FFFFFF">Go Premium</text>
+
+  <!-- Headline -->
+  <g filter="url(#softGlow)">
+    <text x="512" y="398" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="44" font-weight="800" fill="url(#headline)">Unlock the AI. Cancel anytime.</text>
+  </g>
+
+  <line x1="232" y1="456" x2="792" y2="456" stroke="#2B3558" stroke-width="2" opacity="0.9"/>
+
+  <!-- Benefit bullets -->
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial" fill="#EAF0FF">
+    <circle cx="264" cy="532" r="16" fill="#0A1632" stroke="#19FFA2" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 532 L262 538 L274 524" stroke="#19FFA2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="540" font-size="32" font-weight="700">Unlimited AI Fl4shcards</text>
+
+    <circle cx="264" cy="606" r="16" fill="#0A1632" stroke="#00E5FF" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 606 L262 612 L274 598" stroke="#00E5FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="614" font-size="32" font-weight="700">Built from real exam specs</text>
+
+    <circle cx="264" cy="680" r="16" fill="#0A1632" stroke="#7C4DFF" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 680 L262 686 L274 672" stroke="#7C4DFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="688" font-size="32" font-weight="700">AQA • Edexcel • OCR + more</text>
+
+    <circle cx="264" cy="754" r="16" fill="#0A1632" stroke="#FF3D8A" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 754 L262 760 L274 746" stroke="#FF3D8A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="762" font-size="32" font-weight="700">MCQ, Short, Essay + Acronym</text>
+  </g>
+
+  <!-- Bottom chip -->
+  <g filter="url(#softGlow)">
+    <rect x="280" y="814" width="464" height="60" rx="24" fill="#0A1632" fill-opacity="0.75" stroke="#00E5FF" stroke-opacity="0.25"/>
+    <text x="512" y="854" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="24" font-weight="800" fill="#EAF0FF">10,000+ topics • All subjects</text>
+  </g>
+</svg>

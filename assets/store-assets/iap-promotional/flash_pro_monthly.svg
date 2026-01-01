@@ -1,0 +1,101 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#071225"/>
+      <stop offset="0.6" stop-color="#070F1E"/>
+      <stop offset="1" stop-color="#050A14"/>
+    </linearGradient>
+    <radialGradient id="glowTop" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(520 120) rotate(90) scale(520 680)">
+      <stop offset="0" stop-color="#7C4DFF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7C4DFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBottom" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(520 930) rotate(-90) scale(560 760)">
+      <stop offset="0" stop-color="#00E5FF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#00E5FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="border" x1="128" y1="200" x2="896" y2="824" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C4DFF"/>
+      <stop offset="0.55" stop-color="#00E5FF"/>
+      <stop offset="1" stop-color="#19FFA2"/>
+    </linearGradient>
+    <linearGradient id="headline" x1="260" y1="0" x2="760" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C4DFF"/>
+      <stop offset="1" stop-color="#00E5FF"/>
+    </linearGradient>
+    <linearGradient id="monthlyBadge" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C4DFF"/>
+      <stop offset="1" stop-color="#00E5FF"/>
+    </linearGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="
+        1 0 0 0 0
+        0 1 0 0 0
+        0 0 1 0 0
+        0 0 0 0.72 0" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cardShadow" x="0" y="0" width="1024" height="1024" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowTop)"/>
+  <rect width="1024" height="1024" fill="url(#glowBottom)"/>
+
+  <!-- Card -->
+  <g filter="url(#cardShadow)">
+    <rect x="128" y="112" width="768" height="800" rx="44" fill="#0A1230" fill-opacity="0.92"/>
+    <rect x="128" y="112" width="768" height="800" rx="44" stroke="url(#border)" stroke-width="6" opacity="0.92"/>
+  </g>
+
+  <!-- Clean top badge (matching annual style) -->
+  <g filter="url(#softGlow)">
+    <rect x="342" y="148" width="340" height="62" rx="31" fill="#0A1632" stroke="#7C4DFF" stroke-opacity="0.55" stroke-width="2"/>
+    <text x="512" y="189" text-anchor="middle" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial" font-size="22" font-weight="700" fill="#D4CCFF" letter-spacing="2.0">PRO • MONTHLY</text>
+  </g>
+
+  <!-- Title -->
+  <text x="512" y="306" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="88" font-weight="800" fill="#FFFFFF">Go Pro</text>
+
+  <!-- Headline -->
+  <g filter="url(#softGlow)">
+    <text x="512" y="398" text-anchor="middle"
+      font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+      font-size="44" font-weight="800" fill="url(#headline)">Maximum power. Cancel anytime.</text>
+  </g>
+
+  <line x1="232" y1="456" x2="792" y2="456" stroke="#2B3558" stroke-width="2" opacity="0.9"/>
+
+  <!-- Benefits -->
+  <g font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial" fill="#EAF0FF">
+    <circle cx="264" cy="532" r="16" fill="#0A1632" stroke="#7C4DFF" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 532 L262 538 L274 524" stroke="#7C4DFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="540" font-size="32" font-weight="700">AI Fl4shcards from real specs</text>
+
+    <circle cx="264" cy="606" r="16" fill="#0A1632" stroke="#00E5FF" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 606 L262 612 L274 598" stroke="#00E5FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="614" font-size="32" font-weight="700">Voice mode marks your answers</text>
+
+    <circle cx="264" cy="680" r="16" fill="#0A1632" stroke="#19FFA2" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 680 L262 686 L274 672" stroke="#19FFA2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="688" font-size="32" font-weight="700">Past papers + mark schemes</text>
+
+    <circle cx="264" cy="754" r="16" fill="#0A1632" stroke="#FF3D8A" stroke-opacity="0.65" stroke-width="2"/>
+    <path d="M256 754 L262 760 L274 746" stroke="#FF3D8A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="304" y="762" font-size="32" font-weight="700">AQA • Edexcel • OCR + more</text>
+  </g>
+
+  <text x="512" y="850" text-anchor="middle"
+    font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial"
+    font-size="22" font-weight="600" fill="#9FB0D8" opacity="0.95">
+    Everything in Premium + Pro-only features
+  </text>
+
+</svg>

@@ -37,7 +37,9 @@ interface TopicNode {
 
 export default function CardTopicSelector() {
   const route = useRoute();
-  const navigation = useNavigation();
+  // Keep navigation permissive (this screen routes to multiple targets).
+  // Without a typed ParamList, React Navigation types can collapse to `never`.
+  const navigation = useNavigation<any>();
   const { subjectId, subjectName, subjectColor, examBoard, examType, mode } = route.params as any;
 
   const [topics, setTopics] = useState<CurriculumTopic[]>([]);
@@ -53,7 +55,7 @@ export default function CardTopicSelector() {
     try {
       const { data, error } = await supabase
         .from('curriculum_topics')
-        .select('*')
+        .select('id, topic_name, display_name, topic_level, parent_topic_id, exam_board_subject_id, sort_order')
         .eq('exam_board_subject_id', subjectId)
         .order('topic_level')
         .order('sort_order');
@@ -63,7 +65,7 @@ export default function CardTopicSelector() {
       // Load user customizations (including deletions)
       const { data: customTopics } = await supabase
         .from('user_custom_topics')
-        .select('*')
+        .select('original_topic_id, title, is_deleted')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
         .eq('subject_id', subjectId);
 
@@ -83,6 +85,7 @@ export default function CardTopicSelector() {
         // Update title if customized
         if (custom?.title) {
           topic.topic_name = custom.title;
+          topic.display_name = custom.title;
         }
         return true;
       });

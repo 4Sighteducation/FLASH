@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <filter id="glow6" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow6Strong" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <radialGradient id="vortexGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="50%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="50" cy="50" r="42" fill="none" stroke="#ec4899" stroke-width="2" opacity="0.4" filter="url(#glow6)"/>
+  <circle cx="50" cy="50" r="35" fill="none" stroke="#ec4899" stroke-width="3" filter="url(#glow6Strong)"/>
+  <circle cx="50" cy="50" r="28" fill="none" stroke="#14b8a6" stroke-width="3" filter="url(#glow6)"/>
+  <circle cx="50" cy="50" r="21" fill="none" stroke="#ec4899" stroke-width="2" filter="url(#glow6)"/>
+  <circle cx="50" cy="50" r="14" fill="none" stroke="#14b8a6" stroke-width="2" filter="url(#glow6)"/>
+  <circle cx="50" cy="50" r="8" fill="#ec4899" filter="url(#glow6Strong)"/>
+  <circle cx="50" cy="50" r="4" fill="#fff"/>
+
+  <line x1="50" y1="8" x2="50" y2="20" stroke="#14b8a6" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="50" y1="80" x2="50" y2="92" stroke="#14b8a6" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="8" y1="50" x2="20" y2="50" stroke="#14b8a6" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="80" y1="50" x2="92" y2="50" stroke="#14b8a6" stroke-width="2" filter="url(#glow6)"/>
+
+  <line x1="15" y1="15" x2="25" y2="25" stroke="#ec4899" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="85" y1="15" x2="75" y2="25" stroke="#ec4899" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="15" y1="85" x2="25" y2="75" stroke="#ec4899" stroke-width="2" filter="url(#glow6)"/>
+  <line x1="85" y1="85" x2="75" y2="75" stroke="#ec4899" stroke-width="2" filter="url(#glow6)"/>
+</svg>
+
+

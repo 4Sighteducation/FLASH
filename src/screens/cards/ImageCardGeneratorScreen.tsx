@@ -21,6 +21,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { AIService, GeneratedCard } from '../../services/aiService';
 import FlashcardCard from '../../components/FlashcardCard';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
 
@@ -416,7 +417,9 @@ export default function ImageCardGeneratorScreen() {
 
       <View style={styles.topicInfo}>
         <Text style={styles.topicSubject}>{subjectName}</Text>
-        <Text style={styles.topicName}>{topicName}</Text>
+        <Text style={styles.topicName}>
+          {sanitizeTopicLabel(topicName, { maxLength: 140 }) || topicName}
+        </Text>
       </View>
 
       <KeyboardAvoidingView

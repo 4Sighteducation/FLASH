@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <filter id="glow4" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="25" y="30" width="50" height="40" rx="4" fill="none" stroke="#14b8a6" stroke-width="2" filter="url(#glow4)"/>
+  <rect x="35" y="38" width="30" height="24" fill="#0d9488" opacity="0.3"/>
+  <line x1="30" y1="20" x2="30" y2="30" stroke="#14b8a6" stroke-width="2"/>
+  <line x1="50" y1="20" x2="50" y2="30" stroke="#14b8a6" stroke-width="2"/>
+  <line x1="70" y1="20" x2="70" y2="30" stroke="#14b8a6" stroke-width="2"/>
+  <line x1="30" y1="70" x2="30" y2="80" stroke="#14b8a6" stroke-width="2"/>
+  <line x1="50" y1="70" x2="50" y2="80" stroke="#14b8a6" stroke-width="2"/>
+  <line x1="70" y1="70" x2="70" y2="80" stroke="#14b8a6" stroke-width="2"/>
+  <path d="M35 35 Q38 28 40 35 Q42 25 45 35" fill="none" stroke="#ec4899" stroke-width="2" filter="url(#glow4)"/>
+  <path d="M55 35 Q58 25 60 35 Q62 28 65 35" fill="none" stroke="#ec4899" stroke-width="2" filter="url(#glow4)"/>
+</svg>
+
+

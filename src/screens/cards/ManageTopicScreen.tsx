@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
-import { abbreviateTopicName } from '../../utils/topicNameUtils';
+import { abbreviateTopicName, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import FlashcardCard from '../../components/FlashcardCard';
 
 // Priority levels - using "Revision Urgency" set
@@ -353,7 +353,7 @@ export default function ManageTopicScreen() {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={[styles.headerTopicName, { color: colors.text }]} numberOfLines={2}>
-            {topicName}
+            {sanitizeTopicLabel(topicName, { maxLength: 140 }) || topicName}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             {subjectName}

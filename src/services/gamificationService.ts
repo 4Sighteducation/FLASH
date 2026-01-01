@@ -50,18 +50,19 @@ export const gamificationConfig = {
 export type Rank = {
   key: string;
   name: string;
+  tagline: string;
   minXp: number;
   color: string;
 };
 
 export const ranks: Rank[] = [
-  { key: 'rookie', name: 'Rookie', minXp: 0, color: '#94A3B8' },
-  { key: 'learner', name: 'Learner', minXp: 250, color: '#3B82F6' },
-  { key: 'scholar', name: 'Scholar', minXp: 1000, color: '#10B981' },
-  { key: 'contender', name: 'Contender', minXp: 5000, color: '#F59E0B' },
-  { key: 'ace', name: 'Ace', minXp: 20000, color: '#A855F7' },
-  { key: 'elite', name: 'Elite', minXp: 75000, color: '#FF006E' },
-  { key: 'legend', name: 'Legend', minXp: 200000, color: '#FFD700' },
+  { key: 'rookie', name: 'Standby', tagline: '"Currently in sleep mode."', minXp: 0, color: '#94A3B8' },
+  { key: 'learner', name: 'Waking Up', tagline: '"Cursor blinking. Brain loading."', minXp: 250, color: '#3B82F6' },
+  { key: 'scholar', name: 'Booting', tagline: '"Knowledge loading... please wait."', minXp: 1000, color: '#10B981' },
+  { key: 'contender', name: 'Online', tagline: '"Fully operational. Slightly dangerous."', minXp: 5000, color: '#F59E0B' },
+  { key: 'ace', name: 'Overclocked', tagline: '"Running hot. Can\'t be stopped."', minXp: 20000, color: '#A855F7' },
+  { key: 'elite', name: 'Neural Net', tagline: '"Thinking in algorithms now."', minXp: 75000, color: '#FF006E' },
+  { key: 'legend', name: 'Singularity', tagline: '"You ARE the revision."', minXp: 200000, color: '#FFD700' },
 ];
 
 export function getRankForXp(totalPoints: number) {

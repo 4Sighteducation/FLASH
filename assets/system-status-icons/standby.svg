@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <filter id="glow1" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glowPinkSoft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#FF2D9A" stroke-width="1.5" opacity="0.35" filter="url(#glowPinkSoft)"/>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#374151" stroke-width="2" opacity="0.5"/>
+  <text x="50" y="58" text-anchor="middle" fill="#FF2D9A" font-size="30" font-weight="700" font-family="Arial" filter="url(#glowPinkSoft)">Z</text>
+  <text x="62" y="48" text-anchor="middle" fill="#FF2D9A" font-size="24" font-weight="700" font-family="Arial" filter="url(#glowPinkSoft)" opacity="0.85">z</text>
+  <text x="72" y="40" text-anchor="middle" fill="#FF2D9A" font-size="18" font-weight="700" font-family="Arial" filter="url(#glowPinkSoft)" opacity="0.75">z</text>
+</svg>
+
+

@@ -68,7 +68,9 @@ const getLighterShade = (color: string, level: number): string => {
 
 export default function TopicListScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation();
+  // Keep navigation permissive (this screen uses multiple route targets).
+  // Without a typed ParamList, React Navigation types can collapse to `never`.
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { subjectId, subjectName, subjectColor } = route.params;
 
@@ -119,7 +121,7 @@ export default function TopicListScreen() {
     try {
       const { data, error } = await supabase
         .from('curriculum_topics')
-        .select('*')
+        .select('id, topic_name, display_name, topic_level, parent_topic_id, exam_board_subject_id, sort_order')
         .eq('exam_board_subject_id', subjectId)
         .order('topic_level')
         .order('sort_order');
@@ -129,7 +131,7 @@ export default function TopicListScreen() {
       // Load user customizations (including deletions)
       const { data: customTopics } = await supabase
         .from('user_custom_topics')
-        .select('*')
+        .select('original_topic_id, title, is_deleted')
         .eq('user_id', user?.id)
         .eq('subject_id', subjectId);
 
@@ -149,6 +151,7 @@ export default function TopicListScreen() {
         // Update title if customized
         if (custom?.title) {
           topic.topic_name = custom.title;
+          topic.display_name = custom.title;
         }
         return true;
       });

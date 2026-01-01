@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Image,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
 import UnlockedAvatarsModal from '../../components/UnlockedAvatarsModal';
-import { getAvatarForXp } from '../../services/avatarService';
+import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 
 interface UserSubject {
   id: string;
@@ -283,7 +282,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const totalPoints = userStats?.total_points ?? 0;
   const rank = getRankForXp(totalPoints);
-  const avatar = getAvatarForXp(totalPoints);
+  // Rank icon now uses the System Status SVG set.
 
   return (
     <SafeAreaView style={styles.container}>
@@ -296,7 +295,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
                 <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                  <Image source={avatar.source} style={styles.headerAvatarImage} resizeMode="contain" />
+                  <SystemStatusRankIcon rankKey={rank.current.key} size={44} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -331,14 +330,14 @@ export default function HomeScreen({ navigation }: any) {
               <TouchableOpacity style={styles.lockPill} onPress={() => setShowSkinsModal(true)}>
                 {rank.next ? (
                   <View>
-                    <Text style={styles.lockPillTextLine1}>🔓 Next skin: {rank.next.name}</Text>
+                    <Text style={styles.lockPillTextLine1}>🔓 Next status: {rank.next.name}</Text>
                     <Text style={styles.lockPillTextLine2}>
                       {rank.next.minXp.toLocaleString()} XP <Text style={styles.lockPillTextDim}>• Tap</Text>
                     </Text>
                   </View>
                 ) : (
                   <Text style={styles.lockPillTextLine1}>
-                    🏆 Skins Vault <Text style={styles.lockPillTextDim}>• Tap</Text>
+                    🏆 Status Ladder <Text style={styles.lockPillTextDim}>• Tap</Text>
                   </Text>
                 )}
               </TouchableOpacity>
@@ -666,10 +665,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(0, 245, 255, 0.18)',
+    // Darker background so the icon (and its rings) stand out
+    backgroundColor: 'rgba(0, 0, 0, 0.30)',
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    // Make the icon read better on mobile (subtle glow/lift)
+    shadowColor: '#14b8a6',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   headerAvatarImage: {
     width: 38,

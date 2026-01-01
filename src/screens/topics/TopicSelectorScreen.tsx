@@ -70,7 +70,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
     try {
       const { data, error } = await supabase
         .from('exam_boards')
-        .select('*')
+        .select('id, code, full_name')
         .eq('active', true)
         .order('full_name');
 
@@ -88,7 +88,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
     try {
       const { data, error } = await supabase
         .from('exam_board_subjects')
-        .select('*')
+        .select('id, subject_code, subject_name, exam_board_id')
         .eq('exam_board_id', examBoardId)
         .eq('is_current', true)
         .order('subject_name');
@@ -106,7 +106,7 @@ export default function TopicSelectorScreen({ navigation }: any) {
       // Fetch only top-level topics (where parent_topic_id is null)
       const { data, error } = await supabase
         .from('curriculum_topics')
-        .select('*')
+        .select('id, topic_name, display_name, topic_code, topic_level, parent_topic_id, exam_board_subject_id')
         .eq('exam_board_subject_id', subjectId)
         .is('parent_topic_id', null)
         .order('sort_order')

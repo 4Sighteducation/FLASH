@@ -44,3 +44,4 @@ CREATE POLICY "Users can delete their own paper question xp awards"
 COMMENT ON TABLE paper_question_xp_awards IS 'One-time XP awards per question (first attempt only), used to compute paper mark-based XP without double counting.';
 
 
+

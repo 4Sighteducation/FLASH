@@ -23,6 +23,7 @@ import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 interface Topic {
   id: string;
   topic_name: string;
+  display_name?: string | null;
   topic_level: number;
   parent_topic_id: string | null;
   priority?: number;
@@ -79,7 +80,7 @@ export default function TopicHubScreen() {
       // Load curriculum topics
       const { data, error } = await supabase
         .from('curriculum_topics')
-        .select('*')
+        .select('id, topic_name, display_name, topic_level, parent_topic_id, sort_order')
         .eq('exam_board_subject_id', subjectId)
         .order('topic_level')
         .order('sort_order');
@@ -89,7 +90,7 @@ export default function TopicHubScreen() {
       // Load user customizations (including deletions)
       const { data: customTopics } = await supabase
         .from('user_custom_topics')
-        .select('*')
+        .select('original_topic_id, title, is_deleted')
         .eq('user_id', user?.id)
         .eq('subject_id', subjectId);
 
@@ -109,6 +110,7 @@ export default function TopicHubScreen() {
         // Update title if customized
         if (custom?.title) {
           topic.topic_name = custom.title;
+          topic.display_name = custom.title;
         }
         return true;
       });
@@ -393,7 +395,7 @@ export default function TopicHubScreen() {
                   onPress={() => setEditModal({ 
                     visible: true, 
                     topic, 
-                    newName: topic.topic_name 
+                    newName: getTopicLabel(topic)
                   })}
                   style={styles.actionButton}
                 >
@@ -626,7 +628,7 @@ export default function TopicHubScreen() {
         onClose={() => setDeleteModal({ visible: false, topic: null })}
         onConfirm={handleDeleteTopic}
         itemType={deleteModal.topic ? LEVEL_NAMES[deleteModal.topic.topic_level as keyof typeof LEVEL_NAMES] : 'Topic'}
-        itemName={deleteModal.topic?.topic_name || ''}
+        itemName={deleteModal.topic ? getTopicLabel(deleteModal.topic) : ''}
         warningMessage="This will hide this item from your study list."
       />
     </SafeAreaView>

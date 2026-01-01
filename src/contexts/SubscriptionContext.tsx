@@ -172,25 +172,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const checkSubscriptionStatus = async () => {
     try {
-      // Check local storage first
-      const localTierRaw = await AsyncStorage.getItem('subscriptionTier');
-      const localTier = normalizeTier(localTierRaw);
-      
-      // Then verify with backend
+      // IMPORTANT: Do not trust local storage as a source of truth for paid access.
+      // If RevenueCat is unavailable (web/dev) or DB has no row, default to free.
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('tier, expires_at')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
-      if (data && !error) {
-        const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
-        const resolved = isExpired ? 'free' : normalizeTier(data.tier);
-        setTier(resolved);
-        await AsyncStorage.setItem('subscriptionTier', resolved);
-      } else {
-        setTier(localTier);
+      if (error) {
+        setTier('free');
+        await AsyncStorage.setItem('subscriptionTier', 'free');
+        return;
       }
+
+      if (!data?.tier) {
+        setTier('free');
+        await AsyncStorage.setItem('subscriptionTier', 'free');
+        return;
+      }
+
+      const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
+      const resolved = isExpired ? 'free' : normalizeTier(data.tier);
+      setTier(resolved);
+      await AsyncStorage.setItem('subscriptionTier', resolved);
     } catch (error) {
       console.error('Error checking subscription:', error);
     } finally {
@@ -221,7 +226,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const initializeRevenueCat = async () => {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
       if (!apiKey || Platform.OS === 'web' || !user?.id) {
         await checkSubscriptionStatus();
         return;
@@ -282,7 +292,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const purchasePlan = async (plan: Plan, billing: BillingPeriod) => {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
       if (!apiKey || Platform.OS === 'web' || !user?.id) {
         Alert.alert('Info', 'Purchases require a store build.');
         return;
@@ -295,7 +310,16 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await applyTier(next, exp);
     } catch (error) {
       console.error('Purchase error:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to initiate purchase.');
+      const msg = error instanceof Error ? error.message : 'Failed to initiate purchase.';
+      // Surface common RevenueCat config issue with a clearer hint.
+      if (typeof msg === 'string' && (msg.includes('offerings') || msg.includes('products') || msg.includes('Offering'))) {
+        Alert.alert(
+          'Purchase unavailable',
+          'RevenueCat could not fetch products from App Store Connect. Please verify RevenueCat Product Catalog IDs match App Store Connect and Offering `default` contains the packages (premium_monthly, premium_annual, pro_monthly, pro_annual).'
+        );
+        return;
+      }
+      Alert.alert('Error', msg);
     }
   };
 
