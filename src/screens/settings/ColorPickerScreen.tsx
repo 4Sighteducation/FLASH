@@ -151,6 +151,10 @@ export default function ColorPickerScreen() {
   }, [totalPoints]);
 
   const handleSave = async () => {
+    if (!user?.id) {
+      Alert.alert('Login required', 'Please log in again to save changes.');
+      return;
+    }
     setSaving(true);
     try {
       let updateData: any;
@@ -185,7 +189,7 @@ export default function ColorPickerScreen() {
       const { error } = await supabase
         .from('user_subjects')
         .update(updateData)
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('subject_id', subjectId);
 
       if (error) throw error;

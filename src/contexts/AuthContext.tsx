@@ -211,10 +211,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    const currentUserId = user?.id;
     try {
+      // Best-effort: sign out from Supabase first.
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
+      // Ensure local state clears even if the auth event doesn't fire for some reason.
+      setSession(null);
+      setUser(null);
+
+      // Uninstall/reinstall "fixes" usually mean persisted storage got into a bad state.
+      // Clear known auth/app keys best-effort to avoid stuck sessions / dead UI after tier changes.
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const toRemove = keys.filter((k) => {
+          if (k.startsWith('sb-')) return true; // supabase-js auth tokens
+          if (k.includes('supabase')) return true;
+          if (k.startsWith('welcomeEmailSent:')) return true;
+          if (k.startsWith('subscriptionTier:')) return true;
+          if (k.startsWith('userSettings:')) return true;
+          return false;
+        });
+        if (toRemove.length) {
+          await AsyncStorage.multiRemove(toRemove);
+        }
+        // Also clear per-user tier key explicitly if present.
+        if (currentUserId) {
+          await AsyncStorage.removeItem(`subscriptionTier:${currentUserId}`);
+        }
+      } catch (e) {
+        console.warn('[Auth] Failed to clear local storage on signOut (non-fatal):', e);
+      }
     }
   };
 

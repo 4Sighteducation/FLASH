@@ -40,6 +40,7 @@ import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
 import PrioritySupportFab from '../components/support/PrioritySupportFab';
 import ParentInviteFab from '../components/support/ParentInviteFab';
+import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -238,6 +239,11 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
       <Stack.Screen
         name="RedeemCode"
         component={RedeemCodeScreen}
