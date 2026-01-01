@@ -215,4 +215,133 @@ export default function TopicChildrenPickerModal({
           <View style={styles.headerActionsRow}>
             <TouchableOpacity onPress={selectAll} style={styles.smallBtn}>
               <Text style={[styles.smallBtnText, { color: subjectColor }]}>Select all</Text>
-            </Touchabl
+            </TouchableOpacity>
+            <TouchableOpacity onPress={clearAll} style={styles.smallBtn}>
+              <Text style={styles.smallBtnText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {loading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={subjectColor} />
+            <Text style={styles.loadingText}>Loading topics…</Text>
+          </View>
+        ) : (
+          <ScrollView style={styles.list}>
+            {visibleTopics.length === 0 ? (
+              <View style={styles.empty}>
+                <Icon name="checkmark-circle" size={44} color="#94A3B8" />
+                <Text style={styles.emptyTitle}>All set</Text>
+                <Text style={styles.emptyText}>No new topics to add at this level.</Text>
+              </View>
+            ) : (
+              visibleTopics.map((t) => {
+                const label = getTopicLabel(t as any);
+                const checked = selectedIds.has(t.id);
+                const hasChildren = parentsWithChildren.has(t.id);
+
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[styles.row, checked && styles.rowSelected]}
+                    onPress={() => toggleSelected(t.id)}
+                    onLongPress={() => (hasChildren ? drillDown(t) : undefined)}
+                    delayLongPress={300}
+                  >
+                    <View style={styles.rowLeft}>
+                      <Text style={[styles.checkbox, { color: checked ? subjectColor : '#64748B' }]}>
+                        {checked ? '☑' : '☐'}
+                      </Text>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.rowTitle} numberOfLines={2}>
+                          {sanitizeTopicLabel(label)}
+                        </Text>
+                        <Text style={styles.rowMeta}>Level {t.topic_level}</Text>
+                      </View>
+                    </View>
+
+                    {hasChildren ? (
+                      <TouchableOpacity
+                        onPress={() => drillDown(t)}
+                        style={styles.chevronBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Icon name="chevron-forward" size={20} color="#94A3B8" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        )}
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.addBtn,
+              { backgroundColor: subjectColor },
+              (saving || selectedIds.size === 0) && styles.addBtnDisabled,
+            ]}
+            onPress={handleAddSelected}
+            disabled={saving || selectedIds.size === 0}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.addBtnText}>
+                Add {selectedIds.size > 0 ? selectedIds.size : ''} topic{selectedIds.size === 1 ? '' : 's'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0B0B0F' },
+  header: { paddingTop: 18, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIconBtn: { padding: 8 },
+  headerTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  headerSubtitle: { color: '#94A3B8', fontSize: 12, marginTop: 2 },
+  headerActionsRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  smallBtnText: { color: '#CBD5E1', fontSize: 12, fontWeight: '700' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  loadingText: { color: '#94A3B8' },
+  list: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 10,
+  },
+  rowSelected: { borderColor: 'rgba(0,245,255,0.35)', backgroundColor: 'rgba(0,245,255,0.06)' },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  checkbox: { fontSize: 18, fontWeight: '900' },
+  rowTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  rowMeta: { color: '#64748B', fontSize: 12, marginTop: 4 },
+  chevronBtn: { padding: 6, marginLeft: 10 },
+  empty: { padding: 28, alignItems: 'center', gap: 10 },
+  emptyTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  emptyText: { color: '#94A3B8', textAlign: 'center' },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  addBtn: { paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  addBtnDisabled: { opacity: 0.5 },
+  addBtnText: { color: '#000', fontWeight: '900' },
+});
