@@ -76,6 +76,7 @@ type StripeInvoice = {
   object: 'invoice';
   livemode?: boolean;
   subscription?: string | null;
+  subscription_details?: { metadata?: Record<string, string> } | null;
   lines?: { data?: Array<{ period?: { end?: number } }> };
 };
 
@@ -239,13 +240,20 @@ serve(async (req) => {
             break;
           }
 
+          // Prefer metadata already present on the invoice event (avoids extra Stripe API calls and
+          // works even if restricted keys can't read subscription metadata).
+          const invMeta = (invObj as any)?.subscription_details?.metadata || {};
+          const invoiceParentClaimId = String(invMeta?.parent_claim_id || '').trim();
+          const invoiceChildEmail = String(invMeta?.child_email || '').trim();
+          const invoiceStudentUserId = String(invMeta?.student_user_id || '').trim();
+
           const sub = await stripeGet<StripeSubscription>({
             url: `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
             apiKey: stripeKey,
           });
 
-          const studentUserId = (sub?.metadata?.student_user_id || '').trim();
-          const parentClaimId = (sub?.metadata?.parent_claim_id || '').trim();
+          const studentUserId = invoiceStudentUserId || (sub?.metadata?.student_user_id || '').trim();
+          const parentClaimId = invoiceParentClaimId || (sub?.metadata?.parent_claim_id || '').trim();
 
           // Parent-first flow: parent pays on web, child claims later. No immediate RevenueCat grant here.
           if (!studentUserId && parentClaimId) {
@@ -291,7 +299,7 @@ serve(async (req) => {
             const claimCode = String((claim as any).claim_code);
             const claimLink = `${marketingBase.replace(/\/$/, '')}/claim?code=${encodeURIComponent(claimCode)}`;
             const codePretty = formatClaimCode(claimCode);
-            const toEmail = String((claim as any).child_email);
+            const toEmail = invoiceChildEmail || String((claim as any).child_email);
 
             const fromEmail =
               Deno.env.get('SENDGRID_PARENTS_FROM_EMAIL') ||
