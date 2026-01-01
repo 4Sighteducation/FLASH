@@ -1,0 +1,11 @@
+supabase/functions/**
+supabase/migrations/**
+supabase/.temp/**
+
+# Non-app directories (avoid false positives / different tooling)
+marketing/**
+commercial-app-plan/**
+dist/**
+api/**
+
+

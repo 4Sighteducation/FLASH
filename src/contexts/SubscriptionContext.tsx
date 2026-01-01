@@ -20,7 +20,7 @@ import {
 // NOTE: We keep backwards-compatibility with legacy values stored in DB/storage ('lite'/'full').
 export type SubscriptionTier = 'free' | 'premium' | 'pro';
 
-interface SubscriptionLimits {
+export interface SubscriptionLimits {
   maxSubjects: number;
   maxTopicsPerSubject: number;
   maxCards: number;

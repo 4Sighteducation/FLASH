@@ -1,0 +1,603 @@
+Eduqas ALevels in Staging DB 
+Art and Design
+115 topics
+0 papers
+A-Level
+Also offered by WJEC
+Biology (A-Level)
+283 topics
+0 papers
+A-Level
+Also offered by WJEC
+Business
+445 topics
+0 papers
+A-Level
+Also offered by WJEC
+Chemistry
+301 topics
+0 papers
+A-Level
+Also offered by WJEC
+Computer Science
+85 topics
+0 papers
+A-Level
+Also offered by WJEC
+Design and Technology
+92 topics
+0 papers
+A-Level
+Also offered by WJEC
+Drama
+118 topics
+0 papers
+A-Level
+Also offered by WJEC
+Economics (A-Level)
+125 topics
+0 papers
+A-Level
+Also offered by WJEC
+Electronics
+193 topics
+0 papers
+A-Level
+Also offered by WJEC
+English Language (A-Level)
+42 topics
+0 papers
+A-Level
+Also offered by WJEC
+English Language and Literature
+211 topics
+0 papers
+A-Level
+Also offered by WJEC
+English Literature
+177 topics
+0 papers
+A-Level
+Also offered by WJEC
+Film Studies
+68 topics
+0 papers
+A-Level
+Also offered by WJEC
+French (A-Level)
+54 topics
+0 papers
+A-Level
+Also offered by WJEC
+Geography (A-Level)
+849 topics
+0 papers
+A-Level
+Also offered by WJEC
+Geology
+202 topics
+0 papers
+A-Level
+German
+36 topics
+0 papers
+A-Level
+Also offered by WJEC
+Law
+110 topics
+0 papers
+A-Level
+Also offered by WJEC
+Media Studies
+114 topics
+0 papers
+A-Level
+Also offered by WJEC
+Music
+97 topics
+0 papers
+A-Level
+Physical Education (A-Level)
+311 topics
+0 papers
+A-Level
+Also offered by WJEC
+Physics (A-Level)
+358 topics
+0 papers
+A-Level
+Also offered by WJEC
+Psychology (A-Level)
+212 topics
+0 papers
+A-Level
+Also offered by WJEC
+Religious Studies
+159 topics
+0 papers
+A-Level
+Also offered by WJEC
+Sociology (A-Level)
+120 topics
+0 papers
+A-Level
+Also offered by WJEC
+Spanish
+42 topics
+0 papers
+A-Level
+Also offered by WJEC
+
+WJEC Alevels in Staging DB
+Art and Design
+115 topics
+5 papers
+A-Level
+Also offered by EDUQAS
+Biology (A-Level)
+283 topics
+69 papers
+A-Level
+Also offered by EDUQAS
+Built Environment (A-Level)
+1171 topics
+0 papers
+A-Level
+Business
+445 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+Chemistry
+301 topics
+76 papers
+A-Level
+Also offered by EDUQAS
+Computer Science
+85 topics
+45 papers
+A-Level
+Also offered by EDUQAS
+Design and Technology
+92 topics
+38 papers
+A-Level
+Also offered by EDUQAS
+Digital Technology (A-Level)
+96 topics
+3 papers
+A-Level
+Drama
+118 topics
+21 papers
+A-Level
+Also offered by EDUQAS
+Economics (A-Level)
+125 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+Electronics
+193 topics
+95 papers
+A-Level
+Also offered by EDUQAS
+English Language (A-Level)
+42 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+English Language and Literature
+211 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+English Literature
+177 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+Film Studies
+68 topics
+40 papers
+A-Level
+Also offered by EDUQAS
+French (A-Level)
+54 topics
+57 papers
+A-Level
+Also offered by EDUQAS
+Geography (A-Level)
+849 topics
+37 papers
+A-Level
+Also offered by EDUQAS
+Geology
+202 topics
+172 papers
+A-Level
+Also offered by EDUQAS
+German
+36 topics
+54 papers
+A-Level
+Also offered by EDUQAS
+Government and Politics (A-Level)
+153 topics
+28 papers
+A-Level
+History (A-Level)
+530 topics
+381 papers
+A-Level
+Law
+110 topics
+28 papers
+A-Level
+Also offered by EDUQAS
+Mathematics (A-Level)
+41 topics
+0 papers
+A-Level
+Media Studies
+114 topics
+14 papers
+A-Level
+Also offered by EDUQAS
+Music
+97 topics
+31 papers
+A-Level
+Also offered by EDUQAS
+Physical Education (A-Level)
+311 topics
+18 papers
+A-Level
+Also offered by EDUQAS
+Physics (A-Level)
+358 topics
+75 papers
+A-Level
+Also offered by EDUQAS
+Psychology (A-Level)
+212 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+Religious Studies
+159 topics
+148 papers
+A-Level
+Also offered by EDUQAS
+Sociology (A-Level)
+120 topics
+44 papers
+A-Level
+Also offered by EDUQAS
+Spanish
+42 topics
+57 papers
+A-Level
+Also offered by EDUQAS
+Welsh Language (A-Level)
+17 topics
+25 papers
+A-Level
+Welsh Second Language (A-Level)
+11 topics
+25 papers
+A-Level
+
+EDUQAS - GCSE in Staging DB
+Art and Design
+29 topics
+0 papers
+GCSE
+Also offered by WJEC
+Business
+412 topics
+0 papers
+GCSE
+Also offered by WJEC
+Computer Science
+336 topics
+0 papers
+GCSE
+Also offered by WJEC
+Design and Technology
+84 topics
+0 papers
+GCSE
+Also offered by WJEC
+Drama
+76 topics
+0 papers
+GCSE
+Electronics
+104 topics
+0 papers
+GCSE
+Also offered by WJEC
+English Language (GCSE)
+41 topics
+0 papers
+GCSE
+Also offered by WJEC
+English Literature
+120 topics
+0 papers
+GCSE
+Also offered by WJEC
+Film Studies
+82 topics
+0 papers
+GCSE
+Also offered by WJEC
+Food Preparation and Nutrition
+166 topics
+0 papers
+GCSE
+French
+96 topics
+0 papers
+GCSE
+Also offered by WJEC
+Geography A
+68 topics
+0 papers
+GCSE
+Geography B
+58 topics
+0 papers
+GCSE
+Geology (GCSE)
+72 topics
+0 papers
+GCSE
+German (GCSE)
+96 topics
+0 papers
+GCSE
+Also offered by WJEC
+History
+386 topics
+0 papers
+GCSE
+Also offered by WJEC
+Latin
+139 topics
+0 papers
+GCSE
+Also offered by WJEC
+Mathematics
+252 topics
+0 papers
+GCSE
+Also offered by WJEC
+Media Studies
+82 topics
+0 papers
+GCSE
+Also offered by WJEC
+Music (GCSE)
+226 topics
+0 papers
+GCSE
+Physical Education
+251 topics
+0 papers
+GCSE
+Also offered by WJEC
+Religious Studies
+211 topics
+0 papers
+GCSE
+Also offered by WJEC
+Sociology
+208 topics
+0 papers
+GCSE
+Also offered by WJEC
+Spanish (GCSE)
+128 topics
+0 papers
+GCSE
+Also offered by WJEC
+
+WJEC GCSE in Staging DB
+Applied Science (Double Award) (GCSE)
+270 topics
+82 papers
+GCSE
+Applied Science (Single Award) (GCSE)
+201 topics
+62 papers
+GCSE
+Art and Design
+29 topics
+4 papers
+GCSE
+Also offered by EDUQAS
+Biology (GCSE)
+180 topics
+37 papers
+GCSE
+Built Environment (GCSE)
+294 topics
+3 papers
+GCSE
+Business
+412 topics
+26 papers
+GCSE
+Also offered by EDUQAS
+Chemistry (GCSE)
+180 topics
+34 papers
+GCSE
+Computer Science
+336 topics
+16 papers
+GCSE
+Also offered by EDUQAS
+Dance (GCSE)
+84 topics
+0 papers
+GCSE
+Design and Technology
+84 topics
+22 papers
+GCSE
+Also offered by EDUQAS
+Digital Media and Film (GCSE)
+397 topics
+0 papers
+GCSE
+Digital Technology (GCSE)
+261 topics
+2 papers
+GCSE
+Drama
+76 topics
+11 papers
+GCSE
+Also offered by EDUQAS
+Electronics
+104 topics
+46 papers
+GCSE
+Also offered by EDUQAS
+English Language (GCSE)
+41 topics
+71 papers
+GCSE
+Also offered by EDUQAS
+English Language and Literature (Double Award) (GCSE)
+78 topics
+0 papers
+GCSE
+English Language and Literature (Single Award) (GCSE)
+60 topics
+0 papers
+GCSE
+English Literature
+120 topics
+78 papers
+GCSE
+Also offered by EDUQAS
+Film Studies
+82 topics
+20 papers
+GCSE
+Also offered by EDUQAS
+Food and Nutrition
+166 topics
+13 papers
+GCSE
+French
+96 topics
+120 papers
+GCSE
+Also offered by EDUQAS
+Geography (GCSE)
+256 topics
+26 papers
+GCSE
+Geology
+235 topics
+30 papers
+GCSE
+Also offered by EDUQAS
+German (GCSE)
+96 topics
+108 papers
+GCSE
+Also offered by EDUQAS
+Health and Social Care, and Childcare (GCSE)
+272 topics
+0 papers
+GCSE
+History
+386 topics
+78 papers
+GCSE
+Also offered by EDUQAS
+Iaith a Llenyddiaeth Gymraeg (Double Award) (GCSE)
+735 topics
+0 papers
+GCSE
+Iaith a Llenyddiaeth Gymraeg (Single Award) (GCSE)
+218 topics
+0 papers
+GCSE
+Integrated Science (Single Award) (GCSE)
+794 topics
+0 papers
+GCSE
+Latin
+139 topics
+59 papers
+GCSE
+Also offered by EDUQAS
+Mathematics
+252 topics
+0 papers
+GCSE
+Also offered by EDUQAS
+Media Studies
+82 topics
+13 papers
+GCSE
+Also offered by EDUQAS
+Music (GCSE)
+226 topics
+14 papers
+GCSE
+Also offered by EDUQAS
+Physical Education
+251 topics
+9 papers
+GCSE
+Also offered by EDUQAS
+Physics (GCSE)
+167 topics
+44 papers
+GCSE
+Religious Studies
+211 topics
+79 papers
+GCSE
+Also offered by EDUQAS
+Social Studies (GCSE)
+647 topics
+0 papers
+GCSE
+Sociology
+208 topics
+28 papers
+GCSE
+Also offered by EDUQAS
+Spanish (GCSE)
+128 topics
+119 papers
+GCSE
+Also offered by EDUQAS
+The Sciences (Double Award) (GCSE)
+1796 topics
+0 papers
+GCSE
+Welsh Language (GCSE)
+30 topics
+66 papers
+GCSE
+Welsh Literature (GCSE)
+46 topics
+70 papers
+GCSE
+Welsh Second Language (GCSE)
+28 topics
+38 papers
+GCSE
+
+
+

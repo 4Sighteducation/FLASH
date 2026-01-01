@@ -58,5 +58,5 @@ files.forEach(file => {
 console.log(`\n✅ Switched to ${mode} IAP mode`);
 console.log(mode === 'mock' 
   ? '📱 You can now run: npx expo start' 
-  : '🏗️  Ready for custom build: eas build --platform android'
+  : '🏗️  Ready for custom build: eas build --platform ios|android'
 ); 

@@ -53,7 +53,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       }
     };
   }, [navigation]);
-  const { topicName, subjectName, subjectColor, boxNumber } = route.params;
+  const { topicName, subjectName, subjectColor, boxNumber, topicId, overviewOnly } = route.params as any;
   const { user } = useAuth();
   const { tier } = useSubscription();
   const [flashcards, setFlashcards] = useState<any[]>([]);
@@ -345,7 +345,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
 
   const fetchFlashcards = async () => {
     try {
-      console.log('Fetching flashcards for:', { topicName, subjectName, boxNumber });
+      console.log('Fetching flashcards for:', { topicName, subjectName, boxNumber, topicId, overviewOnly });
       
       let query = supabase
         .from('flashcards')
@@ -376,10 +376,20 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
         // Normal mode - filter by subject
         query = query.eq('subject_name', subjectName);
         
-        // If topicName is provided and it's not the same as subjectName, filter by topic
-        if (topicName && topicName !== subjectName) {
-          query = query.eq('topic', topicName);
+        // Prefer filtering by topic_id when provided (more reliable than topic text).
+        if (topicId) {
+          query = query.eq('topic_id', topicId);
+        } else {
+          // Fallback: filter by topic name text
+          if (topicName && topicName !== subjectName) {
+            query = query.eq('topic', topicName);
+          }
         }
+      }
+
+      // Optional: restrict to overview cards only (used when studying parent-topic overview cards)
+      if (overviewOnly) {
+        query = query.eq('is_overview', true);
       }
 
       // Filter by box number if provided

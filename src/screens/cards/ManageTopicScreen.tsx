@@ -15,18 +15,13 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import FlashcardCard from '../../components/FlashcardCard';
-
-// Priority levels - using "Revision Urgency" set
-const PRIORITY_LEVELS = [
-  { value: 1, label: "Low Priority", number: '1', color: '#10B981', description: 'Light review only' }, // Green
-  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B', description: 'Needs attention' }, // Orange
-  { value: 3, label: 'High Priority', number: '3', color: '#FF006E', description: 'Serious focus needed' }, // Pink
-  { value: 4, label: 'Urgent', number: '4', color: '#EF4444', description: 'Top priority!' }, // Red
-];
+import { TOPIC_PRIORITY_LEVELS, getTopicPriorityInfo } from '../../constants/topicPriorities';
+import { ensureCanAddCards } from '../../utils/usageLimits';
 
 interface FlashcardItem {
   id: string;
@@ -46,6 +41,7 @@ export default function ManageTopicScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { colors, theme } = useTheme();
   
   const { topicId, topicName, subjectName, subjectColor, examBoard, examType } = route.params as any;
@@ -56,7 +52,7 @@ export default function ManageTopicScreen() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [cardsDue, setCardsDue] = useState(0);
   const [showPriorityInfo, setShowPriorityInfo] = useState(false);
-  const [selectedPriorityInfo, setSelectedPriorityInfo] = useState<typeof PRIORITY_LEVELS[0] | null>(null);
+  const [selectedPriorityInfo, setSelectedPriorityInfo] = useState<(typeof TOPIC_PRIORITY_LEVELS)[0] | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -189,6 +185,18 @@ export default function ManageTopicScreen() {
     setIsGenerating(true);
     
     try {
+      // Enforce Free plan limit (10 total cards) before generating/saving.
+      if (user?.id) {
+        const ok = await ensureCanAddCards({
+          tier,
+          limits,
+          userId: user.id,
+          willAdd: numCards,
+          navigation,
+        });
+        if (!ok) return;
+      }
+
       const aiService = (await import('../../services/aiService')).AIService;
       const service = new aiService();
       
@@ -303,7 +311,7 @@ export default function ManageTopicScreen() {
     );
   };
 
-  const priorityInfo = priority ? PRIORITY_LEVELS.find(p => p.value === priority) : null;
+  const priorityInfo = getTopicPriorityInfo(priority);
   const cardsByType = cards.reduce((acc, card) => {
     acc[card.card_type] = (acc[card.card_type] || 0) + 1;
     return acc;
@@ -408,7 +416,7 @@ export default function ManageTopicScreen() {
         {/* Priority Selector Button */}
         <View style={[styles.priorityButton, { backgroundColor: colors.surface, borderColor: '#F59E0B' }]}>
           <View style={styles.priorityRow}>
-            {PRIORITY_LEVELS.map(level => (
+            {TOPIC_PRIORITY_LEVELS.map(level => (
               <TouchableOpacity
                 key={level.value}
                 style={[

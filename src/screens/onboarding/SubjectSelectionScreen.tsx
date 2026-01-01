@@ -8,6 +8,7 @@ import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { ensureCanAddSubjects } from '../../utils/usageLimits';
 
 interface ExamBoard {
   id: string;
@@ -50,7 +51,7 @@ export default function SubjectSelectionScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
-  const { tier, checkLimits } = useSubscription();
+  const { tier, limits } = useSubscription();
   const { examType, isAddingSubjects } = route.params as { examType: string; isAddingSubjects?: boolean };
   const insets = useSafeAreaInsets();
   
@@ -174,9 +175,18 @@ export default function SubjectSelectionScreen() {
             .select('id')
             .eq('user_id', user?.id);
           
-          const currentSubjectCount = (userSubjects?.length || 0) + selectedSubjects.length;
-          
-          if (!checkLimits('subject', currentSubjectCount + 1)) {
+          if (error) {
+            console.warn('Subject limit check failed:', error);
+            return;
+          }
+
+          const existing = userSubjects?.length || 0;
+          // We are about to add 1 more to the selection (in addition to any already selected locally)
+          const ok =
+            limits.maxSubjects === -1
+              ? true
+              : existing + selectedSubjects.length + 1 <= limits.maxSubjects;
+          if (!ok) {
             showUpgradePrompt({
               message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
               navigation,
@@ -219,6 +229,16 @@ export default function SubjectSelectionScreen() {
       if (!user?.id || !user?.email) {
         throw new Error('Missing user session');
       }
+
+      // Authoritative subject gate right before insert (prevents bypass via any UI path)
+      const canInsert = await ensureCanAddSubjects({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: selectedSubjects.length,
+        navigation,
+      });
+      if (!canInsert) return;
 
       // Ensure a public.users profile exists (some social logins can lack it if DB trigger isn't installed)
       const { error: ensureError } = await supabase.rpc('ensure_user_profile', {

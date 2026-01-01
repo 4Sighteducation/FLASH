@@ -17,14 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
-
-// Priority levels
-const PRIORITY_LEVELS = [
-  { value: 1, label: "Low Priority", number: '1', color: '#10B981' }, // Green
-  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B' }, // Orange
-  { value: 3, label: 'High Priority', number: '3', color: '#FF006E' }, // Pink
-  { value: 4, label: 'Urgent', number: '4', color: '#EF4444' }, // Red
-];
+import { TOPIC_PRIORITY_LEVELS, getTopicPriorityInfo } from '../../constants/topicPriorities';
 
 interface TopicNode {
   id: string;
@@ -313,7 +306,7 @@ export default function ManageAllCardsScreen() {
   const renderTopicNode = (node: TopicNode, subject: SubjectData, depth: number = 0): React.ReactNode => {
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children.length > 0;
-    const priorityInfo = PRIORITY_LEVELS.find(p => p.value === node.priority);
+    const priorityInfo = getTopicPriorityInfo(node.priority);
     
     // Indentation based on depth (smaller for mobile)
     const indentSize = depth * 16;
@@ -486,7 +479,7 @@ export default function ManageAllCardsScreen() {
               <View style={styles.priorityModal}>
                 <Text style={[styles.priorityModalTitle, { color: colors.text }]}>Set Priority</Text>
                 <View style={styles.priorityOptions}>
-                  {PRIORITY_LEVELS.map(level => (
+                  {TOPIC_PRIORITY_LEVELS.map(level => (
                   <TouchableOpacity
                     key={level.value}
                     style={[styles.priorityOption, { backgroundColor: level.color }]}

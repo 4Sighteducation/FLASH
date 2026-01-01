@@ -20,10 +20,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, CardGenerationParams, GeneratedCard } from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ensureCanAddCards } from '../../utils/usageLimits';
+import FeedbackPill from '../../components/support/FeedbackPill';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -77,6 +80,7 @@ export default function AIGeneratorScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { subject, topic, topicId, examBoard, examType, isOverviewCard, childrenTopics } = route.params as any;
 
   const [selectedType, setSelectedType] = useState<CardType | null>(null);
@@ -244,6 +248,22 @@ export default function AIGeneratorScreen() {
     console.log('💾 Starting save process...', { addToStudyBank });
     
     if (!user || !selectedType || selectedType === 'notes') return;
+
+    // Enforce Free plan limit (10 total cards) right before saving (authoritative gate).
+    try {
+      const ok = await ensureCanAddCards({
+        tier,
+        limits,
+        userId: user.id,
+        willAdd: generatedCards.length,
+        navigation,
+      });
+      if (!ok) return;
+    } catch (e) {
+      console.error('Card limit check failed:', e);
+      // If limit check fails, block save to be safe
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -496,6 +516,26 @@ export default function AIGeneratorScreen() {
         <Text style={styles.topicName} numberOfLines={2}>
           {abbreviateTopicName(topic)}
         </Text>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+        <FeedbackPill
+          label="Cards not generating correctly?"
+          hint="Send feedback to support with an auto-captured screenshot + context."
+          category="ai"
+          contextTitle={isOverviewCard ? 'Overview card generator feedback' : 'AI card generator feedback'}
+          contextHint="AI generation issue / incorrect cards / errors"
+          subjectId={null}
+          topicId={topicId || null}
+          extraParams={{
+            subject,
+            topic,
+            examBoard,
+            examType,
+            isOverviewCard: !!isOverviewCard,
+            childrenCount: Array.isArray(childrenTopics) ? childrenTopics.length : 0,
+          }}
+        />
       </View>
 
       <KeyboardAvoidingView
