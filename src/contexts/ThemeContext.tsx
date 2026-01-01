@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type ThemeMode = 'default' | 'cyber';
+export type ThemeMode = 'default' | 'pulse' | 'aurora' | 'singularity';
 
 interface ThemeColors {
   primary: string;
@@ -20,35 +20,63 @@ interface ThemeColors {
 interface ThemeContextType {
   theme: ThemeMode;
   colors: ThemeColors;
-  toggleTheme: () => void;
+  setTheme: (theme: ThemeMode) => void;
 }
 
+// Theme palettes aligned to `assets/flash-themes.jsx` (RN adaptation).
 const themes: Record<ThemeMode, ThemeColors> = {
+  // "Cyber" in your design doc — keep key as "default" for internal compatibility.
   default: {
-    primary: '#00F5FF',        // Updated to match new branding
-    secondary: '#FF006E',      // Updated to match new branding
-    background: '#0a0f1e',     // Updated to match new darker background
-    surface: 'rgba(0, 245, 255, 0.08)',
+    primary: '#14b8a6',
+    secondary: '#ec4899',
+    background: '#0a0a0f',
+    surface: 'rgba(20, 184, 166, 0.10)',
     text: '#ffffff',
-    textSecondary: '#94A3B8',
-    border: 'rgba(0, 245, 255, 0.25)',
-    accent: '#FF006E',         // Pink accent
-    gradient: ['#0a0f1e', '#0F172A', '#1E293B'],
-    cardGradient: ['#1E293B', '#334155'],
-    buttonGradient: ['#00F5FF', '#00D4FF'],  // Cyan gradient
+    textSecondary: '#6b7280',
+    border: 'rgba(20, 184, 166, 0.28)',
+    accent: '#7c4dff',
+    gradient: ['#0a0a0f', '#0d1117', '#111827'],
+    cardGradient: ['#0d1117', '#111827'],
+    buttonGradient: ['#14b8a6', '#ec4899'],
   },
-  cyber: {
-    primary: '#00F5FF',        // Cyan - matches new FL4SH branding
-    secondary: '#FF006E',      // Pink - matches new FL4SH branding  
-    background: '#0a0f1e',     // Dark blue-black
-    surface: 'rgba(0, 245, 255, 0.1)',
-    text: '#ffffff',
-    textSecondary: '#94A3B8',
-    border: 'rgba(0, 245, 255, 0.3)',
-    accent: '#FF006E',         // Pink accent
-    gradient: ['#0a0f1e', '#1a1035', '#2a1550'],  // Dark purple gradient
-    cardGradient: ['#1a1035', '#2a1550'],
-    buttonGradient: ['#00F5FF', '#FF006E'],  // Cyan to pink gradient
+  pulse: {
+    primary: '#f97316',
+    secondary: '#ef4444',
+    background: '#0f0a0a',
+    surface: 'rgba(249, 115, 22, 0.12)',
+    text: '#fff7ed',
+    textSecondary: '#a8a29e',
+    border: 'rgba(249, 115, 22, 0.30)',
+    accent: '#fbbf24',
+    gradient: ['#0f0a0a', '#1c1412', '#2a1b16'],
+    cardGradient: ['#1c1412', '#2a1b16'],
+    buttonGradient: ['#f97316', '#ef4444'],
+  },
+  aurora: {
+    primary: '#22d3ee',
+    secondary: '#a855f7',
+    background: '#050a14',
+    surface: 'rgba(34, 211, 238, 0.10)',
+    text: '#f0fdfa',
+    textSecondary: '#94a3b8',
+    border: 'rgba(34, 211, 238, 0.28)',
+    accent: '#34d399',
+    gradient: ['#050a14', '#0c1222', '#151B3A'],
+    cardGradient: ['#0c1222', '#151B3A'],
+    buttonGradient: ['#22d3ee', '#a855f7'],
+  },
+  singularity: {
+    primary: '#fbbf24',
+    secondary: '#f472b6',
+    background: '#030206',
+    surface: 'rgba(251, 191, 36, 0.10)',
+    text: '#fefce8',
+    textSecondary: '#a1a1aa',
+    border: 'rgba(251, 191, 36, 0.26)',
+    accent: '#ffffff',
+    gradient: ['#030206', '#0a0812', '#0d1117'],
+    cardGradient: ['#0a0812', '#0d1117'],
+    buttonGradient: ['#fbbf24', '#f472b6'],
   },
 };
 
@@ -64,7 +92,15 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const loadTheme = async () => {
     try {
       const savedTheme = await AsyncStorage.getItem('appTheme');
-      if (savedTheme && (savedTheme === 'default' || savedTheme === 'cyber')) {
+      if (!savedTheme) return;
+
+      // Backwards compatibility: older builds stored "cyber"
+      if (savedTheme === 'cyber') {
+        setTheme('default');
+        return;
+      }
+
+      if (savedTheme === 'default' || savedTheme === 'pulse' || savedTheme === 'aurora' || savedTheme === 'singularity') {
         setTheme(savedTheme as ThemeMode);
       }
     } catch (error) {
@@ -72,18 +108,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const toggleTheme = async () => {
-    const newTheme = theme === 'default' ? 'cyber' : 'default';
-    setTheme(newTheme);
+  const setThemeMode = async (next: ThemeMode) => {
+    setTheme(next);
     try {
-      await AsyncStorage.setItem('appTheme', newTheme);
+      await AsyncStorage.setItem('appTheme', next);
     } catch (error) {
       console.error('Error saving theme:', error);
     }
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, colors: themes[theme], toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, colors: themes[theme], setTheme: setThemeMode }}>
       {children}
     </ThemeContext.Provider>
   );

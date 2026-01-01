@@ -21,3 +21,6 @@ FROM information_schema.columns
 WHERE table_name = 'flashcards' 
   AND column_name = 'is_overview';
 
+
+
+

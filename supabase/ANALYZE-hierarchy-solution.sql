@@ -77,3 +77,6 @@ WHERE t.id IN (
 )
 GROUP BY t.id, t.topic_name, t.topic_level, t.parent_topic_id, parent.topic_name, grandparent.topic_name;
 
+
+
+

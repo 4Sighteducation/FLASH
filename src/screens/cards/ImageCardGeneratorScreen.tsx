@@ -19,8 +19,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { AIService, GeneratedCard } from '../../services/aiService';
 import FlashcardCard from '../../components/FlashcardCard';
+import { getUserFlashcardCount } from '../../utils/usageCounts';
+import { navigateToPaywall } from '../../utils/upgradePrompt';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
 
@@ -67,6 +70,7 @@ export default function ImageCardGeneratorScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { topicId, topicName, subjectName, examBoard, examType } = route.params as any;
 
   const [image, setImage] = useState<string | null>(null);
@@ -174,6 +178,48 @@ export default function ImageCardGeneratorScreen() {
       return;
     }
 
+    const requested = Math.max(1, parseInt(numCards || '0', 10) || 0);
+
+    // Hard gate Free tier at 10 total created cards (avoid spending AI calls if user is capped)
+    if (tier === 'free' && user?.id && limits.maxCards > 0) {
+      const currentCount = await getUserFlashcardCount(user.id);
+      const remaining = Math.max(0, limits.maxCards - currentCount);
+
+      if (remaining <= 0) {
+        Alert.alert(
+          'Free plan limit reached',
+          "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'View plans',
+              onPress: () => navigateToPaywall(navigation),
+            },
+          ]
+        );
+        return;
+      }
+
+      if (requested > remaining) {
+        Alert.alert(
+          'Free plan limit',
+          `The Free plan allows up to 10 total flashcards. You can generate ${remaining} more right now, or upgrade for unlimited.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: `Generate ${remaining}`,
+              onPress: () => setNumCards(String(remaining)),
+            },
+            {
+              text: 'View plans',
+              onPress: () => navigateToPaywall(navigation),
+            },
+          ]
+        );
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -190,7 +236,7 @@ export default function ImageCardGeneratorScreen() {
         examBoard,
         examType,
         questionType: selectedCardType,
-        numCards: parseInt(numCards, 10),
+        numCards: requested,
         contentGuidance: fullGuidance,
       });
       
@@ -209,6 +255,42 @@ export default function ImageCardGeneratorScreen() {
 
     setIsSaving(true);
     try {
+      // Hard gate Free tier at 10 total created cards when saving AI batches
+      if (tier === 'free' && limits.maxCards > 0) {
+        const currentCount = await getUserFlashcardCount(user.id);
+        const remaining = Math.max(0, limits.maxCards - currentCount);
+
+        if (remaining <= 0) {
+          Alert.alert(
+            'Free plan limit reached',
+            "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+            [
+              { text: 'Not now', style: 'cancel' },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
+        }
+
+        if (generatedCards.length > remaining) {
+          Alert.alert(
+            'Free plan limit',
+            `You can only save ${remaining} more card${remaining === 1 ? '' : 's'} on the Free plan. Delete some preview cards, or upgrade for unlimited.`,
+            [
+              { text: 'OK', style: 'cancel' },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
+        }
+      }
+
       await new AIService().saveGeneratedCards(
         generatedCards,
         {

@@ -326,16 +326,16 @@ export default function StudyScreen({ route, navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={[styles.container, theme === 'cyber' && { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, theme !== 'default' && { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={theme === 'cyber' ? colors.gradient : ['#1a1f3a', '#2d3561']}
+        colors={theme !== 'default' ? colors.gradient : ['#1a1f3a', '#2d3561']}
         style={styles.gradientBackground}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header - Simplified */}
           <View style={styles.header}>
             <View style={styles.headerTitleContainer}>
-              <Icon name="school" size={28} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+              <Icon name="school" size={28} color={theme !== 'default' ? colors.primary : "#00D4FF"} />
               <Text style={styles.headerTitle}>Study Hub</Text>
             </View>
             <TouchableOpacity 
@@ -439,13 +439,13 @@ export default function StudyScreen({ route, navigation }: any) {
               onPress={() => setShowAccordion(!showAccordion)}
             >
               <View style={styles.optionsHeaderLeft}>
-                <Icon name="list" size={24} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+                <Icon name="list" size={24} color={theme !== 'default' ? colors.primary : "#00D4FF"} />
                 <Text style={styles.optionsTitle}>Study by Subject or Topic</Text>
               </View>
               <Icon 
                 name={showAccordion ? "chevron-up" : "chevron-down"} 
                 size={24} 
-                color={theme === 'cyber' ? colors.textSecondary : "#999"} 
+                color={theme !== 'default' ? colors.textSecondary : "#999"} 
               />
             </TouchableOpacity>
             

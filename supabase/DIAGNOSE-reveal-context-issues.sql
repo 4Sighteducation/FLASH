@@ -93,3 +93,6 @@ LIMIT 5;
 -- 4. Does topic_overview_cards table exist? (Check result #4)
 -- 5. Can we find a test topic with cards? (Check result #5)
 
+
+
+

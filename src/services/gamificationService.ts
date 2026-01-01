@@ -43,7 +43,9 @@ export const gamificationConfig = {
 
   // Theme unlocks (minimal v1)
   themeUnlocks: {
-    cyber: 2000, // unlock Cyber Mode at 2,000 XP
+    pulse: 1000, // unlock Theme 1 at 1,000 XP
+    aurora: 20000, // unlock Theme 2 at 20,000 XP
+    singularity: 200000, // final boss theme at 200,000 XP
   },
 };
 
@@ -55,13 +57,16 @@ export type Rank = {
 };
 
 export const ranks: Rank[] = [
-  { key: 'rookie', name: 'Rookie', minXp: 0, color: '#94A3B8' },
-  { key: 'learner', name: 'Learner', minXp: 250, color: '#3B82F6' },
-  { key: 'scholar', name: 'Scholar', minXp: 1000, color: '#10B981' },
-  { key: 'contender', name: 'Contender', minXp: 5000, color: '#F59E0B' },
-  { key: 'ace', name: 'Ace', minXp: 20000, color: '#A855F7' },
-  { key: 'elite', name: 'Elite', minXp: 75000, color: '#FF006E' },
-  { key: 'legend', name: 'Legend', minXp: 200000, color: '#FFD700' },
+  // 7-tier "System Status" ladder (matches `assets/study-app-icons-v3 (3).jsx`)
+  // NOTE: We keep the keys stable to avoid refactors across the app, but the *display names*
+  // match your new system status tiers.
+  { key: 'rookie', name: 'Standby', minXp: 0, color: '#9CA3AF' },
+  { key: 'learner', name: 'Waking Up', minXp: 250, color: '#14b8a6' },
+  { key: 'scholar', name: 'Booting', minXp: 1000, color: '#22d3ee' },
+  { key: 'contender', name: 'Online', minXp: 5000, color: '#ec4899' },
+  { key: 'ace', name: 'Overclocked', minXp: 20000, color: '#14b8a6' },
+  { key: 'elite', name: 'Neural Net', minXp: 75000, color: '#a855f7' },
+  { key: 'singularity', name: 'Singularity', minXp: 200000, color: '#ec4899' },
 ];
 
 export function getRankForXp(totalPoints: number) {

@@ -12,3 +12,6 @@ WHERE primary_exam_type IS NULL
   AND exam_type IS NOT NULL;
 
 
+
+
+

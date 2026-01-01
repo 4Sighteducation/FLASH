@@ -17,10 +17,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { AIService, CardGenerationParams, GeneratedCard } from '../../services/aiService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 import FlashcardCard from '../../components/FlashcardCard';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getUserFlashcardCount } from '../../utils/usageCounts';
+import { navigateToPaywall } from '../../utils/upgradePrompt';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym' | 'notes';
 
@@ -74,6 +77,7 @@ export default function AIGeneratorScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { subject, topic, topicId, examBoard, examType, isOverviewCard, childrenTopics } = route.params as any;
 
   const [selectedType, setSelectedType] = useState<CardType | null>(null);
@@ -140,9 +144,7 @@ export default function AIGeneratorScreen() {
     }
   }, [isGenerating]);
 
-  const handleGenerateCards = async () => {
-    if (!selectedType || selectedType === 'notes') return;
-
+  const runGeneration = async (effectiveNumCards: number) => {
     setIsGenerating(true);
     try {
       const params: CardGenerationParams = {
@@ -151,7 +153,7 @@ export default function AIGeneratorScreen() {
         examBoard,
         examType,
         questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
-        numCards: parseInt(numCards, 10),
+        numCards: effectiveNumCards,
         contentGuidance: additionalGuidance,
         isOverview: isOverviewCard || false, // Pass overview flag
         childrenTopics: childrenTopics || [], // Pass children topics for overview cards
@@ -217,6 +219,57 @@ export default function AIGeneratorScreen() {
     }
   };
 
+  const handleGenerateCards = async () => {
+    if (!selectedType || selectedType === 'notes') return;
+
+    const requested = Math.max(1, parseInt(numCards || '0', 10) || 0);
+
+    // Hard gate Free tier at 10 total created cards (across all creation paths)
+    if (tier === 'free' && user?.id && limits.maxCards > 0) {
+      const currentCount = await getUserFlashcardCount(user.id);
+      const remaining = Math.max(0, limits.maxCards - currentCount);
+
+      if (remaining <= 0) {
+        Alert.alert(
+          'Free plan limit reached',
+          "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+          [
+            { text: 'Not now', style: 'cancel' },
+            {
+              text: 'View plans',
+              onPress: () => navigateToPaywall(navigation),
+            },
+          ]
+        );
+        return;
+      }
+
+      if (requested > remaining) {
+        Alert.alert(
+          'Free plan limit',
+          `The Free plan allows up to 10 total flashcards. You can generate ${remaining} more right now, or upgrade for unlimited.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: `Generate ${remaining}`,
+              onPress: async () => {
+                setNumCards(String(remaining));
+                await runGeneration(remaining);
+              },
+            },
+            {
+              text: 'View plans',
+              onPress: () => navigateToPaywall(navigation),
+            },
+          ]
+        );
+        return;
+      }
+    }
+
+    await runGeneration(requested);
+  };
+
   const handleSaveCards = async () => {
     console.log('💾 Save button clicked!', {
       hasUser: !!user,
@@ -234,6 +287,65 @@ export default function AIGeneratorScreen() {
     saveCards(true);
   };
 
+  const performSave = async (cardsToSave: GeneratedCard[], addToStudyBank: boolean) => {
+    console.log('📝 Saving cards to database...', { count: cardsToSave.length, addToStudyBank });
+
+    await aiService.saveGeneratedCards(
+      cardsToSave,
+      {
+        subject,
+        topic,
+        topicId,
+        examBoard,
+        examType,
+        questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
+        numCards: cardsToSave.length,
+      },
+      user!.id,
+      addToStudyBank
+    );
+
+    // Mark topic as discovered (NEW!)
+    const routeParams = route.params as any;
+    if (topicId && routeParams?.subjectId) {
+      console.log('📍 Marking topic as discovered...');
+
+      const { error: discoveryError } = await supabase.rpc('discover_topic', {
+        p_user_id: user!.id,
+        p_subject_id: routeParams.subjectId,
+        p_topic_id: topicId,
+        p_discovery_method: routeParams.discoveryMethod || 'search',
+        p_search_query: routeParams.searchQuery || topic,
+      });
+
+      if (discoveryError) {
+        console.error('Error marking topic as discovered:', discoveryError);
+        // Don't fail the whole operation if discovery tracking fails
+      } else {
+        console.log('✅ Topic marked as discovered!');
+      }
+    }
+
+    // Small delay to ensure database updates are processed
+    await new Promise<void>(resolve => setTimeout(resolve, 500));
+
+    // Success alert - simple and clear
+    Alert.alert(
+      'Success! ✅',
+      `${cardsToSave.length} cards saved and ready to study!`,
+      [{
+        text: 'OK',
+        onPress: () => {
+          // Reset navigation stack and go to Home
+          (navigation as any).reset({
+            index: 0,
+            routes: [{ name: 'HomeMain' }],
+          });
+        }
+      }]
+    );
+  };
+
   const saveCards = async (addToStudyBank: boolean) => {
     console.log('💾 Starting save process...', { addToStudyBank });
     
@@ -241,61 +353,58 @@ export default function AIGeneratorScreen() {
 
     setIsSaving(true);
     try {
-      console.log('📝 Saving cards to database...');
-      await aiService.saveGeneratedCards(
-        generatedCards,
-        {
-          subject,
-          topic,
-          topicId,
-          examBoard,
-          examType,
-          questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
-          numCards: generatedCards.length,
-        },
-        user.id,
-        addToStudyBank
-      );
+      // Hard gate Free tier at 10 total created cards when saving AI batches
+      if (tier === 'free' && limits.maxCards > 0) {
+        const currentCount = await getUserFlashcardCount(user.id);
+        const remaining = Math.max(0, limits.maxCards - currentCount);
 
-      // Mark topic as discovered (NEW!)
-      const routeParams = (route.params as any);
-      if (topicId && routeParams?.subjectId) {
-        console.log('📍 Marking topic as discovered...');
-        
-        const { error: discoveryError } = await supabase.rpc('discover_topic', {
-          p_user_id: user.id,
-          p_subject_id: routeParams.subjectId,
-          p_topic_id: topicId,
-          p_discovery_method: routeParams.discoveryMethod || 'search',
-          p_search_query: routeParams.searchQuery || topic,
-        });
+        if (remaining <= 0) {
+          Alert.alert(
+            'Free plan limit reached',
+            "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+            [
+              { text: 'Not now', style: 'cancel' },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
+        }
 
-        if (discoveryError) {
-          console.error('Error marking topic as discovered:', discoveryError);
-          // Don't fail the whole operation if discovery tracking fails
-        } else {
-          console.log('✅ Topic marked as discovered!');
+        if (generatedCards.length > remaining) {
+          Alert.alert(
+            'Free plan limit',
+            `You can only save ${remaining} more card${remaining === 1 ? '' : 's'} on the Free plan. Save the first ${remaining}, or upgrade for unlimited.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: `Save ${remaining}`,
+                onPress: async () => {
+                  const trimmed = generatedCards.slice(0, remaining);
+                  setGeneratedCards(trimmed);
+                  setIsSaving(true);
+                  try {
+                    await performSave(trimmed, addToStudyBank);
+                  } catch (error: any) {
+                    Alert.alert('Save Error ❌', error?.message || 'Failed to save cards');
+                  } finally {
+                    setIsSaving(false);
+                  }
+                },
+              },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
         }
       }
 
-      // Small delay to ensure database updates are processed
-      await new Promise<void>(resolve => setTimeout(resolve, 500));
-
-      // Success alert - simple and clear
-      Alert.alert(
-        'Success! ✅',
-        `${generatedCards.length} cards saved and ready to study!`,
-        [{ 
-          text: 'OK', 
-          onPress: () => {
-            // Reset navigation stack and go to Home
-            (navigation as any).reset({
-              index: 0,
-              routes: [{ name: 'HomeMain' }],
-            });
-          }
-        }]
-      );
+      await performSave(generatedCards, addToStudyBank);
     } catch (error: any) {
       Alert.alert('Save Error ❌', error.message || 'Failed to save cards');
     } finally {

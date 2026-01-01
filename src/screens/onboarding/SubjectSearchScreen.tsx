@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -16,6 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 import { normalizeSubjectName } from '../../utils/subjectName';
 import { ExamTrackId, normalizeExamTrackId, trackToQualificationCodes } from '../../utils/examTracks';
 
@@ -45,6 +50,7 @@ export default function SubjectSearchScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { primaryTrack, secondaryTrack } = route.params as {
     primaryTrack: ExamTrackId | string;
     secondaryTrack?: ExamTrackId | string | null;
@@ -319,6 +325,29 @@ export default function SubjectSearchScreen() {
         throw new Error('Missing user session');
       }
 
+      // Hard gate: Free plan is limited to 1 subject total.
+      // This screen is also used as an "Add subjects" modal from Home.
+      if (tier === 'free' && limits.maxSubjects > 0) {
+        const { data: existing, error: existingErr } = await supabase
+          .from('user_subjects')
+          .select('subject_id')
+          .eq('user_id', user.id);
+
+        if (existingErr) throw existingErr;
+
+        const existingSet = new Set((existing || []).map((r: any) => r.subject_id));
+        const newUnique = selectedSubjects.filter((s) => !existingSet.has(s.subject_id));
+        const proposedTotal = existingSet.size + newUnique.length;
+
+        if (proposedTotal > limits.maxSubjects) {
+          showUpgradePrompt({
+            message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+            navigation,
+          });
+          return;
+        }
+      }
+
       // Ensure a public.users profile exists (some social logins can lack it if DB trigger isn't installed)
       const { error: ensureError } = await supabase.rpc('ensure_user_profile', {
         p_user_id: user.id,
@@ -353,12 +382,21 @@ export default function SubjectSearchScreen() {
 
       console.log('✅ Subjects saved successfully!');
 
-      // Update user's exam type
-      console.log('📝 Updating user exam_type to:', examType);
+      // Persist user's track preferences (new columns) + keep legacy exam_type for backwards compatibility
+      // Prefer storing the canonical track IDs (qualification codes / stable track IDs).
+      console.log('📝 Updating user exam tracks to:', {
+        primary: resolvedPrimary,
+        secondary: resolvedSecondary || null,
+      });
       
       const { error: userError } = await supabase
         .from('users')
-        .update({ exam_type: examType })
+        .update({
+          exam_type: resolvedPrimary, // legacy field, still used by parts of the app
+          primary_exam_type: resolvedPrimary,
+          secondary_exam_type: resolvedSecondary || null,
+          is_onboarded: true,
+        })
         .eq('id', user?.id);
 
       if (userError) {
@@ -367,9 +405,18 @@ export default function SubjectSearchScreen() {
       }
 
       console.log('✅ User exam_type updated!');
-      console.log('🚀 Navigating to OnboardingComplete...');
+      const params: any = route.params || {};
+      const isAddingSubjects = !!params.isAddingSubjects;
 
-      // Navigate to onboarding complete
+      if (isAddingSubjects) {
+        // This screen is being used from the HomeStack as an "Add Subjects" modal.
+        // OnboardingComplete is NOT in the Main navigator, so just close the modal.
+        Alert.alert('Subjects Added!', 'Your subjects have been added. You can customize topics anytime from the Topic Hub.');
+        navigation.goBack();
+        return;
+      }
+
+      console.log('🚀 Navigating to OnboardingComplete...');
       navigation.navigate('OnboardingComplete' as never);
     } catch (error) {
       console.error('❌ Error saving subjects:', error);
@@ -392,6 +439,7 @@ export default function SubjectSearchScreen() {
           },
         ]
       );
+    } finally {
       setIsSaving(false);
     }
   };
@@ -402,13 +450,20 @@ export default function SubjectSearchScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          // Ensure content isn't hidden behind the fixed bottom bar / home indicator
-          { paddingBottom: (selectedSubjects.length > 0 ? 140 : 20) + insets.bottom },
-        ]}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.scrollContent,
+              // Ensure content isn't hidden behind the fixed bottom bar / home indicator
+              { paddingBottom: (selectedSubjects.length > 0 ? 140 : 20) + insets.bottom },
+            ]}
+          >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -613,7 +668,9 @@ export default function SubjectSearchScreen() {
           </View>
         )}
 
-      </ScrollView>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
 
       {/* Floating Continue Button */}
       {selectedSubjects.length > 0 && (

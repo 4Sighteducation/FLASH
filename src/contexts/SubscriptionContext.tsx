@@ -321,11 +321,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     switch (type) {
       case 'subject':
-        return limits.maxSubjects === -1 || currentCount < limits.maxSubjects;
+        // Treat currentCount as the proposed total after the action (so max=1 allows total=1).
+        return limits.maxSubjects === -1 || currentCount <= limits.maxSubjects;
       case 'topic':
-        return limits.maxTopicsPerSubject === -1 || currentCount < limits.maxTopicsPerSubject;
+        return limits.maxTopicsPerSubject === -1 || currentCount <= limits.maxTopicsPerSubject;
       case 'card':
-        return limits.maxCards === -1 || currentCount < limits.maxCards;
+        return limits.maxCards === -1 || currentCount <= limits.maxCards;
       default:
         return false;
     }

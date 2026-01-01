@@ -40,7 +40,7 @@ function rankIndexFromKey(rankKey: string) {
       return 4;
     case 'elite':
       return 5;
-    case 'legend':
+    case 'singularity':
       return 6;
     default:
       return 0;
@@ -60,9 +60,10 @@ function GlowRing({
   // Native needs this to feel bright; SVG filter glows aren't available.
   return (
     <>
-      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 10, 0.10)} />
-      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 7, 0.16)} />
-      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 4, 0.24)} />
+      {/* Stronger glow stack (RN-safe replacement for SVG filters) */}
+      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 12, 0.18)} />
+      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 8, 0.28)} />
+      <Circle cx="50" cy="50" r={r} fill="none" {...glowStroke(color, baseWidth + 5, 0.42)} />
     </>
   );
 }
@@ -71,36 +72,44 @@ function FrameRings({ rankIdx }: { rankIdx: number }) {
   // Second visual progression cue: more rings + brighter accents as rank increases.
   // Keep inside the icon box so it works everywhere (Home header, Profile, Ladder).
   const rings = Math.min(4, 1 + Math.floor(rankIdx / 2)); // 1..4 rings across 7 ranks
-  // Brighter neon palette for mobile
-  const accentA = '#00F5FF';
-  const accentB = '#FF2D9A';
+  // Neon palette aligned to the app's base theme (teal/pink) for coherence.
+  // The backplate in the wrapper provides contrast for the inner glyph.
+  const accentA = '#14b8a6';
+  const accentB = '#ec4899';
 
   const ringDefs = Array.from({ length: rings }).map((_, i) => {
-    const r = 48 - i * 3.75; // 48, 44.25, 40.5, 36.75
+    // Keep a margin so rings aren't clipped at small pixel sizes.
+    const r = 46 - i * 3.5; // 46, 42.5, 39, 35.5
     const color = i % 2 === 0 ? accentA : accentB;
-    const baseWidth = 2.2 - i * 0.15;
-    const solidOpacity = 0.22 + rankIdx * 0.035; // becomes more intense at higher ranks
+    const baseWidth = 2.6 - i * 0.15;
+    const solidOpacity = Math.min(0.85, 0.35 + rankIdx * 0.06); // brighter at higher ranks
     const dash = rankIdx >= 5 && i === 0 ? '2 6' : undefined; // “high-rank tech” effect
-    return { r, color, baseWidth: Math.max(1.6, baseWidth), solidOpacity: Math.min(0.55, solidOpacity), dash };
+    return { r, color, baseWidth: Math.max(2.0, baseWidth), solidOpacity, dash };
   });
 
   return (
-    <Svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: 'absolute', inset: 0 }}>
+    <Svg
+      width="100%"
+      height="100%"
+      viewBox="0 0 100 100"
+      // NOTE: RN doesn't reliably support `inset`, so use explicit edges.
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+    >
       {/* Halo behind everything (helps Android a lot) */}
       <Defs>
         <RadialGradient id="haloA" cx="50%" cy="50%" r="60%">
-          <Stop offset="0%" stopColor={accentA} stopOpacity={0.22 + rankIdx * 0.03} />
-          <Stop offset="55%" stopColor={accentA} stopOpacity={0.10 + rankIdx * 0.02} />
+          <Stop offset="0%" stopColor={accentA} stopOpacity={0.32 + rankIdx * 0.05} />
+          <Stop offset="55%" stopColor={accentA} stopOpacity={0.14 + rankIdx * 0.03} />
           <Stop offset="100%" stopColor={accentA} stopOpacity="0" />
         </RadialGradient>
         <RadialGradient id="haloB" cx="50%" cy="50%" r="60%">
-          <Stop offset="0%" stopColor={accentB} stopOpacity={0.18 + rankIdx * 0.025} />
-          <Stop offset="55%" stopColor={accentB} stopOpacity={0.08 + rankIdx * 0.015} />
+          <Stop offset="0%" stopColor={accentB} stopOpacity={0.26 + rankIdx * 0.045} />
+          <Stop offset="55%" stopColor={accentB} stopOpacity={0.12 + rankIdx * 0.025} />
           <Stop offset="100%" stopColor={accentB} stopOpacity="0" />
         </RadialGradient>
       </Defs>
-      <Circle cx="50" cy="50" r="49" fill="url(#haloA)" />
-      <Circle cx="50" cy="50" r="45" fill="url(#haloB)" opacity={0.9} />
+      <Circle cx="50" cy="50" r="47" fill="url(#haloA)" />
+      <Circle cx="50" cy="50" r="43" fill="url(#haloB)" opacity={0.95} />
 
       {/* Top-tier sparks: ranks 4/5/6 (Overclocked/Neural Net/Singularity) get progressively more "impressive" */}
       {rankIdx >= 4 ? (
@@ -110,7 +119,7 @@ function FrameRings({ rankIdx }: { rankIdx: number }) {
             const count = tier === 0 ? 4 : tier === 1 ? 7 : 10;
             const baseOpacity = tier === 0 ? 0.55 : tier === 1 ? 0.7 : 0.85;
             const strokeW = tier === 0 ? 1.9 : tier === 1 ? 2.2 : 2.6;
-            const radius = tier === 0 ? 47 : tier === 1 ? 48 : 49;
+            const radius = tier === 0 ? 45 : tier === 1 ? 46 : 47;
 
             // Deterministic "spark" positions around the ring (degrees).
             const angles = [18, 52, 96, 140, 196, 234, 276, 312, 338, 10];
@@ -137,7 +146,7 @@ function FrameRings({ rankIdx }: { rankIdx: number }) {
                     y2={b.y}
                     stroke={color}
                     strokeWidth={strokeW + 7}
-                    opacity={op * 0.22}
+                    opacity={op * 0.30}
                     strokeLinecap="round"
                   />
                   {/* bloom mid-stroke */}
@@ -148,7 +157,7 @@ function FrameRings({ rankIdx }: { rankIdx: number }) {
                     y2={b.y}
                     stroke={color}
                     strokeWidth={strokeW + 3}
-                    opacity={op * 0.28}
+                    opacity={op * 0.36}
                     strokeLinecap="round"
                   />
                   {/* main spark stroke */}
@@ -442,7 +451,7 @@ function iconForRankKey(rankKey: string) {
       return OverclockedIcon;
     case 'elite':
       return NeuralNetIcon;
-    case 'legend':
+    case 'singularity':
       return SingularityIcon;
     default:
       return StandbyIcon;
@@ -455,38 +464,76 @@ function SystemStatusRankIconInner({ rankKey, size = 44, withContainerGlow = tru
   const wrapSize = size;
   const iconSize = Math.max(12, size - 8);
   const rankIdx = rankIndexFromKey(rankKey);
+
+  // IMPORTANT:
+  // Layout (centering + sizing) must be identical regardless of withContainerGlow,
+  // otherwise the absolute ring layer and the inner glyph can "drift" and look like
+  // two offset circles.
+  const baseContainerStyle: any = {
+    width: wrapSize,
+    height: wrapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: wrapSize / 2,
+    // Avoid clipping the glow/rings on iOS.
+    overflow: 'visible',
+  };
+
+  const glowContainerStyle: any = withContainerGlow
+    ? [
+        { backgroundColor: 'rgba(0,0,0,0.18)' },
+        Platform.select({
+          ios: {
+            shadowColor: '#14b8a6',
+            shadowOpacity: 0.18,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 0 },
+          },
+          android: {
+            elevation: 2,
+          },
+          default: {},
+        }),
+      ]
+    : null;
+
   return (
     <View
-      style={
-        withContainerGlow
-          ? [
-              {
-                width: wrapSize,
-                height: wrapSize,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: wrapSize / 2,
-                backgroundColor: 'rgba(0,0,0,0.18)',
-              },
-              Platform.select({
-                ios: {
-                  shadowColor: '#14b8a6',
-                  shadowOpacity: 0.18,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 0 },
-                },
-                android: {
-                  // Android shadow is limited; elevation gives a soft lift.
-                  elevation: 2,
-                },
-                default: {},
-              }),
-            ]
-          : undefined
-      }
+      style={[baseContainerStyle, glowContainerStyle]}
     >
       <FrameRings rankIdx={rankIdx} />
-      <IconCmp size={iconSize} />
+
+      {/* Dark backplate behind the inner glyph so the ring glow contrasts strongly (centered reliably) */}
+      <View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+        ]}
+      >
+        <View
+          style={{
+            width: Math.max(10, iconSize - 12),
+            height: Math.max(10, iconSize - 12),
+            borderRadius: 999,
+            backgroundColor: 'rgba(0,0,0,0.55)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.10)',
+          }}
+        />
+      </View>
+
+      {/* Center the glyph explicitly */}
+      <View style={{ width: iconSize, height: iconSize, alignItems: 'center', justifyContent: 'center' }}>
+        <IconCmp size={iconSize} />
+      </View>
     </View>
   );
 }

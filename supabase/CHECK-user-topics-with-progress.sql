@@ -17,3 +17,6 @@ FROM pg_views
 WHERE schemaname = 'public' 
   AND viewname = 'user_topics_with_progress';
 
+
+
+

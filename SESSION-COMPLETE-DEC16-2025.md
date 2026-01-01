@@ -76,3 +76,6 @@ do update set total_points = excluded.total_points,
 
 
 
+
+
+

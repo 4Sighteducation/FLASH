@@ -66,3 +66,6 @@ LEFT JOIN curriculum_topics grandparent ON grandparent.id = parent.parent_topic_
 LEFT JOIN exam_board_subjects ebs ON ebs.id = t.exam_board_subject_id
 ORDER BY t.topic_level;
 
+
+
+

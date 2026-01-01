@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Image,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +24,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
 import UnlockedAvatarsModal from '../../components/UnlockedAvatarsModal';
-import { getAvatarForXp } from '../../services/avatarService';
+import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
+import { useSubscription } from '../../contexts/SubscriptionContext';
+import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface UserSubject {
   id: string;
@@ -49,6 +50,7 @@ interface UserData {
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { tier, limits } = useSubscription();
   const { colors, theme } = useTheme();
   const styles = createStyles(colors, theme);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -71,7 +73,6 @@ export default function HomeScreen({ navigation }: any) {
   });
   const [showNotification, setShowNotification] = useState(false);
   const [inAppNotificationsEnabled, setInAppNotificationsEnabled] = useState(true);
-  const [unlockedCyber, setUnlockedCyber] = useState(false);
   const [showSkinsModal, setShowSkinsModal] = useState(false);
 
   const fetchNotifications = async () => {
@@ -122,22 +123,7 @@ export default function HomeScreen({ navigation }: any) {
       
       setUserStats({ ...stats, correct_percentage: correctPercentage });
 
-      // Minimal theme unlock: Cyber Mode at XP threshold (persisted in AsyncStorage)
-      try {
-        const threshold = gamificationConfig.themeUnlocks.cyber;
-        const storageKey = `unlocked_theme_cyber_v1_${user.id}`;
-        const alreadyUnlocked = (await AsyncStorage.getItem(storageKey)) === 'true';
-        const canUnlock = (stats.total_points || 0) >= threshold;
-        if (!alreadyUnlocked && canUnlock) {
-          await AsyncStorage.setItem(storageKey, 'true');
-          setUnlockedCyber(true);
-          Alert.alert('Unlocked! 🎉', `Cyber Mode is now available (earned ${threshold.toLocaleString()} XP).`);
-        } else {
-          setUnlockedCyber(alreadyUnlocked || canUnlock);
-        }
-      } catch {
-        // non-fatal
-      }
+      // Theme unlock notifications are handled in Profile via XP thresholds.
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -251,6 +237,11 @@ export default function HomeScreen({ navigation }: any) {
     });
   };
 
+  const canAddMoreSubjects = () => {
+    if (limits.maxSubjects === -1) return true;
+    return userSubjects.length < limits.maxSubjects;
+  };
+
   const handleDeleteSubject = async () => {
     if (!deleteModal.subject) return;
     
@@ -292,7 +283,6 @@ export default function HomeScreen({ navigation }: any) {
 
   const totalPoints = userStats?.total_points ?? 0;
   const rank = getRankForXp(totalPoints);
-  const avatar = getAvatarForXp(totalPoints);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -305,7 +295,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
                 <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                  <Image source={avatar.source} style={styles.headerAvatarImage} resizeMode="contain" />
+                  <SystemStatusRankIcon rankKey={rank.current.key} size={44} withContainerGlow={false} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -528,8 +518,18 @@ export default function HomeScreen({ navigation }: any) {
               ))}
             </View>
             <TouchableOpacity
-              style={styles.addMoreButton}
+              style={[
+                styles.addMoreButton,
+                !canAddMoreSubjects() && styles.addMoreButtonDisabled,
+              ]}
               onPress={() => {
+                if (!canAddMoreSubjects()) {
+                  showUpgradePrompt({
+                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    navigation,
+                  });
+                  return;
+                }
                 if (userData?.exam_type) {
                   navigation.navigate('SubjectSelection', { 
                     examType: userData.exam_type,
@@ -549,8 +549,18 @@ export default function HomeScreen({ navigation }: any) {
             <Icon name="school-outline" size={48} color="#ccc" />
             <Text style={styles.emptyText}>No subjects added yet</Text>
             <TouchableOpacity
-              style={styles.addSubjectButton}
+              style={[
+                styles.addSubjectButton,
+                !canAddMoreSubjects() && styles.addSubjectButtonDisabled,
+              ]}
               onPress={() => {
+                if (!canAddMoreSubjects()) {
+                  showUpgradePrompt({
+                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    navigation,
+                  });
+                  return;
+                }
                 if (userData?.exam_type) {
                   navigation.navigate('SubjectSelection', { 
                     examType: userData.exam_type,
@@ -644,7 +654,7 @@ const adjustColor = (color: string, amount: number): string => {
 const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.background : '#f0f0f0',
+    backgroundColor: theme !== 'default' ? colors.background : '#f0f0f0',
   },
   loadingContainer: {
     flex: 1,
@@ -811,11 +821,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: theme !== 'default' ? colors.text : '#333',
     marginBottom: 15,
     paddingHorizontal: 20,
     marginTop: 20,
-    ...(theme === 'cyber' && {
+    ...(theme !== 'default' && {
       textShadowColor: colors.primary,
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
@@ -992,7 +1002,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   actionText: {
     marginTop: 8,
     fontSize: 12,
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: theme !== 'default' ? colors.text : '#333',
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -1016,6 +1026,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 20,
   },
+  addSubjectButtonDisabled: {
+    opacity: 0.45,
+  },
   addSubjectText: {
     color: '#FFFFFF',
     fontWeight: '600',
@@ -1032,6 +1045,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  addMoreButtonDisabled: {
+    opacity: 0.45,
   },
   addMoreText: {
     color: '#6366F1',

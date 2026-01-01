@@ -572,7 +572,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={theme === 'cyber' ? colors.text : '#333'} />
+          <Icon name="arrow-back" size={24} color={theme !== 'default' ? colors.text : '#333'} />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>{subjectName}</Text>
@@ -1012,7 +1012,7 @@ const getTopicShade = (topicId: string, baseColor: string, allTopicIds: string[]
 const createStyles = (colors: any, theme: string, subjectColor: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.background : '#f5f5f5',
+    backgroundColor: theme !== 'default' ? colors.background : '#f5f5f5',
   },
   loadingContainer: {
     flex: 1,
@@ -1023,9 +1023,9 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: theme !== 'default' ? colors.surface : '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+    borderBottomColor: theme !== 'default' ? colors.border : '#e0e0e0',
   },
   backButton: {
     padding: 4,
@@ -1037,11 +1037,11 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: theme !== 'default' ? colors.text : '#333',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: theme !== 'default' ? colors.textSecondary : '#666',
     marginTop: 2,
   },
   scrollView: {

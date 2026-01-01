@@ -36,3 +36,6 @@ grant execute on function public.claim_user_push_token(text, text) to authentica
 grant execute on function public.claim_user_push_token(text, text) to service_role;
 
 
+
+
+

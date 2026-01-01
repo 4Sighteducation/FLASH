@@ -33,3 +33,6 @@ WHERE f.user_id = 'e62a75ef-e199-4ecc-9ad1-54a9d1369418'
 GROUP BY t.id, t.topic_name, t.topic_level, parent.topic_name, grandparent.topic_name, great_grandparent.topic_name
 ORDER BY t.topic_level;
 
+
+
+

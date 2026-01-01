@@ -61,6 +61,14 @@ const avatarsByRankKey: Record<string, AvatarDef> = {
     subtitle: '“The final boss machine. Paper fear you.”',
     source: require('../../assets/printer.png'),
   },
+  singularity: {
+    // Reuse the best available asset until we design a dedicated one.
+    // (Without this, the ladder falls back to rookie and looks like "stationery only".)
+    key: 'printer',
+    label: 'Singularity Core',
+    subtitle: '“Reality bends. Deadlines don’t.”',
+    source: require('../../assets/printer.png'),
+  },
 };
 
 export function getAvatarForRankKey(rankKey: string): AvatarDef {

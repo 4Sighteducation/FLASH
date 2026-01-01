@@ -15,10 +15,13 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { abbreviateTopicName } from '../../utils/topicNameUtils';
 import FlashcardCard from '../../components/FlashcardCard';
+import { getUserFlashcardCount } from '../../utils/usageCounts';
+import { navigateToPaywall } from '../../utils/upgradePrompt';
 
 // Priority levels - using "Revision Urgency" set
 const PRIORITY_LEVELS = [
@@ -47,6 +50,7 @@ export default function ManageTopicScreen() {
   const route = useRoute();
   const { user } = useAuth();
   const { colors, theme } = useTheme();
+  const { tier, limits } = useSubscription();
   
   const { topicId, topicName, subjectName, subjectColor, examBoard, examType } = route.params as any;
 
@@ -184,20 +188,59 @@ export default function ManageTopicScreen() {
     setShowNumberPicker({ type: cardType, label: labels[cardType as keyof typeof labels] });
   };
 
-  const generateCards = async (numCards: number) => {
-    setShowNumberPicker(null);
+  const generateCardsForType = async (cardType: string, cardTypeLabel: string, numCards: number) => {
     setIsGenerating(true);
-    
+
     try {
+      // Hard gate Free tier at 10 total created cards
+      if (tier === 'free' && user?.id && limits.maxCards > 0) {
+        const currentCount = await getUserFlashcardCount(user.id);
+        const remaining = Math.max(0, limits.maxCards - currentCount);
+
+        if (remaining <= 0) {
+          Alert.alert(
+            'Free plan limit reached',
+            "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+            [
+              { text: 'Not now', style: 'cancel' },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
+        }
+
+        if (numCards > remaining) {
+          Alert.alert(
+            'Free plan limit',
+            `The Free plan allows up to 10 total flashcards. You can generate ${remaining} more right now, or upgrade for unlimited.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: `Generate ${remaining}`,
+                onPress: () => generateCardsForType(cardType, cardTypeLabel, remaining),
+              },
+              {
+                text: 'View plans',
+                onPress: () => navigateToPaywall(navigation),
+              },
+            ]
+          );
+          return;
+        }
+      }
+
       const aiService = (await import('../../services/aiService')).AIService;
       const service = new aiService();
-      
+
       const cards = await service.generateCards({
         subject: subjectName,
         topic: topicName,
         examType,
         examBoard,
-        questionType: showNumberPicker!.type as any,
+        questionType: cardType as any,
         numCards,
       });
 
@@ -207,7 +250,7 @@ export default function ManageTopicScreen() {
         subject_name: subjectName,
         topic: topicName,
         topic_id: topicId,
-        card_type: showNumberPicker!.type,
+        card_type: cardType,
         question: card.question,
         answer: card.answer,
         options: card.options,
@@ -220,13 +263,10 @@ export default function ManageTopicScreen() {
         created_at: new Date().toISOString(),
       }));
 
-      const { error } = await supabase
-        .from('flashcards')
-        .insert(flashcardData);
-
+      const { error } = await supabase.from('flashcards').insert(flashcardData);
       if (error) throw error;
 
-      Alert.alert('Success!', `${cards.length} cards generated and added!`);
+      Alert.alert('Success!', `${cards.length} ${cardTypeLabel} cards generated and added!`);
       loadTopicData(); // Refresh
     } catch (error) {
       console.error('Error generating cards:', error);
@@ -234,6 +274,15 @@ export default function ManageTopicScreen() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const generateCards = async (numCards: number) => {
+    const picker = showNumberPicker;
+    if (!picker) return;
+
+    // Hide picker modal
+    setShowNumberPicker(null);
+    await generateCardsForType(picker.type, picker.label, numCards);
   };
 
   const handleDeleteCard = async (cardId: string) => {

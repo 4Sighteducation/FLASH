@@ -12,7 +12,9 @@ import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScre
 import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
+import PaywallScreen from '../screens/paywall/PaywallScreen';
 import SplashScreen from '../screens/SplashScreen';
+import { navigationRef } from './RootNavigation';
 
 const Stack = createNativeStackNavigator();
 
@@ -78,11 +80,18 @@ export default function AppNavigator() {
 
   return (
     <SubscriptionProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {user ? (
             isOnboarded ? (
-              <Stack.Screen name="Main" component={MainNavigator} />
+              <>
+                <Stack.Screen name="Main" component={MainNavigator} />
+                <Stack.Screen
+                  name="PaywallModal"
+                  component={PaywallScreen}
+                  options={{ presentation: 'modal' }}
+                />
+              </>
             ) : (
               <>
                 <Stack.Screen name="Welcome" component={WelcomeScreen} />
@@ -90,6 +99,11 @@ export default function AppNavigator() {
                 <Stack.Screen name="SubjectSearch" component={SubjectSearchScreen} />
                 <Stack.Screen name="OnboardingComplete" component={OnboardingCompleteScreen} />
                 <Stack.Screen name="Main" component={MainNavigator} />
+                <Stack.Screen
+                  name="PaywallModal"
+                  component={PaywallScreen}
+                  options={{ presentation: 'modal' }}
+                />
               </>
             )
           ) : (

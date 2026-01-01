@@ -162,8 +162,9 @@ export default function SmartTopicDiscoveryScreen() {
           // Never show spec blobs as "popular topics" chips
           return sanitizeTopicLabel(withoutCodes, { maxLength: 64 });
         });
-        console.log('✅ Smart suggestions loaded:', suggestions);
-        setSmartSuggestions(suggestions);
+        const uniqueSuggestions = Array.from(new Set(suggestions.filter(Boolean)));
+        console.log('✅ Smart suggestions loaded:', uniqueSuggestions);
+        setSmartSuggestions(uniqueSuggestions);
       } else {
         console.log('⚠️ No suggestions found, using fallback');
         // Fallback if no data
@@ -500,9 +501,9 @@ export default function SmartTopicDiscoveryScreen() {
                 </View>
               ) : (
                 <View style={styles.exampleChips}>
-                  {smartSuggestions.map((suggestion) => (
+                  {smartSuggestions.map((suggestion, index) => (
                     <TouchableOpacity
-                      key={suggestion}
+                      key={`${suggestion}-${index}`}
                       style={styles.exampleChip}
                       onPress={() => handleSearch(suggestion)}
                     >

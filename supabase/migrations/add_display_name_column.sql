@@ -86,3 +86,6 @@ FROM information_schema.columns
 WHERE table_name = 'curriculum_topics' 
   AND column_name IN ('display_name', 'needs_name_enhancement');
 
+
+
+
