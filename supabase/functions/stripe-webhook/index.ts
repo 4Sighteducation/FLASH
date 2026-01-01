@@ -126,7 +126,12 @@ function formatClaimCode(code: string): string {
   return clean.replace(/(.{4})/g, '$1-').replace(/-$/, '');
 }
 
-async function sendSendGridEmail(params: { to: string; subject: string; html: string; fromEmail: string }): Promise<void> {
+async function sendSendGridEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  fromEmail: string;
+}): Promise<{ status: number; messageId: string | null }> {
   const sendGridKey = Deno.env.get('SENDGRID_API_KEY') || '';
   if (!sendGridKey) {
     // This webhook is responsible for delivering redeem codes. If this is misconfigured,
@@ -156,6 +161,9 @@ async function sendSendGridEmail(params: { to: string; subject: string; html: st
     const text = await res.text();
     throw new Error(`[SendGrid] ${res.status} ${text}`);
   }
+
+  const msgId = res.headers.get('x-message-id') || res.headers.get('X-Message-Id');
+  return { status: res.status, messageId: msgId || null };
 }
 
 serve(async (req) => {
@@ -307,7 +315,7 @@ serve(async (req) => {
               'support@fl4shcards.com';
 
             try {
-              await sendSendGridEmail({
+              const sendRes = await sendSendGridEmail({
                 to: toEmail,
                 fromEmail,
                 subject: 'Your FL4SH Pro access is ready',
@@ -382,12 +390,20 @@ serve(async (req) => {
 
               await supabase
                 .from('parent_claims')
-                .update({ redeem_email_sent_at: new Date().toISOString(), redeem_email_last_error: null })
+                .update({
+                  redeem_email_sent_at: new Date().toISOString(),
+                  redeem_email_last_error: null,
+                  redeem_email_provider: 'sendgrid',
+                  redeem_email_provider_status: sendRes.status,
+                  redeem_email_provider_message_id: sendRes.messageId,
+                })
                 .eq('id', parentClaimId);
 
               console.log('[stripe-webhook] invoice.paid: parent-claim marked paid + emailed child', {
                 parentClaimId,
                 toEmail,
+                sendgridStatus: sendRes.status,
+                sendgridMessageId: sendRes.messageId,
               });
               break;
             } catch (e) {
