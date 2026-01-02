@@ -15,6 +15,15 @@
  */
 export function abbreviateTopicName(topicName: string): string {
   if (!topicName) return '';
+
+  const stripLeadingCurriculumPrefix = (s: string): string => {
+    let out = (s || '').trim();
+    // Strip leading numeric curriculum codes like "1.1.2 " or "3.4.5.6 "
+    out = out.replace(/^\d+(?:\.\d+){1,6}\.?\s+/u, '');
+    // Strip simple leading "1. " in case a topic is numbered at top level
+    out = out.replace(/^\d+\.\s+/u, '');
+    return out.trim();
+  };
   
   // Remove common HTML tags
   let cleaned = topicName
@@ -30,6 +39,9 @@ export function abbreviateTopicName(topicName: string): string {
     // Bare codes without brackets (e.g. "... J587_01_1_5_2")
     .replace(/\s+[A-Za-z]{1,6}\d{0,6}(?:_[A-Za-z0-9]+){2,}\s*$/u, '')
     .trim();
+
+  // Remove leading curriculum numbering/codes for better UI labels
+  cleaned = stripLeadingCurriculumPrefix(cleaned);
   
   // Split by common delimiters
   const delimiters = [
@@ -39,6 +51,7 @@ export function abbreviateTopicName(topicName: string): string {
     '. Students',
     '. Including',
     '. This',
+    '. Application', // PE specs often add an "Application..." sentence that is useful for AI, but too verbose for UI
     '  ', // Double space
   ];
   
@@ -48,6 +61,15 @@ export function abbreviateTopicName(topicName: string): string {
       // Use first part if it's substantial
       cleaned = parts[0];
       break;
+    }
+  }
+
+  // If a very long topic includes a colon-delimited list, keep only the lead-in phrase for UI.
+  // Example: "The ... cycle, including ... action: isotonic/eccentric, ..." -> keep before ':'
+  if (cleaned.length > 90 && cleaned.includes(':')) {
+    const beforeColon = cleaned.split(':')[0]?.trim();
+    if (beforeColon && beforeColon.length >= 12) {
+      cleaned = beforeColon;
     }
   }
   

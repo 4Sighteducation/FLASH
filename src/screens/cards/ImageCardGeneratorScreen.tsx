@@ -26,6 +26,7 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { AIService, GeneratedCard } from '../../services/aiService';
 import FlashcardCard from '../../components/FlashcardCard';
 import { ensureCanAddCards } from '../../utils/usageLimits';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 type CardType = 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
 
@@ -474,7 +475,7 @@ export default function ImageCardGeneratorScreen() {
 
       <View style={styles.topicInfo}>
         <Text style={styles.topicSubject}>{subjectName}</Text>
-        <Text style={styles.topicName}>{topicName}</Text>
+        <Text style={styles.topicName}>{sanitizeTopicLabel(topicName, { maxLength: 140 })}</Text>
       </View>
 
       <KeyboardAvoidingView

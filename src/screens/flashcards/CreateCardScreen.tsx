@@ -9,6 +9,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { sanitizeTopicLabel } from '../../utils/topicNameUtils';
 
 export default function CreateCardScreen() {
   const route = useRoute();
@@ -35,7 +36,7 @@ export default function CreateCardScreen() {
             <Text style={styles.subjectLabel}>Subject</Text>
             <Text style={styles.subjectName}>{subjectName}</Text>
             <Text style={styles.topicLabel}>Topic</Text>
-            <Text style={styles.topicName}>{topicName}</Text>
+            <Text style={styles.topicName}>{sanitizeTopicLabel(topicName, { maxLength: 140 })}</Text>
           </View>
 
           <View style={styles.placeholderContainer}>
