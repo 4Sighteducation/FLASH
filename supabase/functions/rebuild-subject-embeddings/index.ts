@@ -28,6 +28,7 @@ serve(async (req) => {
   let runId = '';
   let supabase: any = null;
   try {
+    const startedAt = Date.now();
     const secret = req.headers.get('x-curriculum-ops-secret') || '';
     const expected = Deno.env.get('CURRICULUM_OPS_SECRET') || '';
     if (!expected || secret !== expected) return json(401, { error: 'Unauthorized' });
@@ -71,6 +72,18 @@ serve(async (req) => {
 
     const topicIds = topics.map((t: any) => t.topic_id).filter(Boolean);
 
+    // Pre-check: how many metadata rows currently exist for these topics?
+    let existingMetadataRows = 0;
+    for (let i = 0; i < topicIds.length; i += 1000) {
+      const chunk = topicIds.slice(i, i + 1000);
+      const { count, error: cErr } = await supabase
+        .from('topic_ai_metadata')
+        .select('topic_id', { count: 'exact', head: true })
+        .in('topic_id', chunk);
+      if (cErr) throw new Error(cErr.message);
+      existingMetadataRows += count || 0;
+    }
+
     if (deleteFirst) {
       // Chunk deletes to avoid in() limits
       for (let i = 0; i < topicIds.length; i += 1000) {
@@ -94,12 +107,14 @@ serve(async (req) => {
     };
 
     let upserted = 0;
+    let batches = 0;
+    const model = 'text-embedding-3-small';
     for (let i = 0; i < topics.length; i += batchSize) {
       const batch = topics.slice(i, i + batchSize);
       const inputs = batch.map(makeInput);
 
       const embeddingResponse = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
+        model,
         input: inputs,
       });
       const embeddings = embeddingResponse.data.map((d: any) => d.embedding);
@@ -128,16 +143,39 @@ serve(async (req) => {
       if (upErr) return json(500, { error: upErr.message });
 
       upserted += rows.length;
+      batches += 1;
     }
 
+    // Post-check: how many metadata rows exist for these topics now?
+    let metadataRowsAfter = 0;
+    for (let i = 0; i < topicIds.length; i += 1000) {
+      const chunk = topicIds.slice(i, i + 1000);
+      const { count, error: cErr } = await supabase
+        .from('topic_ai_metadata')
+        .select('topic_id', { count: 'exact', head: true })
+        .in('topic_id', chunk);
+      if (cErr) throw new Error(cErr.message);
+      metadataRowsAfter += count || 0;
+    }
+
+    const durationMs = Date.now() - startedAt;
     const payload = {
       ok: true,
       exam_board_subject_id,
       subject_code: subjectCode,
+      subject_name: subj.subject_name,
+      exam_board: board,
+      qualification_level: qual,
       total_topics: topics.length,
       upserted,
       deleted_first: deleteFirst,
-      note: 'This rebuilds embeddings + minimal metadata (summary derived from name/path).',
+      existing_metadata_rows_before: existingMetadataRows,
+      metadata_rows_after: metadataRowsAfter,
+      model,
+      batch_size: batchSize,
+      batches,
+      duration_ms: durationMs,
+      note: 'This rebuilds embeddings + minimal metadata. Summary is derived from topic name + full path; difficulty/importance are left null.',
     };
 
     if (runId) {
