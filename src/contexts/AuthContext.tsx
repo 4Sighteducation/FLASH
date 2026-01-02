@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { cleanupOrphanedCards } from '../utils/databaseMaintenance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushNotificationService } from '../services/pushNotificationService';
-import { AppState } from 'react-native';
+// NOTE: Keep AuthProvider fast. Any network-heavy “maintenance” should be fire-and-forget.
 import { migrateUserTopicPrioritiesToV2 } from '../utils/priorityMigration';
 
 interface AuthContextType {
@@ -54,46 +54,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Clean up orphaned cards when user is authenticated
     if (newSession?.user?.id) {
-      // One-time data migration: unify priority scale to v2 (1=highest, 4=lowest).
-      try {
-        await migrateUserTopicPrioritiesToV2(newSession.user.id);
-      } catch (e) {
-        console.warn('[Auth] Priority migration skipped (non-fatal):', e);
-      }
+      // IMPORTANT: never block app startup on background maintenance work.
+      const uid = newSession.user.id;
 
-      try {
-        const result = await cleanupOrphanedCards(newSession.user.id);
-        if (result.success && result.orphanedCount && result.orphanedCount > 0) {
-          console.log(`Cleaned up ${result.orphanedCount} orphaned cards from subjects: ${result.orphanedSubjects?.join(', ')}`);
-        }
-      } catch (error) {
-        console.error('Error cleaning up orphaned cards:', error);
-      }
+      // One-time data migration: unify priority scale to v2 (1=highest, 4=lowest).
+      // Run async so it cannot freeze the app on slow networks / large accounts.
+      setTimeout(() => {
+        void migrateUserTopicPrioritiesToV2(uid).catch((e) => {
+          console.warn('[Auth] Priority migration skipped (non-fatal):', e);
+        });
+      }, 0);
+
+      // Cleanup is best-effort and should never block UI.
+      setTimeout(() => {
+        void cleanupOrphanedCards(uid)
+          .then((result) => {
+            if (result.success && result.orphanedCount && result.orphanedCount > 0) {
+              console.log(`Cleaned up ${result.orphanedCount} orphaned cards from subjects: ${result.orphanedSubjects?.join(', ')}`);
+            }
+          })
+          .catch((error) => {
+            console.error('Error cleaning up orphaned cards:', error);
+          });
+      }, 0);
 
       // Best-effort: register push token if user has enabled notifications
-      try {
-        const enabled = (await AsyncStorage.getItem('notificationsEnabled')) !== 'false';
-        if (enabled) {
-          await pushNotificationService.upsertPreferences({
-            userId: newSession.user.id,
-            pushEnabled: true,
-          });
-          const reg = await pushNotificationService.registerForPushNotifications();
-          if (reg.ok) {
-            await pushNotificationService.upsertPushToken({
-              userId: newSession.user.id,
-              expoPushToken: reg.expoPushToken,
-              enabled: true,
-            });
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const enabled = (await AsyncStorage.getItem('notificationsEnabled')) !== 'false';
+            if (enabled) {
+              await pushNotificationService.upsertPreferences({
+                userId: uid,
+                pushEnabled: true,
+              });
+              const reg = await pushNotificationService.registerForPushNotifications();
+              if (reg.ok) {
+                await pushNotificationService.upsertPushToken({
+                  userId: uid,
+                  expoPushToken: reg.expoPushToken,
+                  enabled: true,
+                });
+              }
+            }
+          } catch (e) {
+            console.warn('[Auth] Push registration skipped:', e);
           }
-        }
-      } catch (e) {
-        console.warn('[Auth] Push registration skipped:', e);
-      }
+        })();
+      }, 0);
 
       // Best-effort: send welcome email after the first successful sign-in (works for verified users).
       // Do not block the UI on email delivery.
-      void maybeSendWelcomeEmail(newSession.user);
+      setTimeout(() => {
+        void maybeSendWelcomeEmail(newSession.user);
+      }, 0);
     }
   };
 
@@ -184,15 +198,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // Defensive: when app returns from background, refresh session to avoid stale tokens causing "stuck" screens.
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void refreshSession();
-      }
-    });
-    return () => sub.remove();
-  }, []);
+  // NOTE:
+  // We previously attempted to refresh the session on AppState "active". In practice this can
+  // cause request storms / deadlocks on some devices/accounts. Supabase already auto-refreshes tokens.
 
   const signIn = async (email: string, password: string) => {
     try {

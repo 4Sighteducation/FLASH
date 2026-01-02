@@ -19,6 +19,21 @@ import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
 
 const Stack = createNativeStackNavigator();
 
+function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    Promise.resolve(p as any)
+      .then((v: T) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((e: unknown) => {
+        clearTimeout(t);
+        reject(e);
+      });
+  });
+}
+
 export default function AppNavigator() {
   const { user, loading: authLoading } = useAuth();
   const [isOnboarded, setIsOnboarded] = useState<boolean | null>(null);
@@ -45,11 +60,11 @@ export default function AppNavigator() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('users')
-        .select('is_onboarded')
-        .eq('id', user.id)
-        .single();
+      const { data, error } = (await withTimeout(
+        supabase.from('users').select('is_onboarded').eq('id', user.id).single() as any,
+        12000,
+        'checkOnboardingStatus'
+      )) as any;
 
       if (error) {
         console.error('Supabase error checking onboarding:', error);
