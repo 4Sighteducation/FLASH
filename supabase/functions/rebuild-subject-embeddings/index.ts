@@ -11,6 +11,7 @@ type RebuildBody = {
   exam_board_subject_id: string;
   delete_first?: boolean; // default true
   batch_size?: number; // default 64
+  run_id?: string; // optional curriculum_ops_runs.id to update
 };
 
 function json(status: number, body: unknown) {
@@ -24,6 +25,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
+  let runId = '';
+  let supabase: any = null;
   try {
     const secret = req.headers.get('x-curriculum-ops-secret') || '';
     const expected = Deno.env.get('CURRICULUM_OPS_SECRET') || '';
@@ -31,7 +34,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
@@ -41,6 +44,7 @@ serve(async (req) => {
     if (!exam_board_subject_id) return json(400, { error: 'Missing exam_board_subject_id' });
     const deleteFirst = body.delete_first !== false;
     const batchSize = Math.max(1, Math.min(256, Number(body.batch_size || 64)));
+    runId = body.run_id ? String(body.run_id).trim() : '';
 
     // Resolve subject (for filtering view)
     const { data: subj, error: subjErr } = await supabase
@@ -126,7 +130,7 @@ serve(async (req) => {
       upserted += rows.length;
     }
 
-    return json(200, {
+    const payload = {
       ok: true,
       exam_board_subject_id,
       subject_code: subjectCode,
@@ -134,9 +138,29 @@ serve(async (req) => {
       upserted,
       deleted_first: deleteFirst,
       note: 'This rebuilds embeddings + minimal metadata (summary derived from name/path).',
-    });
+    };
+
+    if (runId) {
+      try {
+        await supabase
+          .from('curriculum_ops_runs')
+          .update({ status: 'success', finished_at: new Date().toISOString(), summary_json: payload })
+          .eq('id', runId);
+      } catch {
+        // ignore
+      }
+    }
+
+    return json(200, payload);
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Internal error';
+    try {
+      if (runId && supabase) {
+        await supabase.from('curriculum_ops_runs').update({ status: 'error', finished_at: new Date().toISOString(), error_text: msg }).eq('id', runId);
+      }
+    } catch {
+      // ignore
+    }
     return json(500, { error: msg });
   }
 });
