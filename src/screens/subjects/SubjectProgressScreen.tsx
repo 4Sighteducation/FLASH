@@ -512,12 +512,18 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   };
 
   const handleLongPressNode = (topicId: string) => {
-    // Long press should always surface the "topic options" sheet so users can:
-    // - study leaf cards
-    // - study overview cards
-    // - create overview cards
-    // - manage/prioritise
-    // (previous production behavior)
+    const t = topicsById.get(topicId);
+    if (!t) return;
+    const label = getTopicLabel(t as any);
+
+    // Hybrid UX:
+    // - Level 0 (root): long press = quick "Add to Tree" (as you liked)
+    // - Others: long press = Topic Options (includes overview study/create, manage & prioritise)
+    if (!t.parent_topic_id) {
+      setShowAddModal({ topicId, topicName: label });
+      return;
+    }
+
     openTopicOptionsForId(topicId);
   };
 
@@ -689,6 +695,18 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             ) : null}
           </View>
           <View style={styles.groupHeaderRight}>
+            {depth === 0 ? (
+              <TouchableOpacity
+                onPress={(e: any) => {
+                  // Prevent the row press from also firing
+                  if (e?.stopPropagation) e.stopPropagation();
+                  openTopicOptionsForId(topicId);
+                }}
+                style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}
+              >
+                <Text style={{ color: baseColor, fontWeight: '900' }}>⋯</Text>
+              </TouchableOpacity>
+            ) : null}
             <View style={[styles.cardCountBadge, { backgroundColor: '#00F5FF', borderColor: baseColor, borderWidth: 2 }]}>
               <Text style={[styles.cardCountText, { color: '#000', fontWeight: '700' }]}>{badgeCount}</Text>
             </View>
