@@ -202,15 +202,19 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       const masteredCounts = new Map<string, number>();
       const overviewCountMap = new Map<string, number>();
 
+      // IMPORTANT:
+      // Treat overview cards as a separate count. Do not include them in normal card_count,
+      // otherwise we double-count when we also display overviewCount separately.
       (cards || []).forEach((c: any) => {
         const tid = c.topic_id;
         if (!tid) return;
+        if (c.is_overview) {
+          overviewCountMap.set(tid, (overviewCountMap.get(tid) || 0) + 1);
+          return;
+        }
         cardCounts.set(tid, (cardCounts.get(tid) || 0) + 1);
         if (Number(c.box_number || 0) >= 4) {
           masteredCounts.set(tid, (masteredCounts.get(tid) || 0) + 1);
-        }
-        if (c.is_overview) {
-          overviewCountMap.set(tid, (overviewCountMap.get(tid) || 0) + 1);
         }
       });
 
@@ -356,15 +360,14 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
 
   const visibleIds = computeVisibleIds();
 
-  // Aggregate counts (descendants + overview cards at this node)
+  // Aggregate counts (descendants; excludes overview cards).
   const aggregateCountMemo = new Map<string, number>();
   const getAggregateCount = (topicId: string): number => {
     if (aggregateCountMemo.has(topicId)) return aggregateCountMemo.get(topicId)!;
     const ownCards = topicProgress.get(topicId)?.card_count || 0;
-    const ownOverview = overviewCounts.get(topicId) || 0;
     const childIds = getDirectChildrenIds(topicId).filter((id) => visibleIds.has(id));
     const sumChildren = childIds.reduce((s, cid) => s + getAggregateCount(cid), 0);
-    const total = ownCards + ownOverview + sumChildren;
+    const total = ownCards + sumChildren;
     aggregateCountMemo.set(topicId, total);
     return total;
   };
@@ -509,16 +512,13 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
   };
 
   const handleLongPressNode = (topicId: string) => {
-    const t = topicsById.get(topicId);
-    if (!t) return;
-    const label = getTopicLabel(t as any);
-    // Level 0: long press opens Add-to-tree for immediate children (lets user add multiple children even after expanding)
-    if (!t.parent_topic_id) {
-      setShowAddModal({ topicId, topicName: label });
-      return;
-    }
-    // Non-root: long press opens the curriculum context (parents/grandparents + overview generation).
-    setShowContextModal({ topicId, topicName: label });
+    // Long press should always surface the "topic options" sheet so users can:
+    // - study leaf cards
+    // - study overview cards
+    // - create overview cards
+    // - manage/prioritise
+    // (previous production behavior)
+    openTopicOptionsForId(topicId);
   };
 
   const handleStudyLeafCards = () => {
@@ -670,7 +670,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                   {overviewCount > 0 ? (
                     <>
                       <Text style={styles.topicMetaDivider}>•</Text>
-                      <Text style={styles.topicMetaText}>🏔️ {overviewCount} overview</Text>
+                      <Text style={[styles.topicMetaText, { color: '#00F5FF', fontWeight: '800' }]}>🏔️ {overviewCount} overview</Text>
                     </>
                   ) : null}
                   {mastered > 0 ? (

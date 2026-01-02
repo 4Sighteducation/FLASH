@@ -19,6 +19,7 @@ import { notificationService } from '../../services/notificationService';
 import NotificationBadge from '../../components/NotificationBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTopicLabel } from '../../utils/topicNameUtils';
+import { TOPIC_PRIORITY_LEVELS } from '../../constants/topicPriorities';
 
 interface CurriculumTopic {
   id: string;
@@ -42,13 +43,19 @@ interface TopicNode {
   priority?: number;
 }
 
-const PRIORITY_LEVELS = [
-  { value: 1, label: 'Netflix & Chill', color: '#10B981', emoji: '😎' },
-  { value: 2, label: 'Casual Review', color: '#3B82F6', emoji: '📚' },
-  { value: 3, label: 'Getting Serious', color: '#F59E0B', emoji: '🎯' },
-  { value: 4, label: 'Crunch Time', color: '#F97316', emoji: '⏰' },
-  { value: 5, label: 'Emergency Mode!', color: '#EF4444', emoji: '🚨' },
-];
+// Priority levels are shared across the app:
+// 1 = highest priority, 4 = lowest priority.
+const PRIORITY_LEVELS = TOPIC_PRIORITY_LEVELS.map((p) => {
+  const parts = String(p.label || '').split(' ');
+  const emoji = parts.length > 1 ? parts[0] : '⭐';
+  const shortLabel = parts.length > 1 ? parts.slice(1).join(' ') : p.label;
+  return {
+    value: p.value,
+    label: shortLabel,
+    emoji,
+    color: p.color,
+  };
+});
 
 // Helper function to get lighter shade of color
 const getLighterShade = (color: string, level: number): string => {

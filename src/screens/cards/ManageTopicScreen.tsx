@@ -19,14 +19,11 @@ import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { abbreviateTopicName, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import FlashcardCard from '../../components/FlashcardCard';
+import { TOPIC_PRIORITY_LEVELS } from '../../constants/topicPriorities';
 
-// Priority levels - using "Revision Urgency" set
-const PRIORITY_LEVELS = [
-  { value: 1, label: "Low Priority", number: '1', color: '#10B981', description: 'Light review only' }, // Green
-  { value: 2, label: 'Medium Priority', number: '2', color: '#F59E0B', description: 'Needs attention' }, // Orange
-  { value: 3, label: 'High Priority', number: '3', color: '#FF006E', description: 'Serious focus needed' }, // Pink
-  { value: 4, label: 'Urgent', number: '4', color: '#EF4444', description: 'Top priority!' }, // Red
-];
+// Priority levels are shared across the app:
+// 1 = highest priority, 4 = lowest priority.
+const PRIORITY_LEVELS = TOPIC_PRIORITY_LEVELS;
 
 interface FlashcardItem {
   id: string;

@@ -4,6 +4,8 @@ import { supabase } from '../services/supabase';
 import { cleanupOrphanedCards } from '../utils/databaseMaintenance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushNotificationService } from '../services/pushNotificationService';
+import { AppState } from 'react-native';
+import { migrateUserTopicPrioritiesToV2 } from '../utils/priorityMigration';
 
 interface AuthContextType {
   user: User | null;
@@ -52,6 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Clean up orphaned cards when user is authenticated
     if (newSession?.user?.id) {
+      // One-time data migration: unify priority scale to v2 (1=highest, 4=lowest).
+      try {
+        await migrateUserTopicPrioritiesToV2(newSession.user.id);
+      } catch (e) {
+        console.warn('[Auth] Priority migration skipped (non-fatal):', e);
+      }
+
       try {
         const result = await cleanupOrphanedCards(newSession.user.id);
         if (result.success && result.orphanedCount && result.orphanedCount > 0) {
@@ -173,6 +182,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Defensive: when app returns from background, refresh session to avoid stale tokens causing "stuck" screens.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void refreshSession();
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   const signIn = async (email: string, password: string) => {

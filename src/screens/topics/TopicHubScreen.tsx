@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTopicLabel } from '../../utils/topicNameUtils';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import { TOPIC_PRIORITY_LEVELS } from '../../constants/topicPriorities';
 
 interface Topic {
   id: string;
@@ -30,13 +31,19 @@ interface Topic {
   children?: Topic[];
 }
 
-const PRIORITY_LEVELS = [
-  { value: 1, label: 'Netflix & Chill', color: '#10B981', emoji: '😎' },
-  { value: 2, label: 'Casual Review', color: '#3B82F6', emoji: '📚' },
-  { value: 3, label: 'Getting Serious', color: '#F59E0B', emoji: '🎯' },
-  { value: 4, label: 'Crunch Time', color: '#F97316', emoji: '⏰' },
-  { value: 5, label: 'Emergency Mode!', color: '#EF4444', emoji: '🚨' },
-];
+// Priority levels are shared across the app:
+// 1 = highest priority, 4 = lowest priority.
+const PRIORITY_LEVELS = TOPIC_PRIORITY_LEVELS.map((p) => {
+  const parts = String(p.label || '').split(' ');
+  const emoji = parts.length > 1 ? parts[0] : '⭐';
+  const shortLabel = parts.length > 1 ? parts.slice(1).join(' ') : p.label;
+  return {
+    value: p.value,
+    label: shortLabel,
+    emoji,
+    color: p.color,
+  };
+});
 
 const LEVEL_NAMES = {
   1: 'Module',
