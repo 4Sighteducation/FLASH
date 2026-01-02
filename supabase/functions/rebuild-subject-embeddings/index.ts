@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { Configuration, OpenAIApi } from 'https://esm.sh/openai@4.20.0';
+import OpenAI from 'https://esm.sh/openai@4.20.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,7 +37,7 @@ serve(async (req) => {
     supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
-    const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
+    const openai = new OpenAI({ apiKey: openaiApiKey });
 
     const body = (await req.json().catch(() => ({}))) as RebuildBody;
     const exam_board_subject_id = String(body.exam_board_subject_id || '').trim();
@@ -98,11 +98,11 @@ serve(async (req) => {
       const batch = topics.slice(i, i + batchSize);
       const inputs = batch.map(makeInput);
 
-      const embeddingResponse = await openai.createEmbedding({
+      const embeddingResponse = await openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: inputs,
       });
-      const embeddings = embeddingResponse.data.data.map((d: any) => d.embedding);
+      const embeddings = embeddingResponse.data.map((d: any) => d.embedding);
 
       const rows = batch.map((t: any, idx: number) => {
         const path = Array.isArray(t.full_path) ? t.full_path.filter(Boolean) : [];
