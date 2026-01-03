@@ -33,8 +33,8 @@ function extractEvent(payload: any): RcEvent {
     product_id: e?.product_id ?? payload?.product_id,
     app_user_id: e?.app_user_id ?? payload?.app_user_id,
     environment: e?.environment ?? payload?.environment,
-    purchased_at_ms: Number(e?.purchased_at_ms ?? payload?.purchased_at_ms || 0) || undefined,
-    event_timestamp_ms: Number(e?.event_timestamp_ms ?? payload?.event_timestamp_ms || 0) || undefined,
+    purchased_at_ms: Number((e?.purchased_at_ms ?? payload?.purchased_at_ms) ?? 0) || undefined,
+    event_timestamp_ms: Number((e?.event_timestamp_ms ?? payload?.event_timestamp_ms) ?? 0) || undefined,
   };
 }
 
