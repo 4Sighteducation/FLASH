@@ -229,7 +229,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const initializeRevenueCat = async () => {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
+
       if (!apiKey || Platform.OS === 'web' || !user?.id) {
         await checkSubscriptionStatus();
         return;
@@ -290,13 +296,20 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const purchasePlan = async (plan: Plan, billing: BillingPeriod) => {
     try {
-      const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
+
       if (!apiKey || Platform.OS === 'web' || !user?.id) {
         Alert.alert('Info', 'Purchases require a store build.');
         return;
       }
 
       // Purchase from the canonical offering configured in RevenueCat.
+      await configureRevenueCat({ apiKey, appUserId: user.id });
       const info = await purchaseFromOffering({ offeringId: 'default', plan, billing });
       const next = resolveTierFromCustomerInfo(info);
       const exp = getExpirationIso(info);
