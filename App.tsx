@@ -31,6 +31,54 @@ function AppContent() {
         return;
       }
 
+      // Password recovery deep link:
+      // com.foursighteducation.flash:///reset-password#access_token=...&refresh_token=...&type=recovery
+      // Note: Some deep links may come through as scheme://reset-password (host) instead of scheme:///reset-password (path).
+      const hostOrHostname = (parsed as any)?.hostname ?? (parsed as any)?.host;
+      if (parsed?.path === 'reset-password' || hostOrHostname === 'reset-password') {
+        try {
+          const hash = url.includes('#') ? url.split('#')[1] : '';
+          const query = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
+          const raw = hash || query;
+          const params = new URLSearchParams(raw);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+          const code = params.get('code');
+
+          if (access_token && refresh_token) {
+            const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (error) {
+              console.error('Failed to set session from recovery link:', error);
+              Alert.alert('Reset Error', error.message || 'Invalid or expired reset link.');
+              return;
+            }
+            navigate('ResetPassword' as never);
+            return;
+          }
+
+          // Support PKCE-style recovery links (rare, but safe).
+          if (code) {
+            const { data, error } = await (supabase.auth as any).exchangeCodeForSession(code);
+            if (error) {
+              console.error('Failed to exchange code for session:', error);
+              Alert.alert('Reset Error', error.message || 'Invalid or expired reset link.');
+              return;
+            }
+            if (data?.session) {
+              navigate('ResetPassword' as never);
+              return;
+            }
+          }
+
+          Alert.alert('Reset Error', 'Invalid or expired reset link.');
+          return;
+        } catch (e: any) {
+          console.error('Error handling reset-password deep link:', e);
+          Alert.alert('Reset Error', e?.message || 'Invalid or expired reset link.');
+          return;
+        }
+      }
+
       if (url && url.includes('auth/callback')) {
         console.log('OAuth callback received, processing...');
         // Let the oauthHandler process the URL.

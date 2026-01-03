@@ -106,6 +106,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
   const flashcardsLengthRef = useRef(0);
   const frozenBrowseRef = useRef(false);
   const [difficultySheetVisible, setDifficultySheetVisible] = useState(false);
+  const [voiceEnabledInStudy, setVoiceEnabledInStudy] = useState(true);
   
   // Animation values for swipe
   const translateX = useRef(new Animated.Value(0)).current;
@@ -192,12 +193,30 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
       const s = await getOrCreateUserSettings(user.id);
       if (cancelled) return;
       setUserSettings(s);
+      setVoiceEnabledInStudy(!!(s as any)?.voice_answers_in_study);
     }
     loadSettings();
     return () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  const toggleVoiceInStudy = async () => {
+    if (!user?.id) return;
+    if (tier !== 'pro') {
+      showUpgradePrompt({
+        title: 'Pro feature',
+        message: 'Voice answers (with AI feedback) are available on Pro.',
+        navigation: navigation as any,
+        ctaLabel: 'View plans',
+      });
+      return;
+    }
+    const nextEnabled = !voiceEnabledInStudy;
+    setVoiceEnabledInStudy(nextEnabled);
+    const updated = await updateUserSettings(user.id, { voice_answers_in_study: nextEnabled } as any);
+    if (updated) setUserSettings(updated);
+  };
 
   type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
   const SHEET_PRESETS: Array<{
@@ -1193,6 +1212,19 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                 <Text style={[styles.timerText, { color: timerUi.color }]}>{timerUi.label}</Text>
               </View>
             ) : null}
+
+            {/* Voice toggle (keeps button visible but optionally disables it) */}
+            <TouchableOpacity
+              style={[
+                styles.voiceTogglePill,
+                !voiceEnabledInStudy && styles.voiceTogglePillOff,
+              ]}
+              onPress={toggleVoiceInStudy}
+            >
+              <Text style={styles.voiceToggleText}>
+                🎤 VOICE {voiceEnabledInStudy ? 'ON' : 'OFF'}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -1247,6 +1279,7 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
                     questionClampLines={6}
                     onSkip={handleSkipCardForSession}
                     onAnswer={(correct) => handleCardAnswer(currentCard.id, correct)}
+                    voiceAnswerEnabled={voiceEnabledInStudy}
                   />
                 )}
               </View>
@@ -2102,6 +2135,25 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 6,
     paddingHorizontal: 14,
+  },
+  voiceTogglePill: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.35)',
+    backgroundColor: 'rgba(0,245,255,0.08)',
+  },
+  voiceTogglePillOff: {
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    opacity: 0.85,
+  },
+  voiceToggleText: {
+    color: '#00F5FF',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
   systemLoadPill: {
     borderRadius: 999,

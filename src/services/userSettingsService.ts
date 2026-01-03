@@ -6,6 +6,8 @@ export type UserSettings = {
   answer_timer_seconds: number; // 0=off
   grace_seconds: number; // default 3
   time_bank_seconds: number; // optional v2
+  // Study mode UX toggle: keep the Voice Answer button visible but optionally disable it.
+  voice_answers_in_study: boolean;
   updated_at?: string;
 };
 
@@ -14,6 +16,7 @@ const DEFAULTS: Omit<UserSettings, 'user_id'> = {
   answer_timer_seconds: 0,
   grace_seconds: 3,
   time_bank_seconds: 0,
+  voice_answers_in_study: true,
 };
 
 export async function getOrCreateUserSettings(userId: string): Promise<UserSettings | null> {

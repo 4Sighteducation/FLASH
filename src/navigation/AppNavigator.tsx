@@ -6,6 +6,7 @@ import { SubscriptionProvider } from '../contexts/SubscriptionContext';
 import { supabase } from '../services/supabase';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MainNavigator from './MainNavigator';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
@@ -128,6 +129,13 @@ export default function AppNavigator() {
           <Stack.Screen
             name="FeedbackModal"
             component={FeedbackModalScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+
+          {/* Password reset flow (opened via deep link) */}
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
             options={{ headerShown: false, presentation: 'modal' }}
           />
         </Stack.Navigator>

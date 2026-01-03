@@ -14,6 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
+import { makeRedirectUri } from 'expo-auth-session';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -108,9 +109,20 @@ export default function LoginScreen({ navigation }: any) {
     }
 
     try {
+      // IMPORTANT:
+      // - On native, use an explicit deep link (stable + predictable) so Supabase emails redirect into the app.
+      // - On web, use an https URL (current origin).
+      //
+      // Note: we intentionally use "triple slash" so expo-linking parses `path === 'reset-password'`
+      // (with a double-slash URL, `reset-password` can be treated as the host instead of the path).
+      const resetRedirectTo =
+        Platform.OS === 'web'
+          ? ExpoLinking.createURL('reset-password')
+          : 'com.foursighteducation.flash:///reset-password';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         // Linking.createURL works on web (uses current origin) and native (uses the configured scheme).
-        redirectTo: ExpoLinking.createURL('reset-password'),
+        redirectTo: resetRedirectTo,
       });
 
       if (error) {

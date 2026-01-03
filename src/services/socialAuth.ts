@@ -48,6 +48,36 @@ async function getGoogleSigninModule() {
   return GoogleSigninModule;
 }
 
+function isGoogleSignInCancelled(err: any): boolean {
+  const msg = String(err?.message || '');
+  const code = err?.code;
+  return (
+    msg.toLowerCase().includes('cancel') ||
+    code === '12501' || // SIGN_IN_CANCELLED (common on Android)
+    code === -5 // sometimes returned by play services
+  );
+}
+
+function toGoogleSignInFriendlyError(err: any): Error {
+  const msg = String(err?.message || '');
+  const code = err?.code;
+
+  // Common “DEVELOPER_ERROR” case (often status code 10).
+  if (msg.includes('DEVELOPER_ERROR') || code === 10 || code === '10') {
+    return new Error(
+      [
+        'Google Sign-In is misconfigured (DEVELOPER_ERROR).',
+        '',
+        'Most common fix: add the SHA-1 of the signing key used by this build to your Google OAuth Android client (package: com.foursighteducation.flash).',
+        'If you use Play App Signing, use the SHA-1 from the “App signing key certificate” in Play Console.',
+        'If you use EAS credentials, use the SHA-1 for the EAS keystore.',
+      ].join('\n')
+    );
+  }
+
+  return new Error(msg || 'Google Sign-In failed. Please try again.');
+}
+
 async function ensureGoogleSigninConfigured() {
   if (googleSigninConfigured) return;
   if (!GOOGLE_WEB_CLIENT_ID) {
@@ -67,6 +97,54 @@ async function ensureGoogleSigninConfigured() {
     forceCodeForRefreshToken: true,
   });
   googleSigninConfigured = true;
+}
+
+async function signInWithGoogleOAuthViaBrowser(): Promise<AuthResponse> {
+  console.log('Starting Google OAuth with redirect URI:', redirectUri);
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: redirectUri,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    console.error('Google auth error:', error);
+    return { error };
+  }
+
+  if (!data?.url) {
+    return { error: new Error('No authentication URL returned') };
+  }
+
+  console.log('Opening Google OAuth URL...');
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri, {
+    dismissButtonStyle: 'close',
+  });
+
+  console.log('WebBrowser result:', result);
+  if (result.type === 'cancel') {
+    return { error: new Error('Authentication cancelled') };
+  }
+  if (result.type !== 'success' || !result.url) {
+    return { error: new Error('Authentication did not complete. Please try again.') };
+  }
+
+  const handled = await handleOAuthCallback(result.url);
+  if (!handled.success) {
+    return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return { error: new Error('Login completed but no session was created. Please try again.') };
+  }
+  return { error: null };
 }
 
 export const phoneAuth = {
@@ -124,92 +202,77 @@ export const socialAuth = {
 
       // Prefer native Google sign-in on Android (no Supabase web page).
       if (Platform.OS === 'android') {
-        await ensureGoogleSigninConfigured();
-        const { GoogleSignin } = await getGoogleSigninModule();
+        try {
+          await ensureGoogleSigninConfigured();
+          const { GoogleSignin } = await getGoogleSigninModule();
 
-        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-        const userInfo = await GoogleSignin.signIn();
-        const idToken = userInfo?.idToken;
-
-        if (!idToken) {
-          return { error: new Error('Google Sign-In did not return an idToken. Check your Google OAuth client ID setup.') };
-        }
-
-        const { data, error } = await (supabase.auth as any).signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
-
-        if (error) {
-          console.error('Google native sign-in (Supabase exchange) error:', error);
-          return { error };
-        }
-
-        if (!data?.session) {
-          return { error: new Error('Login completed but no session was created. Please try again.') };
-        }
-
-        return { error: null };
-      }
-
-      console.log('Starting Google OAuth with redirect URI:', redirectUri);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUri,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) {
-        console.error('Google auth error:', error);
-        return { error };
-      }
-
-      if (data?.url) {
-        console.log('Opening Google OAuth URL...');
-        
-        // Open the auth URL in a web browser
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUri,
-          {
-            dismissButtonStyle: 'close',
-          }
-        );
-
-        console.log('WebBrowser result:', result);
-
-        if (result.type === 'cancel') {
-          return { error: new Error('Authentication cancelled') };
-        }
-
-        if (result.type === 'success') {
-          // Prefer processing the returned redirect URL directly (more reliable than relying on the url event)
-          if (!result.url) {
-            return { error: new Error('No redirect URL received. Please try again.') };
+          await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          const userInfo = await GoogleSignin.signIn();
+          // With newer versions of @react-native-google-signin/google-signin, idToken is more reliably
+          // retrieved via getTokens() than from the signIn() return value.
+          let idToken = userInfo?.idToken;
+          try {
+            const tokens = await GoogleSignin.getTokens?.();
+            if (tokens?.idToken) idToken = tokens.idToken;
+          } catch (e) {
+            // Non-fatal; we'll handle missing idToken below.
           }
 
-          const handled = await handleOAuthCallback(result.url);
-          if (!handled.success) {
-            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
+          if (!idToken) {
+            // This usually means the configured webClientId is wrong/missing in the build environment,
+            // or the Google project credentials are mismatched. Fall back to web OAuth so users can log in.
+            console.warn('[Auth] Google native sign-in returned no idToken; falling back to web OAuth.', {
+              hasWebClientId: !!GOOGLE_WEB_CLIENT_ID,
+              webClientIdSuffix: GOOGLE_WEB_CLIENT_ID?.slice(-24),
+              userInfoKeys: userInfo ? Object.keys(userInfo) : null,
+            });
+
+            const fallback = await signInWithGoogleOAuthViaBrowser();
+            if (!fallback.error) return fallback;
+
+            return {
+              error: new Error(
+                [
+                  'Google Sign-In did not return an idToken.',
+                  '',
+                  'This usually means EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set to the correct Google OAuth “Web application” Client ID for this build.',
+                  'Fixing that will make native Google Sign-In work; for now you can still log in via the web fallback.',
+                ].join('\n')
+              ),
+            };
           }
 
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
+          const { data, error } = await (supabase.auth as any).signInWithIdToken({
+            provider: 'google',
+            token: idToken,
+          });
+
+          if (error) {
+            console.error('Google native sign-in (Supabase exchange) error:', error);
+            return { error };
+          }
+
+          if (!data?.session) {
             return { error: new Error('Login completed but no session was created. Please try again.') };
           }
-          return { error: null };
-        }
 
-        return { error: new Error('Authentication did not complete. Please try again.') };
+          return { error: null };
+        } catch (nativeError: any) {
+          // If native Google Sign-In is misconfigured (common on fresh keystores / missing SHA),
+          // fall back to the Supabase OAuth web flow so users can still log in.
+          console.error('Google native sign-in error:', nativeError);
+          if (isGoogleSignInCancelled(nativeError)) {
+            return { error: new Error('Authentication cancelled') };
+          }
+
+          // Attempt fallback OAuth flow; if that fails, show a more actionable message.
+          const fallback = await signInWithGoogleOAuthViaBrowser();
+          if (!fallback.error) return fallback;
+          return { error: toGoogleSignInFriendlyError(nativeError) };
+        }
       }
 
-      return { error: new Error('No authentication URL returned') };
+      return await signInWithGoogleOAuthViaBrowser();
     } catch (error) {
       console.error('Google sign in error:', error);
       return { error };

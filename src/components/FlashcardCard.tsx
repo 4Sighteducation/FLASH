@@ -18,8 +18,11 @@ import Icon from './Icon';
 import DetailedAnswerModal from './DetailedAnswerModal';
 import VoiceAnswerModal from './VoiceAnswerModal';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { LeitnerSystem } from '../utils/leitnerSystem';
 import { sanitizeTopicLabel } from '../utils/topicNameUtils';
+import { showUpgradePrompt } from '../utils/upgradePrompt';
+import { useNavigation } from '@react-navigation/native';
 
 interface FlashcardCardProps {
   card: {
@@ -62,6 +65,11 @@ interface FlashcardCardProps {
    */
   allowQuestionExpand?: boolean;
   questionClampLines?: number;
+  /**
+   * If false, the Voice Answer button remains visible but is disabled/greyed-out.
+   * Intended for Study mode UX toggles.
+   */
+  voiceAnswerEnabled?: boolean;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -138,8 +146,11 @@ export default function FlashcardCard({
   onSkip,
   allowQuestionExpand = false,
   questionClampLines = 6,
+  voiceAnswerEnabled = true,
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
+  const navigation = useNavigation();
+  const { limits } = useSubscription();
   const [isFlipped, setIsFlipped] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [orderedOptions, setOrderedOptions] = useState<string[] | null>(null);
@@ -288,8 +299,9 @@ export default function FlashcardCard({
   const handleVoiceAnswer = (correct: boolean) => {
     setShowVoiceModal(false);
     handleUserAnswer(correct);
-    // Flip the card to show the answer
-    if (!isFlipped) {
+    // In Study mode, the parent (StudyModal) will immediately transition this card away;
+    // flipping can cause a brief visual glitch, so only flip in non-study modes.
+    if (interactionMode !== 'study' && !isFlipped) {
       flipCard();
     }
   };
@@ -299,6 +311,7 @@ export default function FlashcardCard({
     const needsUserConfirmation = interactionMode === 'study'
       ? ['short_answer', 'essay', 'acronym', 'manual'].includes(card.card_type)
       : ['short_answer', 'essay', 'acronym'].includes(card.card_type);
+    const supportsVoiceAnswer = ['short_answer', 'essay', 'acronym'].includes(card.card_type);
     const hasLongContent = isMultipleChoice && card.options && 
       (questionText.length > 100 || card.options.some(opt => String(opt ?? '').length > 50));
 
@@ -553,14 +566,32 @@ export default function FlashcardCard({
               </View>
             )}
 
-            {interactionMode !== 'study' && needsUserConfirmation && (
+            {/* Voice Answer (Pro feature). Visible in Study mode; can be disabled via per-user toggle. */}
+            {supportsVoiceAnswer && needsUserConfirmation && (
               <View style={styles.voiceAnswerSection}>
                 <Text style={styles.voicePromptText}>
                   Try speaking your answer out loud!
                 </Text>
                 <TouchableOpacity
-                  style={[styles.voiceButton, { backgroundColor: color }]}
-                  onPress={() => setShowVoiceModal(true)}
+                  style={[
+                    styles.voiceButton,
+                    { backgroundColor: color },
+                    !voiceAnswerEnabled && { opacity: 0.35 },
+                  ]}
+                  onPress={() => {
+                    if (!voiceAnswerEnabled) return;
+                    if (!limits.canUseVoiceAnswers) {
+                      showUpgradePrompt({
+                        title: 'Pro feature',
+                        message: 'Voice answers (with AI feedback) are available on Pro.',
+                        navigation: navigation as any,
+                        ctaLabel: 'View plans',
+                      });
+                      return;
+                    }
+                    setShowVoiceModal(true);
+                  }}
+                  disabled={!voiceAnswerEnabled}
                 >
                   <Icon name="mic" size={24} color="white" />
                   <Text style={styles.voiceButtonText}>Voice Answer</Text>
