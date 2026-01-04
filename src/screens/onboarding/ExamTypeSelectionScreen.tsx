@@ -19,9 +19,115 @@ export default function ExamTypeSelectionScreen() {
   const [secondaryTrack, setSecondaryTrack] = useState<ExamTrackId | null>(null);
   const insets = useSafeAreaInsets();
   const windowHeight = Dimensions.get('window').height;
+  const windowWidth = Dimensions.get('window').width;
   const isCompact = windowHeight < 860;
+  const isNarrow = windowWidth < 360;
 
   const examTypes: ExamTrack[] = useMemo(() => getExamTracks(), []);
+  const trackById = useMemo(() => {
+    const map = new Map<ExamTrackId, ExamTrack>();
+    examTypes.forEach((t) => map.set(t.id, t));
+    return map;
+  }, [examTypes]);
+
+  const isSelected = (id: ExamTrackId) => (step === 0 ? primaryTrack === id : secondaryTrack === id);
+
+  const accentFor = (id: ExamTrackId) => {
+    switch (id) {
+      case 'GCSE':
+        return { border: 'rgba(0, 245, 255, 0.35)', fill: 'rgba(0, 245, 255, 0.06)' };
+      case 'A_LEVEL':
+        return { border: 'rgba(0, 245, 255, 0.35)', fill: 'rgba(0, 245, 255, 0.06)' };
+      case 'VOCATIONAL_L2':
+        return { border: 'rgba(34, 197, 94, 0.35)', fill: 'rgba(34, 197, 94, 0.06)' };
+      case 'VOCATIONAL_L3':
+        return { border: 'rgba(34, 197, 94, 0.35)', fill: 'rgba(34, 197, 94, 0.06)' };
+      case 'SQA_NATIONAL_5':
+        return { border: 'rgba(168, 85, 247, 0.35)', fill: 'rgba(168, 85, 247, 0.06)' };
+      case 'SQA_HIGHER':
+        return { border: 'rgba(168, 85, 247, 0.35)', fill: 'rgba(168, 85, 247, 0.06)' };
+      case 'INTERNATIONAL_GCSE':
+        return { border: 'rgba(59, 130, 246, 0.35)', fill: 'rgba(59, 130, 246, 0.06)' };
+      case 'INTERNATIONAL_A_LEVEL':
+        return { border: 'rgba(59, 130, 246, 0.35)', fill: 'rgba(59, 130, 246, 0.06)' };
+      case 'IB':
+        return { border: 'rgba(255, 0, 110, 0.35)', fill: 'rgba(255, 0, 110, 0.06)' };
+      default:
+        return { border: 'rgba(255,255,255,0.12)', fill: 'rgba(255,255,255,0.03)' };
+    }
+  };
+
+  const selectTrack = (id: ExamTrackId) => {
+    const t = trackById.get(id);
+    if (t?.disabled) {
+      Alert.alert('Coming soon', `${t.name} is coming soon. Please pick another option for now.`);
+      return;
+    }
+    if (step === 0) {
+      setPrimaryTrack(id);
+      if (secondaryTrack === id) setSecondaryTrack(null);
+      return;
+    }
+    if (primaryTrack === id) {
+      Alert.alert('Pick a different track', 'Your second track must be different from your main track.');
+      return;
+    }
+    setSecondaryTrack(id);
+  };
+
+  const TrackPill = ({
+    id,
+    fullWidth,
+  }: {
+    id: ExamTrackId;
+    fullWidth?: boolean;
+  }) => {
+    const t = trackById.get(id);
+    if (!t) return null;
+    const selected = isSelected(id);
+    const accent = accentFor(id);
+    const disabled = !!t.disabled;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.pill,
+          fullWidth && styles.pillFullWidth,
+          !fullWidth && styles.pillHalfWidth,
+          { borderColor: accent.border, backgroundColor: accent.fill },
+          selected && styles.pillSelected,
+          selected && { borderColor: '#00F5FF', backgroundColor: 'rgba(0, 245, 255, 0.10)' },
+          disabled && styles.pillDisabled,
+        ]}
+        onPress={() => selectTrack(id)}
+        activeOpacity={disabled ? 1 : 0.85}
+      >
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              styles.pillTitle,
+              selected && styles.pillTitleSelected,
+              disabled && styles.pillTitleDisabled,
+            ]}
+            numberOfLines={2}
+          >
+            {t.name}
+          </Text>
+          {t.comingSoon && (
+            <View style={styles.comingSoonPill}>
+              <Text style={styles.comingSoonText}>COMING SOON</Text>
+            </View>
+          )}
+        </View>
+        {selected ? (
+          Platform.OS === 'web' ? (
+            <Text style={{ fontSize: 26 }}>✅</Text>
+          ) : (
+            <Ionicons name="checkmark-circle" size={26} color="#00F5FF" />
+          )
+        ) : null}
+      </TouchableOpacity>
+    );
+  };
 
   // Profile entrypoint: jump straight to "second track" step with primary prefilled.
   useEffect(() => {
@@ -43,7 +149,7 @@ export default function ExamTypeSelectionScreen() {
     // This screen is used in two places:
     // - Onboarding stack: route name is "SubjectSearch"
     // - Home stack (modal): route name is "SubjectSelection" (we also keep an alias "SubjectSearch")
-    navigation.navigate('SubjectSearch' as never, { primaryTrack, secondaryTrack: secondaryTrack || null } as never);
+    (navigation as any).navigate('SubjectSearch', { primaryTrack, secondaryTrack: secondaryTrack || null });
   };
 
   return (
@@ -72,73 +178,65 @@ export default function ExamTypeSelectionScreen() {
             </Text>
             <Text style={styles.subtitle}>
               {step === 0
-                ? 'Select your main study track'
+                ? 'Select your study tracks'
                 : params.mode === 'profile_add_track'
                   ? 'Optional — add a second track so you can study multiple pathways'
                   : 'Optional — you can skip this and add it later in your profile'}
             </Text>
           </View>
 
-          <View style={styles.optionsContainer}>
-            {examTypes.map((exam) => (
-              <TouchableOpacity
-                key={exam.id}
-                style={[
-                  styles.optionCard,
-                  (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedCard,
-                  isCompact && styles.optionCardCompact,
-                  isCompact && { width: '48%' },
-                  exam.disabled && styles.disabledCard,
-                ]}
-                onPress={() => {
-                  if (exam.disabled) {
-                    Alert.alert('Coming soon', `${exam.name} is coming soon. Please pick another option for now.`);
-                    return;
-                  }
-                  if (step === 0) {
-                    setPrimaryTrack(exam.id);
-                    // Reset secondary if it matches primary
-                    if (secondaryTrack === exam.id) setSecondaryTrack(null);
-                  } else {
-                    if (primaryTrack === exam.id) {
-                      Alert.alert('Pick a different track', 'Your second track must be different from your main track.');
-                      return;
-                    }
-                    setSecondaryTrack(exam.id);
-                  }
-                }}
-                activeOpacity={exam.disabled ? 1 : 0.85}
-              >
-                <View style={styles.optionContent}>
-                  <Text style={[
-                    styles.optionTitle,
-                    (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedText,
-                    exam.disabled && styles.disabledText,
-                  ]}>
-                    {exam.name}
-                  </Text>
-                  <Text style={[
-                    styles.optionDescription,
-                    (step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && styles.selectedDescription,
-                    exam.disabled && styles.disabledDescription,
-                  ]}>
-                    {exam.description}
-                  </Text>
-                  {exam.comingSoon && (
-                    <View style={styles.comingSoonPill}>
-                      <Text style={styles.comingSoonText}>COMING SOON</Text>
-                    </View>
-                  )}
-                </View>
-                {(step === 0 ? primaryTrack === exam.id : secondaryTrack === exam.id) && (
-                  Platform.OS === 'web' ? (
-                    <Text style={{ fontSize: 28 }}>✅</Text>
-                  ) : (
-                    <Ionicons name="checkmark-circle" size={28} color="#00F5FF" />
-                  )
-                )}
-              </TouchableOpacity>
-            ))}
+          <View style={styles.table}>
+            {/* Age headers */}
+            <View style={styles.twoColRow}>
+              <Text style={styles.colHeading}>14–16 Years Old</Text>
+              <Text style={styles.colHeading}>16–19 Years Old</Text>
+            </View>
+
+            {/* UK */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>UK Exams</Text>
+              <View style={[styles.twoColRow, styles.subHeadRow]}>
+                <Text style={styles.subHeading}>Level 2 Qualifications</Text>
+                <Text style={styles.subHeading}>Level 3 Qualifications</Text>
+              </View>
+
+              <View style={styles.twoColRow}>
+                <TrackPill id="GCSE" />
+                <TrackPill id="A_LEVEL" />
+              </View>
+
+              <View style={styles.twoColRow}>
+                <TrackPill id="VOCATIONAL_L2" />
+                <TrackPill id="VOCATIONAL_L3" />
+              </View>
+
+              <View style={styles.inlineDivider} />
+              <Text style={styles.sectionSubTitle}>Scottish Qualifications</Text>
+
+              <View style={styles.twoColRow}>
+                <TrackPill id="SQA_NATIONAL_5" />
+                <TrackPill id="SQA_HIGHER" />
+              </View>
+            </View>
+
+            {/* International */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>International Exams</Text>
+              <View style={styles.twoColRow}>
+                <TrackPill id="INTERNATIONAL_GCSE" />
+                <TrackPill id="INTERNATIONAL_A_LEVEL" />
+              </View>
+
+              <View style={styles.oneColRow}>
+                <TrackPill id="IB" fullWidth />
+              </View>
+            </View>
+
+            {isNarrow ? (
+              <Text style={styles.narrowHint}>
+                Tip: If your screen is narrow, scroll for the full table.
+              </Text>
+            ) : null}
           </View>
         </ScrollView>
 
@@ -149,10 +247,7 @@ export default function ExamTypeSelectionScreen() {
               style={[styles.skipButton]}
               onPress={() => {
                 if (!primaryTrack) return;
-                navigation.navigate(
-                  'SubjectSearch' as never,
-                  { primaryTrack, secondaryTrack: null } as never
-                );
+                (navigation as any).navigate('SubjectSearch', { primaryTrack, secondaryTrack: null });
               }}
             >
               <Text style={styles.skipButtonText}>Skip for now</Text>
@@ -215,69 +310,110 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
   },
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  table: {
+    marginTop: 6,
     marginBottom: 12,
   },
-  optionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 16,
+  section: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.0,
+    color: '#E2E8F0',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  sectionSubTitle: {
+    marginTop: 6,
+    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#CBD5E1',
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 12,
+  },
+  oneColRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  colHeading: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#94A3B8',
+    textAlign: 'center',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  subHeadRow: {
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  subHeading: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  inlineDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  pill: {
+    minHeight: 74,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  optionCardCompact: {
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-  },
-  selectedCard: {
-    backgroundColor: 'rgba(0, 245, 255, 0.08)',
-    borderColor: '#00F5FF',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 0 20px rgba(0, 245, 255, 0.3)',
-    } : {
-      shadowColor: '#00F5FF',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 12,
-      elevation: 5,
-    }),
-  },
-  optionContent: {
+  pillHalfWidth: {
     flex: 1,
   },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#E2E8F0',
-    marginBottom: 4,
-    letterSpacing: 0.3,
+  pillFullWidth: {
+    width: '100%',
   },
-  selectedText: {
+  pillSelected: {
+    ...(Platform.OS === 'web'
+      ? { boxShadow: '0 0 18px rgba(0, 245, 255, 0.25)' }
+      : {
+          shadowColor: '#00F5FF',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.35,
+          shadowRadius: 10,
+          elevation: 4,
+        }),
+  },
+  pillDisabled: {
+    opacity: 0.55,
+  },
+  pillTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#E2E8F0',
+    letterSpacing: 0.2,
+  },
+  pillTitleSelected: {
     color: '#00F5FF',
   },
-  optionDescription: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  selectedDescription: {
-    color: '#94A3B8',
-  },
-  disabledCard: {
-    opacity: 0.55,
-    borderColor: 'rgba(255, 0, 110, 0.35)',
-  },
-  disabledText: {
+  pillTitleDisabled: {
     color: '#CBD5E1',
-  },
-  disabledDescription: {
-    color: '#94A3B8',
   },
   comingSoonPill: {
     alignSelf: 'flex-start',
@@ -294,6 +430,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.8,
     color: '#FF006E',
+  },
+  narrowHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
   },
   continueButton: {
     backgroundColor: '#00F5FF',

@@ -5,7 +5,8 @@ export type ExamTrackId =
   | 'INTERNATIONAL_A_LEVEL'
   | 'VOCATIONAL_L2'
   | 'VOCATIONAL_L3'
-  | 'SQA_NATIONALS'
+  | 'SQA_NATIONAL_5'
+  | 'SQA_HIGHER'
   | 'IB';
 
 export type ExamTrack = {
@@ -14,6 +15,7 @@ export type ExamTrack = {
   description: string;
   disabled?: boolean;
   comingSoon?: boolean;
+  fullWidth?: boolean;
 };
 
 export function normalizeExamTrackId(input: string | null | undefined): ExamTrackId | null {
@@ -29,6 +31,10 @@ export function normalizeExamTrackId(input: string | null | undefined): ExamTrac
 
   // Accept direct qualification codes
   const upper = v.toUpperCase();
+
+  // Backward-compat: older builds stored this broad SQA id; map to the most common entrypoint.
+  if (upper === 'SQA_NATIONALS') return 'SQA_NATIONAL_5';
+
   const allowed: Set<string> = new Set([
     'GCSE',
     'INTERNATIONAL_GCSE',
@@ -36,7 +42,8 @@ export function normalizeExamTrackId(input: string | null | undefined): ExamTrac
     'INTERNATIONAL_A_LEVEL',
     'VOCATIONAL_L2',
     'VOCATIONAL_L3',
-    'SQA_NATIONALS',
+    'SQA_NATIONAL_5',
+    'SQA_HIGHER',
     'IB',
   ]);
   return allowed.has(upper) ? (upper as ExamTrackId) : null;
@@ -50,8 +57,9 @@ export function getExamTracks(): ExamTrack[] {
     { id: 'INTERNATIONAL_A_LEVEL', name: 'iA-Level', description: 'International A-Level' },
     { id: 'VOCATIONAL_L2', name: 'Vocational Level 2', description: '14–16 (e.g. Cambridge Nationals)' },
     { id: 'VOCATIONAL_L3', name: 'Vocational Level 3', description: '16–18 (e.g. BTEC Nationals)' },
-    { id: 'SQA_NATIONALS', name: 'Scottish Nationals', description: 'National 5, Higher, Adv Higher' },
-    { id: 'IB', name: 'International Baccalaureate', description: 'Coming soon', disabled: true, comingSoon: true },
+    { id: 'SQA_NATIONAL_5', name: 'National 5 Award', description: 'Scottish Nationals (Level 2)' },
+    { id: 'SQA_HIGHER', name: 'Higher / Advanced Higher', description: 'Scottish Nationals (Level 3)' },
+    { id: 'IB', name: 'IB Diploma', description: 'Coming soon', disabled: true, comingSoon: true, fullWidth: true },
   ];
 }
 
@@ -74,8 +82,10 @@ export function trackToQualificationCodes(track: ExamTrackId): string[] {
       return ['CAMBRIDGE_NATIONALS_L2'];
     case 'VOCATIONAL_L3':
       return ['BTEC_NATIONALS_L3', 'CAMBRIDGE_TECHNICALS_L3'];
-    case 'SQA_NATIONALS':
-      return ['NATIONAL_5', 'HIGHER', 'ADVANCED_HIGHER'];
+    case 'SQA_NATIONAL_5':
+      return ['NATIONAL_5'];
+    case 'SQA_HIGHER':
+      return ['HIGHER', 'ADVANCED_HIGHER'];
     case 'IB':
       return ['IB'];
     default:
@@ -88,6 +98,35 @@ export function getTrackDisplayName(track: string | null | undefined): string {
   if (!id) return (track ?? '').toString();
   const t = getExamTracks().find((x) => x.id === id);
   return t?.name ?? id;
+}
+
+export function qualificationCodeToDisplayName(code: string | null | undefined): string {
+  const v = (code ?? '').toString().trim();
+  if (!v) return '';
+  const upper = v.toUpperCase();
+
+  // Scottish Nationals
+  if (upper === 'NATIONAL_5') return 'National 5';
+  if (upper === 'HIGHER') return 'Higher';
+  if (upper === 'ADVANCED_HIGHER') return 'Advanced Higher';
+
+  // Common
+  if (upper === 'GCSE') return 'GCSE';
+  if (upper === 'A_LEVEL') return 'A-Level';
+  if (upper === 'INTERNATIONAL_GCSE') return 'iGCSE';
+  if (upper === 'INTERNATIONAL_A_LEVEL') return 'iA-Level';
+  if (upper === 'IB') return 'IB Diploma';
+
+  // Vocational
+  if (upper === 'CAMBRIDGE_NATIONALS_L2') return 'Vocational L2';
+  if (upper === 'BTEC_NATIONALS_L3') return 'Vocational L3';
+  if (upper === 'CAMBRIDGE_TECHNICALS_L3') return 'Vocational L3';
+
+  // Fallback: prettify SNAKE_CASE
+  return upper
+    .split('_')
+    .map((p) => (p.length ? p[0] + p.slice(1).toLowerCase() : p))
+    .join(' ');
 }
 
 

@@ -158,6 +158,9 @@ export default function ProfileScreen() {
     }
   };
 
+  const tierRank = (t: string) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+  const canUseDifficultyMode = tier === 'pro';
+
   // Open Difficulty modal if requested via navigation param
   useEffect(() => {
     const params: any = (route as any)?.params;
@@ -305,9 +308,6 @@ export default function ProfileScreen() {
     { key: 'overdrive', name: 'Overdrive', tagline: 'For the ambitious.', shuffle: true, timerSeconds: 15, xpMultiplier: 2.0, minTier: 'pro' },
     { key: 'beast', name: 'Beast Mode', tagline: 'No mercy. No hints. No excuses.', shuffle: true, timerSeconds: 5, xpMultiplier: 3.0, minTier: 'pro' },
   ];
-
-  const tierRank = (t: string) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
-  const canUseDifficultyMode = tier === 'pro';
   const currentDifficulty: DifficultyKey = (() => {
     const s = userSettings;
     if (!s) return 'safe';
@@ -361,6 +361,8 @@ export default function ProfileScreen() {
       VOCATIONAL_L2: 'Vocational Level 2',
       VOCATIONAL_L3: 'Vocational Level 3',
       SQA_NATIONALS: 'Scottish Nationals',
+      SQA_NATIONAL_5: 'Scottish National 5',
+      SQA_HIGHER: 'Scottish Higher',
       IB: 'International Baccalaureate',
     };
     return types[examType] || examType || 'Not set';
@@ -459,14 +461,11 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={styles.smallLinkButton}
                 onPress={() =>
-                  navigation.navigate(
-                    'ExamTypeSelection' as never,
-                    {
-                      mode: 'profile_add_track',
-                      initialPrimaryTrack: primaryTrack,
-                      initialSecondaryTrack: secondaryTrack,
-                    } as never
-                  )
+                  (navigation as any).navigate('ExamTypeSelection', {
+                    mode: 'profile_add_track',
+                    initialPrimaryTrack: primaryTrack,
+                    initialSecondaryTrack: secondaryTrack,
+                  })
                 }
               >
                 <Text style={styles.smallLinkButtonText}>Add exam track</Text>
@@ -527,7 +526,7 @@ export default function ProfileScreen() {
 
               <TouchableOpacity
                 style={styles.manageStoreButton}
-                onPress={() => navigation.navigate('RedeemCode' as never, { code: '' } as never)}
+                onPress={() => (navigation as any).navigate('RedeemCode', { code: '' })}
               >
                 <Text style={styles.manageStoreButtonText}>Redeem code</Text>
               </TouchableOpacity>

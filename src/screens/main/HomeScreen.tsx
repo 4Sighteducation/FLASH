@@ -244,6 +244,8 @@ export default function HomeScreen({ navigation }: any) {
       VOCATIONAL_L2: 'Vocational Level 2',
       VOCATIONAL_L3: 'Vocational Level 3',
       SQA_NATIONALS: 'Scottish Nationals',
+      SQA_NATIONAL_5: 'Scottish National 5',
+      SQA_HIGHER: 'Scottish Higher',
       IB: 'International Baccalaureate',
     };
     return types[examType] || examType;
@@ -449,12 +451,12 @@ export default function HomeScreen({ navigation }: any) {
                     <LinearGradient
                       colors={
                         subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                          ? ([
+                          ? (([
                               subject.gradient_color_1,
                               subject.gradient_color_2,
                               subject.gradient_color_3,
-                            ].filter(Boolean) as string[])
-                          : [subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]
+                            ].filter(Boolean) as unknown) as [string, string, ...string[]])
+                          : ([subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)] as [string, string])
                       }
                       style={isGridView ? styles.subjectGradientGrid : styles.subjectGradient}
                       start={{ x: 0, y: 0 }}

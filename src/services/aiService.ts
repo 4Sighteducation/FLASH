@@ -44,9 +44,8 @@ function examTypeForGenerationPrompt(raw: string | null | undefined): string {
   if (track === 'IB') return 'IB';
   if (track === 'VOCATIONAL_L3') return 'A-Level'; // "harder prompt" for Level 3 tracks
   if (track === 'VOCATIONAL_L2') return 'GCSE';
-  // SQA track covers multiple actual quals; if we only have the broad track id, default to GCSE.
-  // When we have the subject's qualification code (NATIONAL_5/HIGHER/ADVANCED_HIGHER), that will override this branch.
-  if (track === 'SQA_NATIONALS') return 'GCSE';
+  if (track === 'SQA_NATIONAL_5') return 'GCSE';
+  if (track === 'SQA_HIGHER') return 'A-Level';
 
   // Otherwise, we may have a qualification_types.code like BTEC_NATIONALS_L3.
   const upper = v.toUpperCase();

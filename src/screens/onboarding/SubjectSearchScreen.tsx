@@ -19,7 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { ensureCanAddSubjects } from '../../utils/usageLimits';
 import { normalizeSubjectName } from '../../utils/subjectName';
-import { ExamTrackId, normalizeExamTrackId, trackToQualificationCodes } from '../../utils/examTracks';
+import { ExamTrackId, normalizeExamTrackId, qualificationCodeToDisplayName, trackToQualificationCodes } from '../../utils/examTracks';
 
 interface SubjectOption {
   subject_id: string;
@@ -61,7 +61,7 @@ export default function SubjectSearchScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
 
-  const searchDebounceRef = useRef<NodeJS.Timeout>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
 
   const resolvedPrimary = normalizeExamTrackId(primaryTrack) || 'GCSE';
@@ -138,9 +138,7 @@ export default function SubjectSearchScreen() {
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
 
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
 
     if (query.trim().length < 2) {
       setSearchResults([]);
@@ -591,6 +589,7 @@ export default function SubjectSearchScreen() {
                       {result.subject_name}
                     </Text>
                     <Text style={styles.subjectGroupSubtitle}>
+                      {(qualificationCodeToDisplayName(result.qualification_level) || result.qualification_level) ? `${qualificationCodeToDisplayName(result.qualification_level) || result.qualification_level} • ` : ''}
                       {result.exam_board_options.length} exam board
                       {result.exam_board_options.length > 1 ? 's' : ''} available
                     </Text>

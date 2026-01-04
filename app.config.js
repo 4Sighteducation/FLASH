@@ -53,7 +53,8 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        // Android launchers mask icons (adaptive icon). Use a padded, transparent foreground.
+        foregroundImage: "./assets/adaptive-icon-foreground.png",
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
