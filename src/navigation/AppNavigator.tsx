@@ -17,6 +17,7 @@ import SplashScreen from '../screens/SplashScreen';
 import PaywallScreen from '../screens/paywall/PaywallScreen';
 import { navigationRef } from './RootNavigation';
 import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
+import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -123,6 +124,13 @@ export default function AppNavigator() {
             name="PaywallModal"
             component={PaywallScreen}
             options={{ headerShown: false, presentation: 'modal' }}
+          />
+
+          {/* Global celebration modal (purchase success / promo upgrade) */}
+          <Stack.Screen
+            name="CelebrationModal"
+            component={CelebrationModalScreen}
+            options={{ headerShown: false, presentation: 'transparentModal' }}
           />
 
           {/* Global Feedback / Support modal (opened via RootNavigation.navigate) */}

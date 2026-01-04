@@ -28,6 +28,7 @@ import UnlockedAvatarsModal from '../../components/UnlockedAvatarsModal';
 import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { navigate as rootNavigate } from '../../navigation/RootNavigation';
 
 interface UserSubject {
   id: string;
@@ -81,17 +82,15 @@ export default function HomeScreen({ navigation }: any) {
   const [unlockedCyber, setUnlockedCyber] = useState(false);
   const [showSkinsModal, setShowSkinsModal] = useState(false);
 
-  const checkLaunchOfferCelebration = async () => {
+  const checkCelebrationPending = async () => {
     if (!user?.id) return;
     try {
-      const key = `launch_offer_celebrate_v1:${user.id}`;
+      const key = `celebration_pending_v1:${user.id}`;
       const raw = await AsyncStorage.getItem(key);
       if (!raw) return;
       await AsyncStorage.removeItem(key);
-      Alert.alert(
-        'Upgraded to Pro 🎉',
-        "Your launch offer has been applied. You now have Pro features unlocked."
-      );
+      const payload = JSON.parse(raw);
+      rootNavigate('CelebrationModal', payload);
     } catch {
       // non-fatal
     }
@@ -171,7 +170,7 @@ export default function HomeScreen({ navigation }: any) {
     React.useCallback(() => {
       fetchUserData();
       fetchNotifications();
-      checkLaunchOfferCelebration();
+      checkCelebrationPending();
     }, [user?.id])
   );
 

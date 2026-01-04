@@ -15,6 +15,7 @@ import {
   type BillingPeriod,
   type Plan,
 } from '../services/revenueCatService';
+import { navigate as rootNavigate } from '../navigation/RootNavigation';
 
 // v1 tiers: Free / Premium / Pro
 // NOTE: We keep backwards-compatibility with legacy values stored in DB/storage ('lite'/'full').
@@ -86,7 +87,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const tierStorageKey = (userId?: string | null) => `subscriptionTier:${userId || 'anon'}`;
   const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
-  const launchOfferCelebrateKey = (userId?: string | null) => `launch_offer_celebrate_v1:${userId || 'anon'}`;
+  const celebrationKey = (userId?: string | null) => `celebration_pending_v1:${userId || 'anon'}`;
 
   const TEST_EMAILS = new Set([
     'appletester@fl4sh.cards',
@@ -220,7 +221,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const pendingRaw = await AsyncStorage.getItem(launchOfferPendingKey(user.id));
         if (pendingRaw) {
           await AsyncStorage.removeItem(launchOfferPendingKey(user.id));
-          await AsyncStorage.setItem(launchOfferCelebrateKey(user.id), JSON.stringify({ at: Date.now() }));
+          const payload = {
+            title: 'Upgraded to Pro 🎉',
+            badge: 'LAUNCH OFFER',
+            message: 'Your launch offer has been applied. You now have Pro features unlocked.',
+            ctaLabel: 'Let’s go',
+          };
+          await AsyncStorage.setItem(celebrationKey(user.id), JSON.stringify(payload));
+          // If navigation is ready, show immediately. If not, HomeScreen will pick it up later.
+          try {
+            rootNavigate('CelebrationModal', payload);
+          } catch {
+            // ignore
+          }
         }
       }
     } catch {
@@ -331,6 +344,28 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = resolveTierFromCustomerInfo(info);
       const exp = getExpirationIso(info);
       await applyTier(next, exp);
+
+      // Celebration for any successful purchase (monthly/annual, premium/pro).
+      // We show a one-time modal immediately after purchase completes.
+      try {
+        const title = next === 'pro' ? 'Welcome to Pro ⚡' : next === 'premium' ? 'Premium unlocked ✅' : 'Upgraded ✅';
+        const badge = next === 'pro' ? 'PRO' : next === 'premium' ? 'PREMIUM' : undefined;
+        const message =
+          next === 'pro'
+            ? 'Everything is unlocked — Past Papers, AI marking, and more.'
+            : next === 'premium'
+              ? 'Unlimited study essentials unlocked. You can upgrade to Pro any time.'
+              : 'Your subscription is now active.';
+        const payload = { title, badge, message, ctaLabel: 'Continue' };
+        await AsyncStorage.setItem(celebrationKey(user.id), JSON.stringify(payload));
+        try {
+          rootNavigate('CelebrationModal', payload);
+        } catch {
+          // ignore
+        }
+      } catch {
+        // non-fatal
+      }
     } catch (error) {
       console.error('Purchase error:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to initiate purchase.');
