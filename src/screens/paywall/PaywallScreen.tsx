@@ -33,8 +33,7 @@ export default function PaywallScreen({ navigation }: any) {
   const [pricing, setPricing] = useState<Record<string, OfferingPackagePricing>>({});
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingNote, setPricingNote] = useState<string | null>(null);
-
-  const premiumCta = billing === 'annual' ? 'Start Premium Trial' : 'Start Premium';
+  const premiumCta = 'Start Premium';
 
   useEffect(() => {
     let mounted = true;
@@ -130,9 +129,8 @@ export default function PaywallScreen({ navigation }: any) {
               <Image source={require('../../../assets/icon.png')} style={styles.logo} />
               <Text style={styles.title}>Upgrade your study setup</Text>
               <Text style={styles.subtitle}>
-                Choose a plan. Start with{' '}
-                <Text style={styles.subtitleStrong}>Premium</Text> (14‑day free trial), or unlock
-                everything with <Text style={[styles.subtitleStrong, { color: colors.secondary }]}>Pro</Text>.
+                Choose a plan. Start with <Text style={styles.subtitleStrong}>Premium</Text>, or unlock everything with{' '}
+                <Text style={[styles.subtitleStrong, { color: colors.secondary }]}>Pro</Text>.
               </Text>
             </View>
           </View>
@@ -196,7 +194,7 @@ export default function PaywallScreen({ navigation }: any) {
                 <View style={styles.cardTopRow}>
                   <Text style={styles.cardTitle}>Premium</Text>
                   <View style={styles.badge}>
-                    <Text style={styles.badgeText}>14‑DAY TRIAL</Text>
+                    <Text style={styles.badgeText}>POPULAR</Text>
                   </View>
                 </View>
                 <Text style={styles.priceLine}>
