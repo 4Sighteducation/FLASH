@@ -34,7 +34,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "27",
+      buildNumber: "28",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -58,7 +58,7 @@ export default {
         backgroundColor: "#0F172A"
       },
       package: "com.foursighteducation.flash",
-      versionCode: 17,
+      versionCode: 18,
       // Ensure OAuth redirects can deep-link back into the app on Android.
       // We support both the canonical scheme and the legacy "flash" scheme for safety.
       intentFilters: [
