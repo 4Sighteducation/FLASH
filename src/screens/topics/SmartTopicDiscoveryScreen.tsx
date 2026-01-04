@@ -51,6 +51,39 @@ interface RecentTopic {
   discovered_at: string;
 }
 
+const normalizeForMatch = (s: string) =>
+  String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Small lexical boost so obvious title/path matches rise to top.
+ * Returned value is subtracted from "similarity" (lower is better).
+ */
+const getLexicalBoost = (query: string, result: TopicSearchResult): number => {
+  const q = normalizeForMatch(query);
+  if (!q || q.length < 2) return 0;
+
+  const topicName = normalizeForMatch(result.topic_name || '');
+  const pathText = normalizeForMatch((result.full_path || []).join(' '));
+
+  // Strong boost for exact/substring matches in the leaf title
+  if (topicName === q) return 0.18;
+  if (topicName.includes(q)) return 0.12;
+
+  // Medium boost for matches in the breadcrumb path
+  if (pathText.includes(q)) return 0.08;
+
+  // Token-level fallback (helps "sediment" -> "sediment cells")
+  const tokens = q.split(' ').filter((t) => t.length >= 3);
+  if (tokens.length === 0) return 0;
+  const hay = `${topicName} ${pathText}`;
+  const matched = tokens.reduce((acc, t) => (hay.includes(t) ? acc + 1 : acc), 0);
+  return Math.min(0.06, matched * 0.03);
+};
+
 export default function SmartTopicDiscoveryScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -69,7 +102,7 @@ export default function SmartTopicDiscoveryScreen() {
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   
-  const searchDebounceRef = useRef<NodeJS.Timeout>();
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Map exam type to database code format
   const examTypeToCode: { [key: string]: string } = {
@@ -354,6 +387,7 @@ export default function SmartTopicDiscoveryScreen() {
         console.log(`🔧 After deduplication: ${deduplicated.length} topics`);
         
         // Step 2: Boost more specific topics (prefer Level 4 over Level 3)
+        // PLUS: lexical boost so obvious title/path matches rise (e.g. "sediment" -> "sediment cells")
         const ranked = deduplicated.map((result: TopicSearchResult) => {
           // Extract topic name from full_path (last element)
           const topicName = result.full_path && result.full_path.length > 0
@@ -363,7 +397,10 @@ export default function SmartTopicDiscoveryScreen() {
           return {
             ...result,
             topic_name: topicName, // Add missing topic_name
-            adjustedSimilarity: result.similarity - (result.topic_level * 0.02),
+            adjustedSimilarity:
+              result.similarity -
+              (result.topic_level * 0.02) -
+              getLexicalBoost(query, { ...result, topic_name: topicName }),
             isSpecific: result.topic_level >= 4,
           };
         }).sort((a: any, b: any) => a.adjustedSimilarity - b.adjustedSimilarity);
@@ -414,8 +451,36 @@ export default function SmartTopicDiscoveryScreen() {
           };
         });
 
-        console.log(`✅ Edge Function search returned ${mapped.length} results`);
-        setSearchResults(mapped);
+        // Apply the same ranking logic to Edge Function results for consistency
+        const deduplicated = mapped.filter((result: TopicSearchResult, index: number, array: TopicSearchResult[]) => {
+          const hasMoreSpecificChild = array.some(other =>
+            other.full_path &&
+            result.full_path &&
+            other.full_path.length > result.full_path.length &&
+            other.full_path.slice(0, result.full_path.length).join('/') === result.full_path.join('/') &&
+            other.topic_level > result.topic_level
+          );
+          return !hasMoreSpecificChild;
+        });
+
+        const ranked = deduplicated.map((result: TopicSearchResult) => {
+          const topicName = result.full_path && result.full_path.length > 0
+            ? result.full_path[result.full_path.length - 1]
+            : result.topic_name || 'Unknown Topic';
+
+          return {
+            ...result,
+            topic_name: topicName,
+            adjustedSimilarity:
+              result.similarity -
+              (result.topic_level * 0.02) -
+              getLexicalBoost(query, { ...result, topic_name: topicName }),
+            isSpecific: result.topic_level >= 4,
+          };
+        }).sort((a: any, b: any) => a.adjustedSimilarity - b.adjustedSimilarity);
+
+        console.log(`✅ Edge Function search returned ${ranked.length} results (ranked)`);
+        setSearchResults(ranked as TopicSearchResult[]);
         return;
       } catch (fnErr) {
         console.warn('❌ Edge Function fallback failed:', fnErr);
