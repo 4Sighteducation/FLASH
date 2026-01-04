@@ -81,6 +81,22 @@ export default function HomeScreen({ navigation }: any) {
   const [unlockedCyber, setUnlockedCyber] = useState(false);
   const [showSkinsModal, setShowSkinsModal] = useState(false);
 
+  const checkLaunchOfferCelebration = async () => {
+    if (!user?.id) return;
+    try {
+      const key = `launch_offer_celebrate_v1:${user.id}`;
+      const raw = await AsyncStorage.getItem(key);
+      if (!raw) return;
+      await AsyncStorage.removeItem(key);
+      Alert.alert(
+        'Upgraded to Pro 🎉',
+        "Your launch offer has been applied. You now have Pro features unlocked."
+      );
+    } catch {
+      // non-fatal
+    }
+  };
+
   const fetchNotifications = async () => {
     if (!user?.id) return;
     
@@ -155,6 +171,7 @@ export default function HomeScreen({ navigation }: any) {
     React.useCallback(() => {
       fetchUserData();
       fetchNotifications();
+      checkLaunchOfferCelebration();
     }, [user?.id])
   );
 
@@ -417,6 +434,37 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         </LinearGradient>
+
+        {/* Launch offer banner (Free users) */}
+        {tier === 'free' ? (
+          <View style={styles.launchOfferCard}>
+            <View style={styles.launchOfferTop}>
+              <Text style={styles.launchOfferTitle}>Launch offer</Text>
+              <View style={styles.launchOfferPill}>
+                <Text style={styles.launchOfferPillText}>LIMITED TIME</Text>
+              </View>
+            </View>
+            <Text style={styles.launchOfferText}>
+              Upgrade to Premium Annual and get Pro features included for a limited time.
+            </Text>
+            <TouchableOpacity
+              style={styles.launchOfferCta}
+              onPress={() => {
+                // Open the global paywall modal with Annual preselected.
+                navigation.getParent?.()?.navigate?.('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: 'home' });
+                // Fallback: nested navigation
+                try {
+                  navigation.navigate('Profile' as never, { screen: 'Paywall', params: { initialBilling: 'annual', highlightOffer: true, source: 'home' } } as never);
+                } catch {
+                  // ignore
+                }
+              }}
+            >
+              <Text style={styles.launchOfferCtaText}>See offer</Text>
+              <Ionicons name="arrow-forward" size={18} color="#0B1220" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <UnlockedAvatarsModal
           visible={showSkinsModal}
@@ -1081,6 +1129,74 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     color: '#6366F1',
     fontWeight: '600',
     marginLeft: 8,
+  },
+  launchOfferCard: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.22)',
+    backgroundColor: 'rgba(11,18,32,0.85)',
+    ...Platform.select({
+      default: {
+        shadowColor: '#00F5FF',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        elevation: 3,
+      },
+    }),
+  },
+  launchOfferTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  launchOfferTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  launchOfferPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,0,110,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,110,0.35)',
+  },
+  launchOfferPillText: {
+    color: '#FF4FD8',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  launchOfferText: {
+    marginTop: 10,
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  launchOfferCta: {
+    marginTop: 12,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: '#00F5FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  launchOfferCtaText: {
+    color: '#0B1220',
+    fontSize: 14,
+    fontWeight: '900',
   },
   deleteButton: {
     padding: 8,

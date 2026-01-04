@@ -17,6 +17,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { configureRevenueCat, getOfferingPackagePricing, type OfferingPackagePricing } from '../../services/revenueCatService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRoute } from '@react-navigation/native';
 
 type BillingPeriod = 'monthly' | 'annual';
 
@@ -25,15 +27,26 @@ const TERMS_URL = 'https://www.fl4shcards.com/terms/';
 const CONTACT_URL = 'https://www.fl4shcards.com/contact/';
 
 export default function PaywallScreen({ navigation }: any) {
+  const route = useRoute();
+  const params = (route.params || {}) as {
+    initialBilling?: BillingPeriod;
+    highlightOffer?: boolean;
+    source?: string;
+  };
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const { tier, purchasePlan, restorePurchases } = useSubscription();
-  const [billing, setBilling] = useState<BillingPeriod>('monthly');
+  const [billing, setBilling] = useState<BillingPeriod>(params.initialBilling || 'monthly');
   const [pricing, setPricing] = useState<Record<string, OfferingPackagePricing>>({});
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingNote, setPricingNote] = useState<string | null>(null);
   const premiumCta = 'Start Premium';
+
+  useEffect(() => {
+    if (params.initialBilling) setBilling(params.initialBilling);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.initialBilling]);
 
   useEffect(() => {
     let mounted = true;
@@ -167,6 +180,15 @@ export default function PaywallScreen({ navigation }: any) {
             {!!pricingNote && <Text style={styles.pricingNote}>{pricingNote}</Text>}
           </View>
 
+          {tier === 'free' && billing === 'annual' ? (
+            <View style={styles.offerBanner}>
+              <Text style={styles.offerBannerTitle}>Launch offer</Text>
+              <Text style={styles.offerBannerText}>
+                Premium Annual includes Pro features for a limited time.
+              </Text>
+            </View>
+          ) : null}
+
           <View style={styles.cards}>
             {/* Free */}
             <View style={styles.cardOuter}>
@@ -202,6 +224,12 @@ export default function PaywallScreen({ navigation }: any) {
                   <Text style={styles.priceSmall}> • Unlimited study essentials</Text>
                 </Text>
                 <Text style={styles.planPrice}>{getPriceLine('premium', billing)}</Text>
+                {billing === 'annual' ? (
+                  <View style={styles.offerInline}>
+                    <Ionicons name="sparkles" size={16} color="rgba(0,245,255,0.9)" />
+                    <Text style={styles.offerInlineText}>Launch offer: Premium Annual includes Pro (limited time).</Text>
+                  </View>
+                ) : null}
                 <View style={styles.featureList}>
                   <Feature text="Unlimited subjects" />
                   <Feature text="Unlimited flashcards" />
@@ -213,7 +241,21 @@ export default function PaywallScreen({ navigation }: any) {
                 {tier === 'free' ? (
                   <TouchableOpacity
                     style={styles.primaryBtn}
-                    onPress={() => purchasePlan('premium', billing)}
+                    onPress={async () => {
+                      // If they purchase Premium Annual during the promo, we may upgrade them to Pro shortly after via webhook.
+                      // Mark it as pending so we can celebrate on upgrade.
+                      try {
+                        if (billing === 'annual' && user?.id) {
+                          await AsyncStorage.setItem(`launch_offer_pending_v1:${user.id}`, JSON.stringify({
+                            at: Date.now(),
+                            source: params.source || 'paywall',
+                          }));
+                        }
+                      } catch {
+                        // non-fatal
+                      }
+                      await purchasePlan('premium', billing);
+                    }}
                   >
                     <LinearGradient colors={colors.buttonGradient as any} style={styles.primaryBtnBg}>
                       <Text style={styles.primaryBtnText}>{premiumCta}</Text>
@@ -360,6 +402,19 @@ function createStyles(colors: any) {
     pricingLoadingRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     pricingLoadingText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
     pricingNote: { marginTop: 8, color: 'rgba(148,163,184,0.85)', fontSize: 12, textAlign: 'center', maxWidth: 360 },
+    offerBanner: {
+      marginTop: 12,
+      marginHorizontal: 18,
+      padding: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(0,245,255,0.22)',
+      backgroundColor: 'rgba(0,245,255,0.06)',
+    },
+    offerBannerTitle: { color: colors.text, fontSize: 13, fontWeight: '900', letterSpacing: 0.6, textTransform: 'uppercase' },
+    offerBannerText: { marginTop: 6, color: colors.textSecondary, fontSize: 12, fontWeight: '700', lineHeight: 16 },
+    offerInline: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -6, marginBottom: 10 },
+    offerInlineText: { color: 'rgba(226,232,240,0.92)', fontSize: 12, fontWeight: '800', flex: 1 },
 
     cards: { paddingHorizontal: 18, marginTop: 16, gap: 14 },
     cardOuter: {

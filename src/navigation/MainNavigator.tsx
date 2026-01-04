@@ -20,6 +20,7 @@ import PaywallScreen from '../screens/paywall/PaywallScreen';
 import RedeemCodeScreen from '../screens/paywall/RedeemCodeScreen';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { Alert } from 'react-native';
+import { showUpgradePrompt } from '../utils/upgradePrompt';
 import TopicEditModal from '../components/TopicEditModal';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
@@ -331,14 +332,14 @@ export default function MainNavigator() {
             tabPress: (e) => {
               if (tier !== 'pro') {
                 e.preventDefault();
-                Alert.alert(
-                  'Pro feature',
-                  'Past Papers are available on Pro. Upgrade to unlock thousands of real exam questions with AI marking.',
-                  [
-                    { text: 'Not now', style: 'cancel' },
-                    { text: 'View plans', onPress: () => navigation.navigate('Profile' as never, { screen: 'Paywall' } as never) },
-                  ]
-                );
+                showUpgradePrompt({
+                  title: 'Pro feature',
+                  message:
+                    'Past Papers are available on Pro.\n\nLaunch offer: Premium Annual includes Pro features for a limited time.',
+                  navigation,
+                  ctaLabel: 'Unlock offer',
+                  paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'papers_tab' },
+                });
               }
             },
           })}

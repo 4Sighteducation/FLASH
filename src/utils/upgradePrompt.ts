@@ -6,12 +6,13 @@ type Params = {
   message: string;
   navigation?: any;
   ctaLabel?: string;
+  paywallParams?: any;
 };
 
-export function navigateToPaywall(navigation?: any) {
+export function navigateToPaywall(navigation?: any, params?: any) {
   // Prefer the root modal paywall so it can appear immediately above any modal stack.
   try {
-    rootNavigate('PaywallModal');
+    rootNavigate('PaywallModal', params);
     return;
   } catch {
     // fall back to nested navigation below
@@ -22,7 +23,7 @@ export function navigateToPaywall(navigation?: any) {
   const tryNavigate = (nav: any) => {
     try {
       if (!nav?.navigate) return false;
-      nav.navigate('Profile' as never, { screen: 'Paywall' } as never);
+      nav.navigate('Profile' as never, { screen: 'Paywall', params } as never);
       return true;
     } catch {
       return false;
@@ -36,13 +37,13 @@ export function navigateToPaywall(navigation?: any) {
   }
 }
 
-export function showUpgradePrompt({ title = 'Upgrade Required', message, navigation, ctaLabel = 'View plans' }: Params) {
+export function showUpgradePrompt({ title = 'Upgrade Required', message, navigation, ctaLabel = 'View plans', paywallParams }: Params) {
   Alert.alert(title, message, [
     { text: 'Not now', style: 'cancel' },
     {
       text: ctaLabel,
       onPress: () => {
-        navigateToPaywall(navigation);
+        navigateToPaywall(navigation, paywallParams);
       },
     },
   ]);

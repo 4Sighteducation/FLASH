@@ -39,6 +39,8 @@ export async function ensureCanAddSubjects(params: {
     showUpgradePrompt({
       message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
       navigation,
+      ctaLabel: 'See offer',
+      paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'limit_subjects' },
     });
     return false;
   }
@@ -58,8 +60,12 @@ export async function ensureCanAddCards(params: {
   const existing = await getUserCardCount(userId);
   if (existing + willAdd > limits.maxCards) {
     showUpgradePrompt({
-      message: "You've reached the 10-card limit on the Free plan. Upgrade to Premium for unlimited flashcards.",
+      title: 'Free limit reached',
+      message:
+        "You've reached the Free plan limit. Upgrade to Premium for unlimited flashcards.\n\nLaunch offer: Premium Annual includes Pro features for a limited time.",
       navigation,
+      ctaLabel: 'Unlock offer',
+      paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'limit_cards' },
     });
     return false;
   }

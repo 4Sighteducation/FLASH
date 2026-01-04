@@ -85,6 +85,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const unsubscribeRef = React.useRef<null | (() => void)>(null);
 
   const tierStorageKey = (userId?: string | null) => `subscriptionTier:${userId || 'anon'}`;
+  const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
+  const launchOfferCelebrateKey = (userId?: string | null) => `launch_offer_celebrate_v1:${userId || 'anon'}`;
 
   const TEST_EMAILS = new Set([
     'appletester@fl4sh.cards',
@@ -207,8 +209,23 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const applyTier = async (next: SubscriptionTier, expiresAtIso: string | null) => {
+    const prev = tier;
     setTier(next);
     await AsyncStorage.setItem(tierStorageKey(user?.id), next);
+
+    // Post-purchase celebration: if the user initiated the launch offer (Premium Annual) and later
+    // becomes Pro (via RevenueCat webhook), mark a one-time celebration flag for the UI.
+    try {
+      if (user?.id && prev !== 'pro' && next === 'pro') {
+        const pendingRaw = await AsyncStorage.getItem(launchOfferPendingKey(user.id));
+        if (pendingRaw) {
+          await AsyncStorage.removeItem(launchOfferPendingKey(user.id));
+          await AsyncStorage.setItem(launchOfferCelebrateKey(user.id), JSON.stringify({ at: Date.now() }));
+        }
+      }
+    } catch {
+      // non-fatal
+    }
 
     // Best-effort sync to backend (source of truth will eventually be RevenueCat webhooks).
     // This keeps your existing DB checks working during the transition.

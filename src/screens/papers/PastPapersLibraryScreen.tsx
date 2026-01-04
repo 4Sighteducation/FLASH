@@ -61,8 +61,11 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
     if (tier !== 'pro') {
       showUpgradePrompt({
         title: 'Pro feature',
-        message: 'Past Papers are available on Pro. Upgrade to unlock real exam questions with AI marking.',
+        message:
+          'Past Papers are available on Pro.\n\nLaunch offer: Premium Annual includes Pro features for a limited time.',
         navigation,
+        ctaLabel: 'Unlock offer',
+        paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'papers' },
       });
       // Send them back to a safe tab (Profile) so they don't sit on a locked page.
       navigation.navigate('Profile' as never);
@@ -380,12 +383,12 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
                 <LinearGradient
                   colors={
                     subject.use_gradient && subject.gradient_color_1 && subject.gradient_color_2
-                      ? ([
+                      ? (([
                           subject.gradient_color_1,
                           subject.gradient_color_2,
                           subject.gradient_color_3,
-                        ].filter(Boolean) as string[])
-                      : [subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)]
+                        ].filter(Boolean) as unknown) as [string, string, ...string[]])
+                      : ([subject.color || '#6366F1', adjustColor(subject.color || '#6366F1', -20)] as [string, string])
                   }
                   style={styles.subjectGradient}
                   start={{ x: 0, y: 0 }}
