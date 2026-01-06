@@ -89,19 +89,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
   const celebrationKey = (userId?: string | null) => `celebration_pending_v1:${userId || 'anon'}`;
 
-  const TEST_EMAILS = new Set([
-    'appletester@fl4sh.cards',
-    'stu1@fl4sh.cards',
-    'stu2@fl4sh.cards',
-    'stu3@fl4sh.cards',
-  ]);
-
-  const isTesterAccount = () => {
-    const email = (user?.email || '').toLowerCase();
-    return TEST_EMAILS.has(email);
-  };
-
   const tierRank = (t: SubscriptionTier) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+
+  const getBetaAccess = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
+    try {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('beta_access')
+        .select('tier, expires_at')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error || !data?.tier) return null;
+      const expIso = data.expires_at ? new Date(data.expires_at).toISOString() : null;
+      const isExpired = expIso ? new Date(expIso) < new Date() : false;
+      if (isExpired) return null;
+      return { tier: normalizeTier(data.tier), expiresAt: expIso };
+    } catch {
+      return null;
+    }
+  };
 
   const getDbTier = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
     try {
@@ -120,17 +126,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const applyTierWithTesterOverride = async (rcTier: SubscriptionTier, rcExpiresAt: string | null) => {
-    if (!isTesterAccount()) {
-      await applyTier(rcTier, rcExpiresAt);
+  const applyTierWithOverrides = async (rcTier: SubscriptionTier, rcExpiresAt: string | null) => {
+    // Highest priority: beta access allowlist
+    const beta = await getBetaAccess();
+    if (beta && tierRank(beta.tier) > tierRank(rcTier)) {
+      await applyTier(beta.tier, beta.expiresAt);
       return;
     }
 
+    // Fallback: DB tier if higher (useful for reviewer accounts and emergency overrides)
     const db = await getDbTier();
     if (db && tierRank(db.tier) > tierRank(rcTier)) {
       await applyTier(db.tier, db.expiresAt);
       return;
     }
+
     await applyTier(rcTier, rcExpiresAt);
   };
 
@@ -281,14 +291,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       unsubscribeRef.current = addCustomerInfoListener(async (info) => {
         const next = resolveTierFromCustomerInfo(info);
         const exp = getExpirationIso(info);
-        await applyTierWithTesterOverride(next, exp);
+        await applyTierWithOverrides(next, exp);
       });
 
       const info = await getCustomerInfo();
       if (info) {
         const next = resolveTierFromCustomerInfo(info);
         const exp = getExpirationIso(info);
-        await applyTierWithTesterOverride(next, exp);
+        await applyTierWithOverrides(next, exp);
       } else {
         await checkSubscriptionStatus();
       }

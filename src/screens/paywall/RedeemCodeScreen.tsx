@@ -23,7 +23,7 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
   const onRedeem = async () => {
     const c = normalizeCode(code);
     if (c.length < 8) {
-      Alert.alert('Invalid code', 'Please enter the full code from the email.');
+      Alert.alert('Invalid code', 'Please enter the full access code.');
       return;
     }
 
@@ -36,7 +36,7 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('claim-pro', {
+      const { data, error } = await supabase.functions.invoke('redeem-code', {
         body: { code: c },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -51,9 +51,10 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
         return;
       }
 
+      const nextTier = 'Pro';
       Alert.alert(
         'Success',
-        `FL4SH Pro unlocked.\n\nExpiry: ${data?.expiresAt || '—'}\n\nIf your account doesn’t update immediately, close and reopen the app.`,
+        `FL4SH ${nextTier} unlocked.\n\nExpiry: ${data?.expiresAt || '—'}\n\nIf your account doesn’t update immediately, close and reopen the app.`,
         [{ text: 'Done', onPress: () => navigation.goBack() }],
       );
     } catch (e: any) {
@@ -66,7 +67,9 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}> 
       <Text style={[styles.title, { color: colors.text }]}>Redeem code</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Paste the code from the email to unlock Pro.</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Paste a code to unlock Pro. (Works even if you used Sign in with Apple.)
+      </Text>
 
       <TextInput
         value={code}
