@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   creator: '4Sight Education Ltd',
   publisher: '4Sight Education Ltd',
   alternates: {
-    canonical: 'https://www.fl4sh.cards',
+    canonical: 'https://www.fl4shcards.com',
   },
   robots: {
     index: true,
@@ -28,11 +28,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'FL4SH Flashcards - AI-Powered Revision for GCSE & A-Level',
     description: 'Ace your GCSEs & A-Levels with FL4SH flashcards. AI-generated revision cards, intelligent spaced repetition, and 10,000+ curriculum-aligned topics.',
-    url: 'https://www.fl4sh.cards',
+    url: 'https://www.fl4shcards.com',
     siteName: 'FL4SH Flashcards',
     images: [
       {
-        url: 'https://www.fl4sh.cards/flash_assets/banner-1500x500.png',
+        url: 'https://www.fl4shcards.com/flash_assets/banner-1500x500.png',
         width: 1500,
         height: 500,
         alt: 'FL4SH - AI-Powered Flashcards for GCSE & A-Level',
@@ -45,10 +45,11 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'FL4SH Flashcards - AI-Powered Revision for GCSE & A-Level',
     description: 'Ace your GCSEs & A-Levels with FL4SH flashcards. AI-generated revision cards and intelligent spaced repetition.',
-    images: ['https://www.fl4sh.cards/flash_assets/banner-1500x500.png'],
+    images: ['https://www.fl4shcards.com/flash_assets/banner-1500x500.png'],
   },
   verification: {
-    google: 'add-your-google-search-console-code-here',
+    // Set in Vercel env as GOOGLE_SITE_VERIFICATION to avoid hardcoding.
+    google: process.env.GOOGLE_SITE_VERIFICATION,
   },
 }
 
