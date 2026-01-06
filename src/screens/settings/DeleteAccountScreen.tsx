@@ -49,7 +49,24 @@ export default function DeleteAccountScreen({ navigation }: any) {
                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
               } as any);
 
-              if (error) throw error;
+              if (error) {
+                // Supabase returns a generic message for non-2xx. Try to surface the JSON body for debugging.
+                try {
+                  const anyErr: any = error;
+                  const res: Response | undefined = anyErr?.context;
+                  if (res) {
+                    const payload: any = await res.json().catch(() => null);
+                    const msg =
+                      (typeof payload?.error === 'string' && payload.error) ||
+                      (typeof payload?.message === 'string' && payload.message) ||
+                      (payload ? JSON.stringify(payload) : '');
+                    throw new Error(msg || error.message);
+                  }
+                } catch (e: any) {
+                  throw e;
+                }
+                throw error;
+              }
               if (!data?.success) {
                 throw new Error(data?.error || 'Account deletion failed.');
               }
