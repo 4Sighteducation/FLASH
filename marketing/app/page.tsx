@@ -250,6 +250,26 @@ export default function Home() {
               <h3>💼 Business & IT</h3>
               <p>Business Studies, Economics, Computer Science</p>
             </div>
+            <a className={styles.subjectCard} href="/subjects/physical-education">
+              <h3>🏃 Physical Education</h3>
+              <p>GCSE & A-Level PE (specification-aligned revision)</p>
+            </a>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <p className={styles.sectionSubtitle} style={{ marginBottom: '1rem' }}>
+              Also supported: Vocational & Scottish qualifications
+            </p>
+            <div className={styles.subjectsGrid}>
+              <a className={styles.subjectCard} href="/vocational">
+                <h3>🧰 Vocational Awards</h3>
+                <p>Cambridge Nationals • BTEC Nationals</p>
+              </a>
+              <a className={styles.subjectCard} href="/scotland">
+                <h3>🏴 Scotland (SQA)</h3>
+                <p>Scottish Nationals • Scottish Highers</p>
+              </a>
+            </div>
           </div>
         </div>
       </section>
