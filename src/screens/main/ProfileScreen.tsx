@@ -269,14 +269,20 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: signOut, style: 'destructive' },
-      ]
-    );
+    // RN-web Alert can be unreliable; use a browser confirm for web.
+    if (Platform.OS === 'web') {
+      const ok =
+        typeof globalThis !== 'undefined' && (globalThis as any).window?.confirm
+          ? (globalThis as any).window.confirm('Are you sure you want to logout?')
+          : true;
+      if (ok) void signOut();
+      return;
+    }
+
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', onPress: () => void signOut(), style: 'destructive' },
+    ]);
   };
 
   const handleSelectTheme = async (next: 'default' | 'pulse' | 'aurora' | 'singularity') => {

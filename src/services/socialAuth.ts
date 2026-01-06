@@ -15,7 +15,9 @@ WebBrowser.maybeCompleteAuthSession();
 // - Native uses a custom scheme deep link handled in App.tsx.
 const redirectUri =
   Platform.OS === 'web'
-    ? makeRedirectUri({ path: 'auth/callback' })
+    ? (typeof window !== 'undefined'
+        ? window.location.origin
+        : makeRedirectUri({ path: '' }))
     : makeRedirectUri({
         // Use ONE canonical scheme across iOS + Android so Supabase redirect allow-list is stable.
         // (Using different schemes per platform often results in "redirect not allowed" or web auth sessions that never resolve.)
@@ -122,6 +124,18 @@ async function signInWithGoogleOAuthViaBrowser(): Promise<AuthResponse> {
     return { error: new Error('No authentication URL returned') };
   }
 
+  // Web: do a normal full-page redirect. Supabase web client is configured with detectSessionInUrl=true
+  // so it will exchange the PKCE code when the browser returns to our origin.
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') {
+      window.location.assign(data.url);
+      // This function won't complete meaningfully because we navigate away.
+      return { error: null };
+    }
+    return { error: new Error('Web OAuth is unavailable (no window).') };
+  }
+
+  // Native: open an auth session and handle the callback explicitly.
   console.log('Opening Google OAuth URL...');
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri, {
     dismissButtonStyle: 'close',
@@ -301,40 +315,12 @@ export const socialAuth = {
       }
 
       if (data?.url) {
-        console.log('Opening Microsoft OAuth URL...');
-        
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          redirectUri,
-          {
-            dismissButtonStyle: 'close',
-          }
-        );
-
-        console.log('WebBrowser result:', result);
-
-        if (result.type === 'cancel') {
-          return { error: new Error('Authentication cancelled') };
-        }
-
-        if (result.type === 'success') {
-          if (!result.url) {
-            return { error: new Error('No redirect URL received. Please try again.') };
-          }
-
-          const handled = await handleOAuthCallback(result.url);
-          if (!handled.success) {
-            return { error: new Error(handled.error?.message || handled.error || 'Authentication failed') };
-          }
-
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            return { error: new Error('Login completed but no session was created. Please try again.') };
-          }
+        // Web: do a normal full-page redirect back to our origin.
+        if (typeof window !== 'undefined') {
+          window.location.assign(data.url);
           return { error: null };
         }
-
-        return { error: new Error('Authentication did not complete. Please try again.') };
+        return { error: new Error('Web OAuth is unavailable (no window).') };
       }
 
       return { error: new Error('No authentication URL returned') };
