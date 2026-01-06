@@ -191,6 +191,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const checkSubscriptionStatus = async () => {
     try {
+      // NEW: Beta access override should apply even when RevenueCat isn't available.
+      // This is critical for waitlist auto-Pro users on TestFlight/dev builds.
+      const beta = await getBetaAccess();
+      if (beta) {
+        await applyTier(beta.tier, beta.expiresAt);
+        return;
+      }
+
       // We store tier PER USER (not globally), to avoid cross-account leakage.
       const localTierRaw = await AsyncStorage.getItem(tierStorageKey(user?.id));
       const localTier = normalizeTier(localTierRaw);
