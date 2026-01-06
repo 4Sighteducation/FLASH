@@ -394,17 +394,21 @@ export default function QuestionPracticeScreen() {
     }
   };
 
+  const fetchQuestionsOnly = async (): Promise<Question[]> => {
+    const { data, error } = await supabase
+      .from('exam_questions')
+      .select('*')
+      .eq('paper_id', paperId)
+      .order('main_question_number')
+      .order('full_question_number');
+
+    if (error) throw error;
+    return (data as any) || [];
+  };
+
   const loadQuestions = async () => {
     try {
-      // Check if questions already extracted
-      const { data: existingQuestions, error: questionsError } = await supabase
-        .from('exam_questions')
-        .select('*')
-        .eq('paper_id', paperId)
-        .order('main_question_number')
-        .order('full_question_number');
-
-      if (questionsError) throw questionsError;
+      const existingQuestions = await fetchQuestionsOnly();
 
       if (existingQuestions && existingQuestions.length > 0) {
         // Already extracted - use cached!
@@ -483,10 +487,44 @@ export default function QuestionPracticeScreen() {
         const isPendingish = existingStatus.status === 'pending' || existingStatus.status === 'extracting';
 
         if (existingStatus.status === 'completed') {
-          // Status says completed - reload questions from DB
+          // Status says completed - load questions from DB once.
+          // Avoid recursion (loadQuestions -> extractPaper -> loadQuestions ...) if questions are missing.
           setLoading(true);
-          await loadQuestions();
+          const qs = await fetchQuestionsOnly().catch(() => []);
+          setQuestions(qs);
           setLoading(false);
+
+          if (!qs || qs.length === 0) {
+            Alert.alert(
+              'Extraction completed, but no questions were found',
+              'This can happen if the extractor failed to save results. Would you like to retry extraction?',
+              [
+                { text: 'Go Back', style: 'cancel', onPress: () => navigation.goBack() },
+                {
+                  text: 'Retry',
+                  onPress: async () => {
+                    await supabase
+                      .from('paper_extraction_status')
+                      .update({
+                        status: 'pending',
+                        progress_percentage: 0,
+                        current_step: 'Retrying extraction...',
+                        error_message: null,
+                      })
+                      .eq('id', existingStatus.id);
+
+                    setExtractionStatusId(existingStatus.id);
+                    setShowExtractionModal(true);
+                    setExtractionProgress(0);
+                    setExtractionStep('Retrying extraction...');
+                    setLastExtractionUpdateAt(existingStatus.updated_at || existingStatus.created_at || null);
+                    startPollingExtractionStatus(existingStatus.id);
+                    triggerExtractionRequest(existingStatus.id, urls);
+                  },
+                },
+              ]
+            );
+          }
           return;
         }
 
@@ -619,18 +657,34 @@ export default function QuestionPracticeScreen() {
             stopPollingExtractionStatus();
             setShowExtractionModal(false);
             setLoading(true);
-            await loadQuestions();
+            const qs = await fetchQuestionsOnly().catch(() => []);
+            setQuestions(qs);
             setLoading(false);
-            
-            // Show success notification
-            Alert.alert(
-              'Extraction Complete! ✅',
-              'Questions are ready to practice.',
-              [{
-                text: 'Start Practicing',
-                onPress: async () => {}
-              }]
-            );
+
+            if (!qs || qs.length === 0) {
+              Alert.alert(
+                'Extraction finished, but questions are missing',
+                'The extraction service reported completion, but no questions were saved. Please retry extraction.',
+                [
+                  { text: 'Go Back', style: 'cancel', onPress: () => navigation.goBack() },
+                  {
+                    text: 'Retry',
+                    onPress: () => {
+                      if (extractionStatusId) triggerExtractionRequest(extractionStatusId);
+                      setShowExtractionModal(true);
+                    },
+                  },
+                ]
+              );
+            } else {
+              // Show success notification
+              Alert.alert('Extraction Complete! ✅', 'Questions are ready to practice.', [
+                {
+                  text: 'Start Practicing',
+                  onPress: async () => {},
+                },
+              ]);
+            }
           } else if (data.status === 'failed') {
             stopPollingExtractionStatus();
             setShowExtractionModal(false);
