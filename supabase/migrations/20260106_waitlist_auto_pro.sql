@@ -17,20 +17,25 @@ create index if not exists idx_waitlist_auto_pro_granted_user_id on public.waitl
 create or replace function public.grant_pro_to_user(p_user_id uuid, p_expires_at timestamptz, p_source text, p_note text)
 returns void as $$
 begin
-  insert into public.user_subscriptions (user_id, tier, source, platform, expires_at, created_at, updated_at)
-  values (p_user_id, 'pro', p_source, 'server', p_expires_at, now(), now())
+  -- IMPORTANT:
+  -- Do NOT write to public.user_subscriptions here. That table has drifted across builds/environments
+  -- (legacy 'lite/full' vs newer 'premium/pro', differing columns), and any mismatch will BREAK SIGNUPS
+  -- because this function is called from an auth.users trigger.
+  --
+  -- Source of truth for free access is public.beta_access (read by the app as an override).
+  insert into public.beta_access (user_id, email, tier, expires_at, note, created_at, updated_at)
+  values (
+    p_user_id,
+    (select email from auth.users where id = p_user_id),
+    'pro',
+    p_expires_at,
+    p_note,
+    now(),
+    now()
+  )
   on conflict (user_id)
-  do update set tier = excluded.tier,
-                source = excluded.source,
-                platform = excluded.platform,
-                expires_at = excluded.expires_at,
-                updated_at = now();
-
-  -- Also write beta_access so the app override resolves immediately.
-  insert into public.beta_access (user_id, tier, expires_at, note, created_at, updated_at)
-  values (p_user_id, 'pro', p_expires_at, p_note, now(), now())
-  on conflict (user_id)
-  do update set tier = excluded.tier,
+  do update set email = excluded.email,
+                tier = excluded.tier,
                 expires_at = excluded.expires_at,
                 note = excluded.note,
                 updated_at = now();
@@ -70,7 +75,13 @@ begin
   days_to_grant := greatest(coalesce(wl.auto_pro_days, 365), 1);
   exp := now() + make_interval(days => days_to_grant);
 
-  perform public.grant_pro_to_user(new.id, exp, 'waitlist_auto', 'waitlist_auto');
+  -- Never block signup if anything goes wrong while granting.
+  begin
+    perform public.grant_pro_to_user(new.id, exp, 'waitlist_auto', 'waitlist_auto');
+  exception when others then
+    -- swallow to avoid "Database error saving new user"
+    return new;
+  end;
 
   update public.waitlist
   set auto_pro_granted_at = now(),
