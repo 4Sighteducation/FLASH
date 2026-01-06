@@ -83,6 +83,23 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // RevenueCat server config (used for both parent-paid claims and free access codes)
+    const rcApiKey = Deno.env.get('REVENUECAT_SECRET_API_KEY') || '';
+    const rcProjectId = Deno.env.get('REVENUECAT_PROJECT_ID') || '';
+    const rcProEntitlementId = Deno.env.get('REVENUECAT_PRO_ENTITLEMENT_ID') || '';
+
+    if (!rcApiKey || !rcProjectId || !rcProEntitlementId) {
+      console.error('[claim-pro] missing RevenueCat env vars', {
+        hasApiKey: !!rcApiKey,
+        hasProjectId: !!rcProjectId,
+        hasProEntitlementId: !!rcProEntitlementId,
+      });
+      return new Response(JSON.stringify({ ok: false, error: 'Server not configured.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
     // Validate caller
     const { data: authData, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !authData?.user?.id) {
@@ -108,9 +125,116 @@ serve(async (req) => {
     }
 
     if (!claim?.id) {
-      return new Response(JSON.stringify({ ok: false, error: 'Code not found.' }), {
+      // Backwards compatibility: older app builds call claim-pro for all redemptions.
+      // If it's not a parent claim code, try redeeming it as a free access code.
+      const { data: redeemed, error: redeemErr } = await supabase.rpc('redeem_access_code', {
+        p_code: code,
+        p_user_id: userId,
+      });
+
+      if (redeemErr) {
+        const msg = String((redeemErr as any)?.message || '');
+        if (msg.toLowerCase().includes('expired')) {
+          return new Response(JSON.stringify({ ok: false, error: 'Code expired.' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+        if (msg.toLowerCase().includes('used')) {
+          return new Response(JSON.stringify({ ok: false, error: 'Code has been used.' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 409,
+          });
+        }
+        if (msg.toLowerCase().includes('invalid code')) {
+          return new Response(JSON.stringify({ ok: false, error: 'Invalid code.' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          });
+        }
+        console.error('[claim-pro] redeem_access_code failed', redeemErr);
+        return new Response(JSON.stringify({ ok: false, error: 'Redeem failed.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
+
+      const row = Array.isArray(redeemed) ? redeemed[0] : redeemed;
+      if (!row?.code_id) {
+        return new Response(JSON.stringify({ ok: false, error: 'Code not found.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404,
+        });
+      }
+
+      const expIso = row.expires_at ? new Date(row.expires_at).toISOString() : null;
+      const expiresAtMs = expIso ? Date.parse(expIso) : Date.now() + 10 * 365 * 24 * 60 * 60 * 1000;
+
+      // Grant Pro in RevenueCat
+      const customerId = encodeURIComponent(userId);
+      const rcBase = 'https://api.revenuecat.com/v2';
+
+      const active = await revenueCatGet<any>({
+        url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/active_entitlements`,
+        apiKey: rcApiKey,
+      });
+
+      const items = active?.items ?? active?.active_entitlements?.items ?? [];
+      const current = Array.isArray(items) ? items.find((x: any) => x?.entitlement_id === rcProEntitlementId) : null;
+      const currentExpMs =
+        current && typeof current.expires_at === 'number'
+          ? current.expires_at
+          : current && typeof current.expire_at === 'number'
+            ? current.expire_at
+            : null;
+
+      if (currentExpMs && currentExpMs >= expiresAtMs) {
+        console.log('[claim-pro] pro already valid (access code)', { userId, expiresAt: safeIsoFromMs(currentExpMs) });
+      } else {
+        if (currentExpMs) {
+          await revenueCatPost<any>({
+            url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/actions/revoke_granted_entitlement`,
+            apiKey: rcApiKey,
+            body: { entitlement_id: rcProEntitlementId },
+          });
+        }
+        await revenueCatPost<any>({
+          url: `${rcBase}/projects/${encodeURIComponent(rcProjectId)}/customers/${customerId}/actions/grant_entitlement`,
+          apiKey: rcApiKey,
+          body: { entitlement_id: rcProEntitlementId, expires_at: expiresAtMs },
+        });
+        console.log('[claim-pro] granted pro (access code)', { userId, expiresAt: safeIsoFromMs(expiresAtMs) });
+      }
+
+      // Persist override rows so the UI can unlock immediately even if RC takes a moment.
+      try {
+        await supabase.from('beta_access').upsert({
+          user_id: userId,
+          email: authData.user.email || null,
+          tier: 'pro',
+          expires_at: safeIsoFromMs(expiresAtMs),
+          note: `redeemed:${code}`,
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        await supabase.from('user_subscriptions').upsert({
+          user_id: userId,
+          tier: 'pro',
+          source: 'access_code',
+          platform: 'server',
+          expires_at: safeIsoFromMs(expiresAtMs),
+          updated_at: new Date().toISOString(),
+        });
+      } catch {
+        // ignore
+      }
+
+      return new Response(JSON.stringify({ ok: true, expiresAt: safeIsoFromMs(expiresAtMs) }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
+        status: 200,
       });
     }
 
@@ -143,23 +267,6 @@ serve(async (req) => {
 
     if (!Number.isFinite(expiresAtMs) || expiresAtMs <= 0) {
       return new Response(JSON.stringify({ ok: false, error: 'This code is missing billing details. Please contact support.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
-    }
-
-    // Grant in RevenueCat
-    const rcApiKey = Deno.env.get('REVENUECAT_SECRET_API_KEY') || '';
-    const rcProjectId = Deno.env.get('REVENUECAT_PROJECT_ID') || '';
-    const rcProEntitlementId = Deno.env.get('REVENUECAT_PRO_ENTITLEMENT_ID') || '';
-
-    if (!rcApiKey || !rcProjectId || !rcProEntitlementId) {
-      console.error('[claim-pro] missing RevenueCat env vars', {
-        hasApiKey: !!rcApiKey,
-        hasProjectId: !!rcProjectId,
-        hasProEntitlementId: !!rcProEntitlementId,
-      });
-      return new Response(JSON.stringify({ ok: false, error: 'Server not configured.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
       });
