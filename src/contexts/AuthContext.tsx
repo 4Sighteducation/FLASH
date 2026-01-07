@@ -6,6 +6,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushNotificationService } from '../services/pushNotificationService';
 // NOTE: Keep AuthProvider fast. Any network-heavy “maintenance” should be fire-and-forget.
 import { migrateUserTopicPrioritiesToV2 } from '../utils/priorityMigration';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +47,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem(key, 'true');
     } catch (e) {
       console.warn('[Auth] Welcome email skipped (non-fatal):', e);
+    }
+  };
+
+  const bestEffortTelemetryPing = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+
+      const locale = (() => {
+        try {
+          return Intl.DateTimeFormat().resolvedOptions().locale;
+        } catch {
+          return null;
+        }
+      })();
+      const timezone = (() => {
+        try {
+          return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+          return null;
+        }
+      })();
+
+      await supabase.functions.invoke('telemetry-ping', {
+        headers: { Authorization: `Bearer ${token}` },
+        body: {
+          platform: Platform.OS,
+          app_version: (Constants.expoConfig as any)?.version ?? Constants.nativeAppVersion ?? null,
+          build_version: Constants.nativeBuildVersion ?? null,
+          device_model: (Device as any)?.modelName ?? null,
+          os_name: (Device as any)?.osName ?? Platform.OS,
+          os_version: (Device as any)?.osVersion ?? null,
+          locale,
+          timezone,
+        },
+      } as any);
+    } catch (e) {
+      console.warn('[Auth] telemetry ping skipped (non-fatal):', e);
     }
   };
 
@@ -107,6 +149,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Do not block the UI on email delivery.
       setTimeout(() => {
         void maybeSendWelcomeEmail(newSession.user);
+      }, 0);
+
+      // Best-effort: capture device + country telemetry for admin analytics.
+      setTimeout(() => {
+        void bestEffortTelemetryPing();
       }, 0);
     }
   };
