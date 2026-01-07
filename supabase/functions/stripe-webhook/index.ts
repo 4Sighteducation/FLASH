@@ -81,6 +81,7 @@ type StripeInvoice = {
 };
 
 type StripeSubscription = { id: string; metadata?: Record<string, string> };
+type StripeCustomer = { id: string; email?: string | null };
 
 function isStripeInvoice(x: any): x is StripeInvoice {
   return x && x.object === 'invoice';
@@ -124,6 +125,14 @@ function safeIsoFromMs(ms: number): string {
 function formatClaimCode(code: string): string {
   const clean = (code || '').replace(/[^0-9A-Z]/gi, '').toUpperCase();
   return clean.replace(/(.{4})/g, '$1-').replace(/-$/, '');
+}
+
+function sanitizeEmail(email: string | null | undefined): string {
+  return String(email || '').trim().toLowerCase();
+}
+
+function looksLikeEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 async function sendSendGridEmail(params: {
@@ -271,6 +280,9 @@ serve(async (req) => {
 
             const invoiceId = String((invObj as any)?.id ?? '');
             const customerId = String((invObj as any)?.customer ?? '');
+            const invoiceCustomerEmail = sanitizeEmail(
+              (invObj as any)?.customer_email || (invObj as any)?.customer_details?.email || null
+            );
 
             const { data: claim, error: updErr } = await supabase
               .from('parent_claims')
@@ -315,6 +327,31 @@ serve(async (req) => {
               'support@fl4shcards.com';
 
             try {
+              // Failsafe: also email the payer/parent if we can infer their email from Stripe (or last invite).
+              let payerEmail = invoiceCustomerEmail;
+              if (!payerEmail && customerId) {
+                try {
+                  const cust = await stripeGet<StripeCustomer>({
+                    url: `https://api.stripe.com/v1/customers/${encodeURIComponent(customerId)}`,
+                    apiKey: stripeKey,
+                  });
+                  payerEmail = sanitizeEmail(cust?.email || null);
+                } catch {
+                  // ignore; best-effort
+                }
+              }
+              if (!payerEmail && toEmail) {
+                const { data: inv } = await supabase
+                  .from('parent_invites')
+                  .select('parent_email')
+                  .eq('child_email_lower', sanitizeEmail(toEmail))
+                  .eq('status', 'sent')
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                payerEmail = sanitizeEmail((inv as any)?.parent_email || null);
+              }
+
               const sendRes = await sendSendGridEmail({
                 to: toEmail,
                 fromEmail,
@@ -398,6 +435,100 @@ serve(async (req) => {
                   redeem_email_provider_message_id: sendRes.messageId,
                 })
                 .eq('id', parentClaimId);
+
+              // Best-effort: send to payer/parent too (so they can pass the code to the child).
+              if (payerEmail && looksLikeEmail(payerEmail) && sanitizeEmail(payerEmail) !== sanitizeEmail(toEmail)) {
+                try {
+                  // Avoid re-sending if already sent previously.
+                  const { data: cur } = await supabase
+                    .from('parent_claims')
+                    .select('payer_redeem_email_sent_at')
+                    .eq('id', parentClaimId)
+                    .maybeSingle();
+                  if (!(cur as any)?.payer_redeem_email_sent_at) {
+                    const payerSend = await sendSendGridEmail({
+                      to: payerEmail,
+                      fromEmail,
+                      subject: 'FL4SH — your student’s Pro code (keep this safe)',
+                      html: `
+                        <!doctype html>
+                        <html lang="en">
+                          <head>
+                            <meta charset="utf-8" />
+                            <meta name="viewport" content="width=device-width, initial-scale=1" />
+                            <title>FL4SH Pro code</title>
+                          </head>
+                          <body style="margin:0;padding:0;background:#070A12;color:#E6EAF2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;">
+                            <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Here is your student’s FL4SH Pro code (keep it as a backup).</div>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#070A12;padding:28px 12px;">
+                              <tr>
+                                <td align="center">
+                                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#0B1020;">
+                                    <tr>
+                                      <td style="padding:22px 22px 14px 22px;text-align:center;">
+                                        <img src="https://www.fl4shcards.com/flash_assets/flash-logo-transparent.png" width="72" height="72" alt="FL4SH" style="display:block;margin:0 auto 10px auto;" />
+                                        <div style="font-size:22px;font-weight:800;letter-spacing:0.2px;">Your student’s FL4SH Pro code</div>
+                                        <div style="margin-top:6px;font-size:14px;opacity:0.85;line-height:1.45;">Keep this code safe and share it with your student if they don’t receive the email.</div>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:0 22px 18px 22px;">
+                                        <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td style="padding:0 22px 18px 22px;font-size:14px;line-height:1.6;">
+                                        <div style="font-weight:700;margin-bottom:6px;">Student email used at checkout</div>
+                                        <div style="margin-bottom:10px;opacity:0.9;"><strong>${sanitizeEmail(toEmail)}</strong></div>
+
+                                        <div style="font-weight:700;margin-bottom:6px;">Redeem code</div>
+                                        <div style="margin-top:8px;padding:14px 14px;border-radius:14px;background:#070A12;border:1px solid rgba(255,255,255,0.10);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:18px;letter-spacing:1px;text-align:center;">
+                                          <strong>${codePretty}</strong>
+                                        </div>
+
+                                        <div style="margin-top:14px;text-align:center;">
+                                          <a href="${claimLink}" style="display:inline-block;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#00E5FF,#FF4FD8);color:#0B1020;font-weight:800;text-decoration:none;">Open claim page</a>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  </table>
+                                  <div style="max-width:640px;margin:12px auto 0 auto;font-size:11px;color:rgba(230,234,242,0.55);text-align:center;">
+                                    © ${new Date().getFullYear()} FL4SH
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                          </body>
+                        </html>
+                      `,
+                    });
+
+                    await supabase
+                      .from('parent_claims')
+                      .update({
+                        payer_email: payerEmail,
+                        payer_email_lower: payerEmail,
+                        payer_redeem_email_sent_at: new Date().toISOString(),
+                        payer_redeem_email_last_error: null,
+                        payer_redeem_email_provider: 'sendgrid',
+                        payer_redeem_email_provider_status: payerSend.status,
+                        payer_redeem_email_provider_message_id: payerSend.messageId,
+                      } as any)
+                      .eq('id', parentClaimId);
+                  }
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  await supabase
+                    .from('parent_claims')
+                    .update({
+                      payer_email: payerEmail,
+                      payer_email_lower: payerEmail,
+                      payer_redeem_email_attempts: ((claim as any).payer_redeem_email_attempts || 0) + 1,
+                      payer_redeem_email_last_error: msg,
+                    } as any)
+                    .eq('id', parentClaimId);
+                }
+              }
 
               console.log('[stripe-webhook] invoice.paid: parent-claim marked paid + emailed child', {
                 parentClaimId,

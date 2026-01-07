@@ -24,6 +24,14 @@ type Payload =
       note?: string | null;
     }
   | {
+      action: 'bulk_create';
+      count: number;
+      tier?: Tier;
+      expiresAtIso?: string | null; // if omitted, defaults to 30 days
+      maxUses?: number;
+      note?: string | null;
+    }
+  | {
       action: 'generate_for_waitlist_top_twenty';
       tier?: Tier;
       expiresAtIso?: string | null; // if omitted, defaults to 30 days
@@ -113,6 +121,47 @@ serve(async (req) => {
       }
 
       return json(500, { ok: false, error: 'Failed to generate a unique code.' });
+    }
+
+    if (payload.action === 'bulk_create') {
+      const tier = normalizeTier((payload as any).tier);
+      const maxUses = Math.max(1, Number((payload as any).maxUses ?? 1) || 1);
+      const expMs = parseExpiresAtMs((payload as any).expiresAtIso);
+      const note = (payload as any).note ? String((payload as any).note) : null;
+      const count = Math.min(500, Math.max(1, Number((payload as any).count || 0) || 0));
+      if (!count) return json(400, { ok: false, error: 'Invalid count' });
+
+      const items: Array<{ code: string; tier: Tier; expiresAt: string; maxUses: number }> = [];
+
+      for (let i = 0; i < count; i++) {
+        let createdPretty: string | null = null;
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const pretty = randomCode();
+          const normalized = pretty.replace(/-/g, '');
+          const { data, error } = await supabase
+            .from('access_codes')
+            .insert({
+              code: normalized,
+              tier,
+              expires_at: new Date(expMs).toISOString(),
+              max_uses: maxUses,
+              uses_count: 0,
+              note,
+            })
+            .select('code')
+            .maybeSingle();
+          if (!error && data?.code) {
+            createdPretty = pretty;
+            break;
+          }
+        }
+        if (!createdPretty) {
+          return json(500, { ok: false, error: `Failed to create code ${i + 1}/${count}` });
+        }
+        items.push({ code: createdPretty, tier, expiresAt: new Date(expMs).toISOString(), maxUses });
+      }
+
+      return json(200, { ok: true, count, tier, expiresAt: new Date(expMs).toISOString(), maxUses, items });
     }
 
     if (payload.action === 'generate_for_waitlist_top_twenty') {
