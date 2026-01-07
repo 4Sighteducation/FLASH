@@ -8,7 +8,7 @@ import { pushNotificationService } from '../services/pushNotificationService';
 import { migrateUserTopicPrioritiesToV2 } from '../utils/priorityMigration';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { Platform } from 'react-native';
+import { Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +34,185 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Post-SSO onboarding prompts
+  const [profileGateVisible, setProfileGateVisible] = useState(false);
+  const [profileDraftName, setProfileDraftName] = useState('');
+  const [profileDraftSchool, setProfileDraftSchool] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  const [emailIssueVisible, setEmailIssueVisible] = useState(false);
+  const [emailIssueMessage, setEmailIssueMessage] = useState<string | null>(null);
+  const [contactEmailDraft, setContactEmailDraft] = useState('');
+  const [emailIssueSaving, setEmailIssueSaving] = useState(false);
+
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase());
+
+  const ensureAndFetchUserRow = async (
+    u: User
+  ): Promise<{ username?: string | null; school_name?: string | null; contact_email?: string | null } | null> => {
+    if (!u?.id) return null;
+    const email = String(u.email || '').trim().toLowerCase();
+
+    const first = await supabase.from('users').select('username, school_name, contact_email').eq('id', u.id).maybeSingle();
+    if (!first.error && first.data) return first.data as any;
+
+    // If missing, best-effort create via RPC (used in onboarding, but SSO users may not have reached it yet).
+    try {
+      await supabase.rpc('ensure_user_profile', {
+        p_user_id: u.id,
+        p_email: email,
+        p_username: (u.user_metadata as any)?.username ?? null,
+      });
+    } catch {
+      // non-fatal
+    }
+
+    const retry = await supabase.from('users').select('username, school_name, contact_email').eq('id', u.id).maybeSingle();
+    if (retry.error) return null;
+    return (retry.data as any) || null;
+  };
+
+  const shouldGateProfile = (u: User, usernameRaw: string | null | undefined): boolean => {
+    const email = String(u.email || '').trim().toLowerCase();
+    const username = String(usernameRaw || '').trim();
+    if (!username) return true;
+
+    // If user signed in with Apple "Hide My Email", the local-part is random and often becomes their default username.
+    // Gate once to encourage a human display name, but keep the auth flow smooth.
+    if (email.endsWith('@privaterelay.appleid.com')) {
+      const local = email.split('@')[0] || '';
+      if (local && username === local) return true;
+    }
+
+    return false;
+  };
+
+  const dismissEmailIssueForCurrentEvent = async () => {
+    try {
+      if (!user?.id) return;
+      const { data: ev } = await supabase
+        .from('user_email_events')
+        .select('delivery_event_at')
+        .eq('user_id', user.id)
+        .eq('type', 'welcome')
+        .maybeSingle();
+      const eventAt = String((ev as any)?.delivery_event_at || '');
+      const dismissKey = `emailIssueDismissedFor:${user.id}:${eventAt || 'unknown'}`;
+      await AsyncStorage.setItem(dismissKey, 'true');
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const checkPostLoginPrompts = async (u: User) => {
+    try {
+      if (!u?.id) return;
+
+      // 1) Profile completion (name + optional school)
+      const userRow = await ensureAndFetchUserRow(u);
+      const username = userRow?.username ?? (u.user_metadata as any)?.username ?? '';
+
+      if (shouldGateProfile(u, username)) {
+        setProfileDraftName(String(username || '').trim());
+        setProfileDraftSchool(String(userRow?.school_name || '').trim());
+        setProfileGateVisible(true);
+        // Don't show the email issue modal until profile is complete (less overwhelming).
+        return;
+      }
+
+      // 2) Email delivery issue prompt (only if the welcome email bounced/dropped/blocked/spamreport)
+      const { data: ev, error: evErr } = await supabase
+        .from('user_email_events')
+        .select('delivery_status, delivery_error, delivery_event_at')
+        .eq('user_id', u.id)
+        .eq('type', 'welcome')
+        .maybeSingle();
+
+      if (evErr || !ev) return;
+
+      const status = String((ev as any).delivery_status || 'unknown');
+      const eventAt = String((ev as any).delivery_event_at || '');
+      const isBad = ['bounce', 'dropped', 'blocked', 'spamreport'].includes(status);
+      if (!isBad) return;
+
+      // Don't spam: dismiss per-event timestamp.
+      const dismissKey = `emailIssueDismissedFor:${u.id}:${eventAt || 'unknown'}`;
+      const dismissed = await AsyncStorage.getItem(dismissKey);
+      if (dismissed === 'true') return;
+
+      const existingContact = String(userRow?.contact_email || '').trim();
+      setContactEmailDraft(existingContact);
+      setEmailIssueMessage(
+        [
+          'We couldn’t deliver your welcome email.',
+          '',
+          status === 'bounce'
+            ? 'This usually happens when the inbox rejects mail (common with Apple Hide My Email if relay is disabled).'
+            : 'This usually happens when the inbox provider blocks or drops the message.',
+          '',
+          'Add a contact email you can receive mail at (optional) so we can reach you if needed.',
+          (ev as any).delivery_error ? `\nDetails: ${(ev as any).delivery_error}` : '',
+        ].join('\n')
+      );
+      setEmailIssueVisible(true);
+    } catch (e) {
+      console.warn('[Auth] post-login prompts skipped (non-fatal):', e);
+    }
+  };
+
+  const saveProfileGate = async () => {
+    if (!user?.id) return;
+    const nextName = profileDraftName.trim();
+    if (!nextName) return;
+    setProfileSaving(true);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ username: nextName, school_name: profileDraftSchool.trim() || null })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      // Best-effort keep auth metadata aligned
+      try {
+        await supabase.auth.updateUser({ data: { username: nextName } });
+      } catch {
+        // non-fatal
+      }
+
+      setProfileGateVisible(false);
+      setTimeout(() => {
+        void checkPostLoginPrompts(user);
+      }, 0);
+    } catch (e: any) {
+      console.warn('[Auth] saveProfileGate failed:', e);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const dismissEmailIssue = async () => {
+    await dismissEmailIssueForCurrentEvent();
+    setEmailIssueVisible(false);
+  };
+
+  const saveContactEmail = async () => {
+    if (!user?.id) return;
+    const email = contactEmailDraft.trim().toLowerCase();
+    if (email && !isValidEmail(email)) return;
+
+    setEmailIssueSaving(true);
+    try {
+      const { error } = await supabase.from('users').update({ contact_email: email || null }).eq('id', user.id);
+      if (error) throw error;
+      await dismissEmailIssueForCurrentEvent();
+      setEmailIssueVisible(false);
+    } catch (e) {
+      console.warn('[Auth] saveContactEmail failed', e);
+    } finally {
+      setEmailIssueSaving(false);
+    }
+  };
 
   const maybeSendWelcomeEmail = async (u: User) => {
     try {
@@ -154,6 +333,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Best-effort: capture device + country telemetry for admin analytics.
       setTimeout(() => {
         void bestEffortTelemetryPing();
+      }, 0);
+
+      // Best-effort: profile completion + email reachability prompts
+      setTimeout(() => {
+        void checkPostLoginPrompts(newSession.user);
       }, 0);
     }
   };
@@ -331,5 +515,162 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshSession,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+
+      {/* Profile completion gate (e.g., Apple relay usernames) */}
+      <Modal visible={profileGateVisible} transparent animationType="fade">
+        <View style={gateStyles.overlay}>
+          <View style={gateStyles.card}>
+            <Text style={gateStyles.title}>Complete your profile</Text>
+            <Text style={gateStyles.body}>
+              Set a display name (this is what you’ll see in your profile and progress screens).
+            </Text>
+
+            <Text style={gateStyles.label}>Display name</Text>
+            <TextInput
+              style={gateStyles.input}
+              value={profileDraftName}
+              onChangeText={setProfileDraftName}
+              placeholder="e.g. Tony"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              autoCapitalize="words"
+              editable={!profileSaving}
+            />
+
+            <Text style={gateStyles.label}>School (optional)</Text>
+            <TextInput
+              style={gateStyles.input}
+              value={profileDraftSchool}
+              onChangeText={setProfileDraftSchool}
+              placeholder="e.g. St Mary’s College"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              autoCapitalize="words"
+              editable={!profileSaving}
+            />
+
+            <TouchableOpacity
+              style={[gateStyles.primaryBtn, (!profileDraftName.trim() || profileSaving) && { opacity: 0.6 }]}
+              onPress={saveProfileGate}
+              disabled={!profileDraftName.trim() || profileSaving}
+            >
+              <Text style={gateStyles.primaryBtnText}>{profileSaving ? 'Saving…' : 'Continue'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Email reachability prompt */}
+      <Modal visible={emailIssueVisible} transparent animationType="fade" onRequestClose={dismissEmailIssue}>
+        <View style={gateStyles.overlay}>
+          <View style={gateStyles.card}>
+            <Text style={gateStyles.title}>Email delivery issue</Text>
+            <Text style={gateStyles.body}>{emailIssueMessage || 'We couldn’t deliver an email to your address.'}</Text>
+
+            <Text style={gateStyles.label}>Contact email (optional)</Text>
+            <TextInput
+              style={gateStyles.input}
+              value={contactEmailDraft}
+              onChangeText={setContactEmailDraft}
+              placeholder="you@example.com"
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!emailIssueSaving}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <TouchableOpacity
+                style={[gateStyles.secondaryBtn, { flex: 1 }]}
+                onPress={dismissEmailIssue}
+                disabled={emailIssueSaving}
+              >
+                <Text style={gateStyles.secondaryBtnText}>Not now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  gateStyles.primaryBtn,
+                  { flex: 1, marginTop: 14 },
+                  (!!contactEmailDraft.trim() && !isValidEmail(contactEmailDraft)) && { opacity: 0.6 },
+                ]}
+                onPress={saveContactEmail}
+                disabled={emailIssueSaving || (!!contactEmailDraft.trim() && !isValidEmail(contactEmailDraft))}
+              >
+                <Text style={gateStyles.primaryBtnText}>{emailIssueSaving ? 'Saving…' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </AuthContext.Provider>
+  );
 }; 
+
+const gateStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    padding: 18,
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: '#0B1020',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  title: {
+    color: '#E6EAF2',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  body: {
+    color: 'rgba(230,234,242,0.82)',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  label: {
+    color: 'rgba(230,234,242,0.78)',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  input: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#E6EAF2',
+    backgroundColor: '#070A12',
+  },
+  primaryBtn: {
+    marginTop: 14,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#00E5FF',
+  },
+  primaryBtnText: {
+    color: '#0B1020',
+    fontWeight: '900',
+  },
+  secondaryBtn: {
+    marginTop: 14,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  secondaryBtnText: {
+    color: '#E6EAF2',
+    fontWeight: '800',
+  },
+});

@@ -17,6 +17,7 @@ async function sendSendGridEmail(params: {
   html: string;
   templateId?: string | null;
   dynamicTemplateData?: Record<string, unknown>;
+  customArgs?: Record<string, string>;
 }): Promise<void> {
   const sendGridKey = Deno.env.get('SENDGRID_API_KEY') || '';
   if (!sendGridKey) {
@@ -25,7 +26,13 @@ async function sendSendGridEmail(params: {
   }
 
   const body: any = {
-    personalizations: [{ to: [{ email: params.to }] }],
+    personalizations: [
+      {
+        to: [{ email: params.to }],
+        // Important: SendGrid Event Webhook will include these so we can map bounces to a user.
+        custom_args: params.customArgs || undefined,
+      },
+    ],
     from: { email: params.fromEmail, name: 'FL4SH' },
     subject: params.subject,
     tracking_settings: {
@@ -250,6 +257,10 @@ serve(async (req) => {
         dynamicTemplateData: {
           username: (userData.user.user_metadata as any)?.username ?? null,
           app_url: 'https://www.fl4shcards.com',
+        },
+        customArgs: {
+          user_id: userId,
+          email_type: 'welcome',
         },
       });
 
