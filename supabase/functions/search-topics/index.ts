@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { Configuration, OpenAIApi } from 'https://esm.sh/openai@4.20.0';
@@ -14,6 +15,23 @@ serve(async (req) => {
   }
 
   try {
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 405,
+      });
+    }
+
+    // Auth: require a valid user session (prevents public cost abuse + service-role data access).
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization bearer token.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     const { query, examBoard, qualificationLevel, subjectName, limit = 20 } = await req.json();
 
     // Validate input
@@ -26,7 +44,25 @@ serve(async (req) => {
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    if (!supabaseUrl || !anonKey || !supabaseServiceKey) {
+      return new Response(JSON.stringify({ error: 'Server not configured' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    // Validate token with anon client; use service role only after auth is validated.
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
+    const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+    if (userErr || !userData?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Invalid session' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Initialize OpenAI
@@ -35,7 +71,8 @@ serve(async (req) => {
     const openai = new OpenAIApi(configuration);
 
     // Step 1: Generate embedding for the query
-    console.log('Generating embedding for query:', query);
+    // Avoid logging raw user queries (PII leakage).
+    console.log('[search-topics] embedding request', { queryLen: String(query).length, userId: userData.user.id });
     const embeddingResponse = await openai.createEmbedding({
       model: 'text-embedding-3-small',
       input: query,
@@ -44,7 +81,7 @@ serve(async (req) => {
     const queryEmbedding = embeddingResponse.data.data[0].embedding;
 
     // Step 2: Perform vector search using RPC function
-    console.log('Performing vector search...');
+    console.log('[search-topics] vector search', { limit });
     const { data: vectorResults, error: searchError } = await supabase
       .rpc('match_topics', {
         query_embedding: queryEmbedding,
@@ -70,7 +107,7 @@ serve(async (req) => {
     }
 
     // Step 3: Use LLM to re-rank and assign confidence scores
-    console.log('Re-ranking with LLM...');
+    console.log('[search-topics] rerank');
     const topicList = vectorResults.map((t: any, idx: number) => 
       `${idx + 1}. ${t.topic_name}: ${t.plain_english_summary || 'No description'}`
     ).join('\n');
@@ -138,7 +175,7 @@ Include all topics but order by confidence descending.`;
       .slice(0, limit);
 
     // Log for monitoring
-    console.log(`Search complete: ${finalResults.length} results for query "${query}"`);
+    console.log('[search-topics] complete', { results: finalResults.length, totalCandidates: vectorResults.length });
 
     return new Response(
       JSON.stringify({ 

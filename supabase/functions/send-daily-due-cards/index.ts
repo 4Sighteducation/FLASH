@@ -33,9 +33,25 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    // Auth: this endpoint should be callable only by internal schedulers / operators.
+    // Allow either:
+    // - Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY> (JWT string), OR
+    // - x-daily-due-cards-secret: <DAILY_DUE_CARDS_JOB_SECRET>
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const expectedSecret = (Deno.env.get('DAILY_DUE_CARDS_JOB_SECRET') || '').trim();
+    const authHeader = req.headers.get('authorization') || '';
+    const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+    const gotSecret = (req.headers.get('x-daily-due-cards-secret') || '').trim();
+    const authorized = (!!serviceKey && bearer === serviceKey) || (!!expectedSecret && gotSecret === expectedSecret);
+    if (!authorized) {
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Optional debug payload (useful when the function returns sent: 0)
     let debugEmail: string | null = null;
@@ -54,7 +70,8 @@ serve(async (req) => {
     const rows: DueRow[] = (data as any) || [];
     if (!rows.length) {
       // Extra debug info for a specific user, if provided
-      if (debugEmail) {
+      const allowDebug = (Deno.env.get('ALLOW_DUE_CARDS_DEBUG') || '').trim() === 'true';
+      if (debugEmail && allowDebug) {
         const { data: userRow } = await supabase
           .from('users')
           .select('id, email')

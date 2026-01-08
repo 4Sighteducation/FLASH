@@ -55,6 +55,7 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+Delivery Report
 
 # Google Cloud credentials
 google-credentials.json
