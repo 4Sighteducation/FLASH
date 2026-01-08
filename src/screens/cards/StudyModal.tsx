@@ -27,6 +27,7 @@ import { LeitnerSystem } from '../../utils/leitnerSystem';
 import { gamificationService } from '../../services/gamificationService';
 import { getOrCreateUserSettings, updateUserSettings, UserSettings } from '../../services/userSettingsService';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
+import { pushNotificationService } from '../../services/pushNotificationService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -1115,6 +1116,14 @@ export default function StudyModal({ navigation, route }: StudyModalProps) {
     
     // Show session summary instead of "all caught up"
     setShowSessionSummary(true);
+    // Immediately update/clear the app icon badge after studying (don’t wait for hourly cron)
+    try {
+      if (user?.id) {
+        await pushNotificationService.syncAppBadgeToDueCards(user.id);
+      }
+    } catch {
+      // non-fatal
+    }
     // Unlock animations after session is saved
     animatingRef.current = false;
   };

@@ -29,6 +29,7 @@ import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 import { navigate as rootNavigate } from '../../navigation/RootNavigation';
+import { pushNotificationService } from '../../services/pushNotificationService';
 
 interface UserSubject {
   id: string;
@@ -108,6 +109,13 @@ export default function HomeScreen({ navigation }: any) {
       // Fetch cards due count
       const dueCount = await notificationService.getCardsDueCount(user.id);
       setCardsDue(dueCount);
+
+      // Keep the app icon badge in sync with current due cards (clears immediately after studying)
+      try {
+        await pushNotificationService.setAppBadgeCount(dueCount.total || 0);
+      } catch {
+        // ignore
+      }
       
       // Show notification if there are cards due AND in-app notifications are enabled
       // Only show once per session to avoid annoying users

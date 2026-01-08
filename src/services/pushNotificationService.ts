@@ -30,6 +30,71 @@ function getEasProjectId(): string | undefined {
 }
 
 export const pushNotificationService = {
+  /**
+   * Set the app icon badge count.
+   * iOS supports this natively; Android support varies by launcher.
+   */
+  async setAppBadgeCount(count: number): Promise<void> {
+    try {
+      if (Platform.OS === 'web') return;
+      const n = Math.max(0, Math.floor(Number(count) || 0));
+      await Notifications.setBadgeCountAsync(n);
+      if (n === 0) {
+        // Best-effort: clear notification center items too
+        try {
+          await (Notifications as any).dismissAllNotificationsAsync?.();
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore (never block UX)
+    }
+  },
+
+  /**
+   * Recompute due cards "right now" and sync the app badge immediately.
+   * Useful after a study session ends, so the badge clears without waiting for the hourly cron push.
+   */
+  async syncAppBadgeToDueCards(
+    userId: string
+  ): Promise<{ ok: true; dueCount: number } | { ok: false; error: string }> {
+    try {
+      if (!userId) return { ok: false, error: 'Missing userId' };
+
+      // Match server-side due logic: only consider cards in the user's active subjects.
+      const { data: userSubjects, error: subjectsError } = await supabase
+        .from('user_subjects')
+        .select(`subject:exam_board_subjects!subject_id(subject_name)`)
+        .eq('user_id', userId);
+      if (subjectsError) return { ok: false, error: subjectsError.message };
+
+      const activeSubjects = (userSubjects || [])
+        .map((s: any) => s?.subject?.subject_name)
+        .filter(Boolean) as string[];
+
+      if (activeSubjects.length === 0) {
+        await this.setAppBadgeCount(0);
+        return { ok: true, dueCount: 0 };
+      }
+
+      const { count, error } = await supabase
+        .from('flashcards')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('in_study_bank', true)
+        .lte('next_review_date', new Date().toISOString())
+        .in('subject_name', activeSubjects);
+      if (error) return { ok: false, error: error.message };
+
+      const dueCount = count || 0;
+      await this.setAppBadgeCount(dueCount);
+      return { ok: true, dueCount };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Failed to sync badge' };
+    }
+  },
+
   async registerForPushNotifications(): Promise<PushRegistrationResult> {
     try {
       // Request permission
