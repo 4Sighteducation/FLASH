@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +19,7 @@ import APISettingsScreen from '../screens/settings/APISettingsScreen';
 import PaywallScreen from '../screens/paywall/PaywallScreen';
 import RedeemCodeScreen from '../screens/paywall/RedeemCodeScreen';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { Alert } from 'react-native';
 import { showUpgradePrompt } from '../utils/upgradePrompt';
-import TopicEditModal from '../components/TopicEditModal';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
 import CardSubjectSelector from '../screens/cards/CardSubjectSelector';
@@ -34,6 +32,7 @@ import SubjectProgressScreen from '../screens/subjects/SubjectProgressScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import UserManagement from '../screens/admin/UserManagement';
 import TestTools from '../screens/admin/TestTools';
+import AdminFeedbackScreen from '../screens/admin/AdminFeedbackScreen';
 import PastPapersLibraryScreen from '../screens/papers/PastPapersLibraryScreen';
 import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
@@ -59,20 +58,20 @@ function HomeStack() {
           presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="ExamTypeSelection" 
+      <Stack.Screen
+        name="ExamTypeSelection"
         component={ExamTypeSelectionScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="SubjectSelection" 
+      <Stack.Screen
+        name="SubjectSelection"
         component={SubjectSearchScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
       {/* Alias: some flows navigate to SubjectSearch (onboarding stack name). Keep this here to avoid "not handled" hangs. */}
@@ -84,121 +83,113 @@ function HomeStack() {
           presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="CardSubjectSelector" 
+      <Stack.Screen
+        name="CardSubjectSelector"
         component={CardSubjectSelector}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="SubjectProgress" 
+      <Stack.Screen
+        name="SubjectProgress"
         component={SubjectProgressScreen}
-        options={{ 
-          headerShown: false
+        options={{
+          headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="SmartTopicDiscovery" 
+      <Stack.Screen
+        name="SmartTopicDiscovery"
         component={SmartTopicDiscoveryScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="CardTopicSelector" 
+      <Stack.Screen
+        name="CardTopicSelector"
         component={CardTopicSelector}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="TopicSelector" 
+      <Stack.Screen
+        name="TopicSelector"
         component={TopicSelectorScreen}
         options={{ headerShown: true, headerTitle: '' }}
       />
-      <Stack.Screen 
-        name="TopicList" 
-        component={TopicListScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="Flashcards" 
-        component={FlashcardsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen 
-        name="CreateCard" 
+      <Stack.Screen name="TopicList" component={TopicListScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Flashcards" component={FlashcardsScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="CreateCard"
         component={CreateCardScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="AIGenerator" 
+      <Stack.Screen
+        name="AIGenerator"
         component={AIGeneratorScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="StudyModal" 
+      <Stack.Screen
+        name="StudyModal"
         component={StudyModal}
-        options={{ 
+        options={{
           headerShown: false,
           presentation: 'fullScreenModal',
-          animation: 'slide_from_bottom'
+          animation: 'slide_from_bottom',
         }}
       />
-      <Stack.Screen 
-        name="ManageTopic" 
+      <Stack.Screen
+        name="ManageTopic"
         component={ManageTopicScreen}
-        options={{ 
+        options={{
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="ManageAllCards" 
+      <Stack.Screen
+        name="ManageAllCards"
         component={ManageAllCardsScreen}
-        options={{ 
+        options={{
           headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="CardCreationChoice" 
+      <Stack.Screen
+        name="CardCreationChoice"
         component={CardCreationChoice}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="TopicHub" 
+      <Stack.Screen
+        name="TopicHub"
         component={TopicHubScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="ColorPicker" 
+      <Stack.Screen
+        name="ColorPicker"
         component={ColorPickerScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="ImageCardGenerator" 
+      <Stack.Screen
+        name="ImageCardGenerator"
         component={ImageCardGeneratorScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
     </Stack.Navigator>
@@ -210,13 +201,13 @@ function StudyStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="StudyMain" component={StudyScreen} />
-      <Stack.Screen 
-        name="StudyModal" 
+      <Stack.Screen
+        name="StudyModal"
         component={StudyModal}
-        options={{ 
+        options={{
           headerShown: false,
           presentation: 'fullScreenModal',
-          animation: 'slide_from_bottom'
+          animation: 'slide_from_bottom',
         }}
       />
     </Stack.Navigator>
@@ -240,16 +231,8 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-      <Stack.Screen
-        name="DeleteAccount"
-        component={DeleteAccountScreen}
-        options={{ headerShown: false, presentation: 'modal' }}
-      />
-      <Stack.Screen
-        name="RedeemCode"
-        component={RedeemCodeScreen}
-        options={{ headerShown: false, presentation: 'modal' }}
-      />
+      <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="RedeemCode" component={RedeemCodeScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen
         name="Paywall"
         component={PaywallScreen}
@@ -258,36 +241,44 @@ function ProfileStack() {
           presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="APISettings" 
+      <Stack.Screen
+        name="APISettings"
         component={APISettingsScreen}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="AdminDashboard" 
+      <Stack.Screen
+        name="AdminDashboard"
         component={AdminDashboard}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="AdminUserManagement" 
+      <Stack.Screen
+        name="AdminUserManagement"
         component={UserManagement}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
         }}
       />
-      <Stack.Screen 
-        name="AdminTestTools" 
+      <Stack.Screen
+        name="AdminTestTools"
         component={TestTools}
-        options={{ 
+        options={{
           headerShown: false,
-          presentation: 'modal'
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="AdminFeedback"
+        component={AdminFeedbackScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
         }}
       />
     </Stack.Navigator>
@@ -354,4 +345,5 @@ export default function MainNavigator() {
       <ParentInviteFab />
     </View>
   );
-} 
+}
+

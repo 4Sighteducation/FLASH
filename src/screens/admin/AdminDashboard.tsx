@@ -1,13 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +30,7 @@ export default function AdminDashboard() {
       return;
     }
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
   const fetchStats = async () => {
@@ -46,15 +39,11 @@ export default function AdminDashboard() {
       today.setHours(0, 0, 0, 0);
 
       // Get user counts
-      const { count: totalUsers } = await supabase
-        .from('user_profiles')
-        .select('*', { count: 'exact', head: true });
-
+      const { count: totalUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
       const { count: todaySignups } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today.toISOString());
-
       const { count: activeUsers } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
@@ -65,22 +54,17 @@ export default function AdminDashboard() {
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .eq('tier', 'starter');
-
       const { count: proUsers } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .eq('tier', 'pro');
-
       const { count: ultimateUsers } = await supabase
         .from('user_profiles')
         .select('*', { count: 'exact', head: true })
         .eq('tier', 'ultimate');
 
       // Get card counts
-      const { count: totalCards } = await supabase
-        .from('flashcards')
-        .select('*', { count: 'exact', head: true });
-
+      const { count: totalCards } = await supabase.from('flashcards').select('*', { count: 'exact', head: true });
       const { count: todayCards } = await supabase
         .from('flashcards')
         .select('*', { count: 'exact', head: true })
@@ -114,17 +98,11 @@ export default function AdminDashboard() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={24} color="#94A3B8" />
             </TouchableOpacity>
             <Text style={styles.title}>Admin Dashboard</Text>
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={fetchStats}
-            >
+            <TouchableOpacity style={styles.refreshButton} onPress={fetchStats}>
               <Ionicons name="refresh" size={24} color="#00F5FF" />
             </TouchableOpacity>
           </View>
@@ -138,7 +116,7 @@ export default function AdminDashboard() {
               {/* Stats Grid */}
               <View style={styles.statsSection}>
                 <Text style={styles.sectionTitle}>📊 Overview</Text>
-                
+
                 <View style={styles.statsRow}>
                   <View style={[styles.statCard, styles.statCardCyan]}>
                     <Ionicons name="people" size={32} color="#00F5FF" />
@@ -171,21 +149,21 @@ export default function AdminDashboard() {
               {/* Tier Breakdown */}
               <View style={styles.statsSection}>
                 <Text style={styles.sectionTitle}>💎 User Tiers</Text>
-                
+
                 <View style={styles.tierCard}>
                   <View style={styles.tierRow}>
                     <Text style={styles.tierLabel}>Starter (Free)</Text>
                     <Text style={styles.tierCount}>{stats?.starterUsers || 0}</Text>
                   </View>
                   <View style={styles.tierBar}>
-                    <View 
+                    <View
                       style={[
-                        styles.tierBarFill, 
-                        { 
+                        styles.tierBarFill,
+                        {
                           width: `${((stats?.starterUsers || 0) / (stats?.totalUsers || 1)) * 100}%`,
                           backgroundColor: '#64748B',
-                        }
-                      ]} 
+                        },
+                      ]}
                     />
                   </View>
                 </View>
@@ -196,14 +174,14 @@ export default function AdminDashboard() {
                     <Text style={styles.tierCount}>{stats?.proUsers || 0}</Text>
                   </View>
                   <View style={styles.tierBar}>
-                    <View 
+                    <View
                       style={[
-                        styles.tierBarFill, 
-                        { 
+                        styles.tierBarFill,
+                        {
                           width: `${((stats?.proUsers || 0) / (stats?.totalUsers || 1)) * 100}%`,
                           backgroundColor: '#00F5FF',
-                        }
-                      ]} 
+                        },
+                      ]}
                     />
                   </View>
                 </View>
@@ -214,14 +192,14 @@ export default function AdminDashboard() {
                     <Text style={styles.tierCount}>{stats?.ultimateUsers || 0}</Text>
                   </View>
                   <View style={styles.tierBar}>
-                    <View 
+                    <View
                       style={[
-                        styles.tierBarFill, 
-                        { 
+                        styles.tierBarFill,
+                        {
                           width: `${((stats?.ultimateUsers || 0) / (stats?.totalUsers || 1)) * 100}%`,
                           backgroundColor: '#FF006E',
-                        }
-                      ]} 
+                        },
+                      ]}
                     />
                   </View>
                 </View>
@@ -231,19 +209,19 @@ export default function AdminDashboard() {
               <View style={styles.actionsSection}>
                 <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
 
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => navigation.navigate('AdminUserManagement' as never)}
-                >
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminUserManagement' as never)}>
                   <Ionicons name="people" size={24} color="#00F5FF" />
                   <Text style={styles.actionButtonText}>Manage Users</Text>
                   <Ionicons name="chevron-forward" size={20} color="#64748B" />
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => navigation.navigate('AdminTestTools' as never)}
-                >
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminFeedback' as never)}>
+                  <Ionicons name="chatbubbles" size={24} color="#10B981" />
+                  <Text style={styles.actionButtonText}>View Feedback</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#64748B" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminTestTools' as never)}>
                   <Ionicons name="flask" size={24} color="#FF006E" />
                   <Text style={styles.actionButtonText}>Test Tools</Text>
                   <Ionicons name="chevron-forward" size={20} color="#64748B" />
@@ -322,7 +300,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 16,
   },
-  
+
   // Stats Section
   statsSection: {
     marginBottom: 32,

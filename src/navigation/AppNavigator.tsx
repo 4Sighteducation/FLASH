@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 import { useAuth } from '../contexts/AuthContext';
 import { SubscriptionProvider } from '../contexts/SubscriptionContext';
 import { supabase } from '../services/supabase';
@@ -10,13 +11,13 @@ import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import MainNavigator from './MainNavigator';
 import WelcomeScreen from '../screens/onboarding/WelcomeScreen';
 import ExamTypeSelectionScreen from '../screens/onboarding/ExamTypeSelectionScreen';
-import SubjectSelectionScreen from '../screens/onboarding/SubjectSelectionScreen';
 import SubjectSearchScreen from '../screens/onboarding/SubjectSearchScreen';
 import OnboardingCompleteScreen from '../screens/onboarding/OnboardingCompleteScreen';
 import SplashScreen from '../screens/SplashScreen';
 import PaywallScreen from '../screens/paywall/PaywallScreen';
 import { navigationRef } from './RootNavigation';
 import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
+import TesterFeedbackScreen from '../screens/support/TesterFeedbackScreen';
 import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
 
 const Stack = createNativeStackNavigator();
@@ -41,6 +42,22 @@ export default function AppNavigator() {
   const [isOnboarded, setIsOnboarded] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Minimal deep-link config so web route /tester-feedback opens the correct screen.
+  // Vercel rewrites all routes to /index.html; React Navigation handles the path → screen mapping.
+  const linking = useMemo(
+    () =>
+      ({
+        prefixes: [Linking.createURL('/'), 'https://www.fl4sh.cards', 'https://fl4sh.cards'],
+        config: {
+          screens: {
+            TesterFeedback: 'tester-feedback',
+            ResetPassword: 'reset-password',
+          },
+        },
+      }) as const,
+    []
+  );
+
   useEffect(() => {
     console.log('AppNavigator useEffect - user:', user?.id, 'authLoading:', authLoading);
     if (user) {
@@ -49,12 +66,13 @@ export default function AppNavigator() {
       console.log('No user, setting loading to false');
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const checkOnboardingStatus = async () => {
     try {
       console.log('Checking onboarding status for user:', user?.id);
-      
+
       if (!user?.id) {
         console.log('No user ID found, setting onboarded to false');
         setIsOnboarded(false);
@@ -90,15 +108,24 @@ export default function AppNavigator() {
     }
   };
 
-  console.log('AppNavigator render - authLoading:', authLoading, 'loading:', loading, 'user:', user?.id, 'isOnboarded:', isOnboarded);
-  
+  console.log(
+    'AppNavigator render - authLoading:',
+    authLoading,
+    'loading:',
+    loading,
+    'user:',
+    user?.id,
+    'isOnboarded:',
+    isOnboarded
+  );
+
   if (authLoading || loading) {
     return <SplashScreen />;
   }
 
   return (
     <SubscriptionProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} linking={linking}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {user ? (
             isOnboarded ? (
@@ -118,6 +145,9 @@ export default function AppNavigator() {
               <Stack.Screen name="SignUp" component={SignUpScreen} />
             </>
           )}
+
+          {/* Public tester feedback page (web route: /tester-feedback) */}
+          <Stack.Screen name="TesterFeedback" component={TesterFeedbackScreen} />
 
           {/* Global Paywall Modal (so it can appear above any nested modal stack) */}
           <Stack.Screen
@@ -150,4 +180,5 @@ export default function AppNavigator() {
       </NavigationContainer>
     </SubscriptionProvider>
   );
-} 
+}
+
