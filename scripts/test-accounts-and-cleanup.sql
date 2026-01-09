@@ -22,7 +22,7 @@ order by created_at desc;
 -- 2) Grant tiers for those users via public.user_subscriptions (so Apple can review gated content)
 -- Adjust column list if your table differs.
 -- Set far-future expiration for reviewer/test accounts.
--- After running, verify in app (these emails are allowlisted to use DB tier if higher than RevenueCat).
+-- After running, verify in app. The app prefers DB tier if it's higher than RevenueCat.
 
 -- appletester (Pro)
 insert into public.user_subscriptions (user_id, tier, expires_at, updated_at)
@@ -53,6 +53,14 @@ insert into public.user_subscriptions (user_id, tier, expires_at, updated_at)
 select id, 'pro', '2035-01-01T00:00:00Z'::timestamptz, now()
 from auth.users
 where lower(email) = 'stu3@fl4sh.cards'
+on conflict (user_id)
+do update set tier = excluded.tier, expires_at = excluded.expires_at, updated_at = now();
+
+-- androidtest (Pro) - Android tester account
+insert into public.user_subscriptions (user_id, tier, expires_at, updated_at)
+select id, 'pro', '2035-01-01T00:00:00Z'::timestamptz, now()
+from auth.users
+where lower(email) = 'androidtest@fl4shcards.com'
 on conflict (user_id)
 do update set tier = excluded.tier, expires_at = excluded.expires_at, updated_at = now();
 

@@ -7,7 +7,7 @@ begin
   -- Best-effort upsert into public.user_subscriptions (schema can drift; never block).
   begin
     insert into public.user_subscriptions (user_id, tier, source, platform, expires_at, created_at, updated_at)
-    values (p_user_id, 'pro', p_source, 'server', p_expires_at, now(), now())
+    values (p_user_id, 'pro', p_source, 'web', p_expires_at, now(), now())
     on conflict (user_id)
     do update set tier = excluded.tier,
                   source = excluded.source,
