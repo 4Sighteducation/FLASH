@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { cleanupOrphanedCards } from '../utils/databaseMaintenance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushNotificationService } from '../services/pushNotificationService';
+import { navigate } from '../navigation/RootNavigation';
 // NOTE: Keep AuthProvider fast. Any network-heavy “maintenance” should be fire-and-forget.
 import { migrateUserTopicPrioritiesToV2 } from '../utils/priorityMigration';
 import Constants from 'expo-constants';
@@ -332,6 +333,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await supabase.rpc('ensure_pro_trial_started');
           } catch (e) {
             console.warn('[Auth] ensure_pro_trial_started skipped (non-fatal):', e);
+          }
+        })();
+      }, 0);
+
+      // If the trial has expired, show an in-app warning on next open/login (push may be disabled).
+      // We do NOT auto-wipe here; the modal lets the user upgrade or confirm a reset.
+      setTimeout(() => {
+        void (async () => {
+          try {
+            const { data } = await supabase
+              .from('user_subscriptions')
+              .select('source, expires_at, expired_processed_at')
+              .eq('user_id', uid)
+              .maybeSingle();
+
+            const isTrial = String((data as any)?.source || '') === 'trial';
+            const expRaw = (data as any)?.expires_at as string | null | undefined;
+            const processed = !!(data as any)?.expired_processed_at;
+            const expired = expRaw ? new Date(expRaw).getTime() <= Date.now() : false;
+
+            if (isTrial && expired && !processed) {
+              navigate('TrialExpiredModal');
+            }
+          } catch (e) {
+            console.warn('[Auth] Trial expiry check skipped (non-fatal):', e);
           }
         })();
       }, 0);

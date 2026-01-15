@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trial-expiry-secret',
 };
 
 type WarnRow = {
@@ -51,12 +51,27 @@ serve(async (req) => {
     // - x-trial-expiry-secret: <TRIAL_EXPIRY_JOB_SECRET>
     const serviceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
     const expectedSecret = (Deno.env.get('TRIAL_EXPIRY_JOB_SECRET') || '').trim();
+    const debugAuth = (Deno.env.get('TRIAL_EXPIRY_DEBUG') || '').trim() === 'true';
     const authHeader = req.headers.get('authorization') || '';
     const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
     const gotSecret = (req.headers.get('x-trial-expiry-secret') || '').trim();
     const authorized = (!!serviceKey && bearer === serviceKey) || (!!expectedSecret && gotSecret === expectedSecret);
     if (!authorized) {
-      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+      const debug = debugAuth
+        ? {
+            expectedSecretSet: expectedSecret.length > 0,
+            expectedSecretLen: expectedSecret.length,
+            headerPresent: gotSecret.length > 0,
+            headerLen: gotSecret.length,
+            serviceKeySet: serviceKey.length > 0,
+            bearerPresent: bearer.length > 0,
+            bearerLen: bearer.length,
+          }
+        : undefined;
+      if (debugAuth) {
+        console.log('[trial-expiry-sweep] unauthorized', debug);
+      }
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', debug }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
@@ -122,26 +137,11 @@ serve(async (req) => {
       }
     }
 
-    // 2) Process expiries (wipe + downgrade)
-    const { data: expiredData, error: expiredErr } = await sb.rpc('get_expired_trial_users', { p_limit: 200 });
-    if (expiredErr) throw expiredErr;
-    const expiredUsers: Array<{ user_id: string }> = (expiredData as any) || [];
-
+    // 2) NOTE: We intentionally do NOT hard-wipe here.
+    // Rationale: push notifications may be disabled; the authoritative warning should be shown in-app
+    // on next login/open, then the user confirms the reset.
+    const expiredUsers: Array<{ user_id: string }> = [];
     const processed: Array<{ user_id: string; ok: boolean; reason: string }> = [];
-    for (const u of expiredUsers) {
-      const userId = u.user_id;
-      try {
-        const { data, error } = await sb.rpc('process_expired_trial_user', { p_user_id: userId });
-        if (error) {
-          processed.push({ user_id: userId, ok: false, reason: error.message });
-        } else {
-          const row = Array.isArray(data) ? data[0] : data;
-          processed.push({ user_id: userId, ok: !!row?.ok, reason: String(row?.reason || '') });
-        }
-      } catch (e: any) {
-        processed.push({ user_id: userId, ok: false, reason: String(e?.message || e) });
-      }
-    }
 
     return new Response(
       JSON.stringify({
