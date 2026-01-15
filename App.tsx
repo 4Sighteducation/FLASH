@@ -11,6 +11,7 @@ import { supabase } from './src/services/supabase';
 import * as Linking from 'expo-linking';
 import 'react-native-url-polyfill/auto';
 import { handleOAuthCallback } from './src/utils/oauthHandler';
+import * as Notifications from 'expo-notifications';
 
 function AppContent() {
   useEffect(() => {
@@ -100,6 +101,31 @@ function AppContent() {
       void handleDeepLink(event.url);
     });
 
+    // Handle push notification taps (e.g. trial expiry warning -> open paywall)
+    const notificationResponseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      try {
+        const data: any = response?.notification?.request?.content?.data || {};
+        if (data?.type === 'trial_expiry') {
+          // Root modal paywall
+          navigate('PaywallModal' as never, { source: 'trial_expiry_push' } as never);
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    // If app was launched by tapping a notification
+    Notifications.getLastNotificationResponseAsync()
+      .then((resp) => {
+        const data: any = resp?.notification?.request?.content?.data || {};
+        if (data?.type === 'trial_expiry') {
+          navigate('PaywallModal' as never, { source: 'trial_expiry_push_initial' } as never);
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
+
     // Check if app was opened with a deep link
     Linking.getInitialURL().then((url) => {
       if (url) {
@@ -157,6 +183,7 @@ function AppContent() {
     return () => {
       authSubscription.unsubscribe();
       urlSubscription.remove();
+      notificationResponseSub.remove();
     };
   }, []);
 

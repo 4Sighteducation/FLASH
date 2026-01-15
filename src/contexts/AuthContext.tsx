@@ -324,6 +324,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })();
       }, 0);
 
+      // Best-effort: start the 30-day Pro access window (server-side) for new users.
+      // This must never block UI; failures just mean they stay Free until next successful call.
+      setTimeout(() => {
+        void (async () => {
+          try {
+            await supabase.rpc('ensure_pro_trial_started');
+          } catch (e) {
+            console.warn('[Auth] ensure_pro_trial_started skipped (non-fatal):', e);
+          }
+        })();
+      }, 0);
+
       // Best-effort: send welcome email after the first successful sign-in (works for verified users).
       // Do not block the UI on email delivery.
       setTimeout(() => {

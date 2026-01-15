@@ -258,13 +258,21 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // non-fatal
     }
 
-    // Best-effort sync to backend (source of truth will eventually be RevenueCat webhooks).
-    // This keeps your existing DB checks working during the transition.
+    // Best-effort sync to backend (RevenueCat remains the source of truth for paid access).
+    // We also store a lightweight `source` hint so server-side jobs can distinguish trial vs paid.
     try {
       if (user?.id) {
+        const source =
+          next === 'free'
+            ? 'free'
+            : // If we have an expiry from RevenueCat, assume it's store-driven access.
+              expiresAtIso
+              ? 'revenuecat'
+              : 'unknown';
         await supabase.from('user_subscriptions').upsert({
           user_id: user.id,
           tier: next,
+          source,
           platform: Platform.OS,
           expires_at: expiresAtIso,
           updated_at: new Date().toISOString(),
