@@ -325,10 +325,9 @@ export default function MainNavigator() {
                 e.preventDefault();
                 showUpgradePrompt({
                   title: 'Pro feature',
-                  message:
-                    'Past Papers are available on Pro.\n\nLaunch offer: Premium Annual includes Pro features for a limited time.',
+                  message: 'Past Papers are available on Pro. Keep studying like a Pro to unlock them.',
                   navigation,
-                  ctaLabel: 'Unlock offer',
+                  ctaLabel: 'View plans',
                   paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'papers_tab' },
                 });
               }

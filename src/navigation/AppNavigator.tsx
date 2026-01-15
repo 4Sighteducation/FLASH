@@ -20,6 +20,7 @@ import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
 import TesterFeedbackScreen from '../screens/support/TesterFeedbackScreen';
 import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
 import TrialExpiredScreen from '../screens/paywall/TrialExpiredScreen';
+import TrialExpiryNudgeScreen from '../screens/paywall/TrialExpiryNudgeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -155,6 +156,13 @@ export default function AppNavigator() {
             name="PaywallModal"
             component={PaywallScreen}
             options={{ headerShown: false, presentation: 'modal' }}
+          />
+
+          {/* Global Trial Expiry Nudge Modal (shown on push tap / foreground warning) */}
+          <Stack.Screen
+            name="TrialExpiryNudgeModal"
+            component={TrialExpiryNudgeScreen}
+            options={{ headerShown: false, presentation: 'transparentModal', gestureEnabled: false }}
           />
 
           {/* Global Trial Expired Modal (blocks until user upgrades or confirms reset) */}

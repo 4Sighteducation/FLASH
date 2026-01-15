@@ -48,7 +48,7 @@ export default function StatisticsScreen({ navigation }: any) {
     };
   }, [user?.id, range]);
 
-  // Gated: Premium/Pro only (as discussed). You can loosen later.
+  // Gated: Pro only (as discussed). You can loosen later.
   const allowed = tier !== 'free';
 
   if (!allowed) {
@@ -62,7 +62,7 @@ export default function StatisticsScreen({ navigation }: any) {
           <View style={{ width: 32 }} />
         </View>
         <View style={styles.lockCard}>
-          <Text style={styles.lockTitle}>Premium feature</Text>
+          <Text style={styles.lockTitle}>Pro feature</Text>
           <Text style={styles.lockText}>
             Upgrade to unlock your statistics dashboard (daily progress, accuracy, XP, and timed-study insights).
           </Text>

@@ -25,19 +25,19 @@ function chunk<T>(arr: T[], size: number) {
 function buildWarningMessage(days: number): { title: string; body: string } {
   if (days <= 0) {
     return {
-      title: 'FLASH — Pro access ends today',
-      body: 'Your free Pro access ends today. Upgrade now to keep Pro features and avoid your cards being reset.',
+      title: 'FLASH — Pro ends today',
+      body: 'Tap to keep your study progress.',
     };
   }
   if (days === 1) {
     return {
-      title: 'FLASH — 1 day left of Pro',
-      body: 'Your free Pro access ends tomorrow. Upgrade to keep Pro features and avoid your cards being reset.',
+      title: 'FLASH — Pro ends tomorrow',
+      body: 'Tap to keep your study progress.',
     };
   }
   return {
-    title: `FLASH — ${days} days left of Pro`,
-    body: `Your free Pro access ends in ${days} days. Upgrade to keep Pro features and avoid your cards being reset.`,
+    title: `FLASH — Pro ends in ${days} days`,
+    body: 'Tap to keep your study progress.',
   };
 }
 

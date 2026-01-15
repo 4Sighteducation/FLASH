@@ -145,7 +145,7 @@ export default function HomeScreen({ navigation }: any) {
           .eq('user_id', user.id);
         
         if (reviews && reviews.length > 0) {
-          const correctCount = reviews.filter(r => r.was_correct).length;
+          const correctCount = reviews.filter((r: any) => r.was_correct).length;
           correctPercentage = Math.round((correctCount / reviews.length) * 100);
         }
       }
@@ -442,17 +442,17 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </LinearGradient>
 
-        {/* Launch offer banner (Free users) */}
+        {/* Free -> Pro CTA banner */}
         {tier === 'free' ? (
           <View style={styles.launchOfferCard}>
             <View style={styles.launchOfferTop}>
-              <Text style={styles.launchOfferTitle}>Launch offer</Text>
+              <Text style={styles.launchOfferTitle}>Study like a Pro</Text>
               <View style={styles.launchOfferPill}>
-                <Text style={styles.launchOfferPillText}>LIMITED TIME</Text>
+                <Text style={styles.launchOfferPillText}>PRO</Text>
               </View>
             </View>
             <Text style={styles.launchOfferText}>
-              Upgrade to Premium Annual and get Pro features included for a limited time.
+              Unlock Past Papers and advanced features.
             </Text>
             <TouchableOpacity
               style={styles.launchOfferCta}
@@ -467,7 +467,7 @@ export default function HomeScreen({ navigation }: any) {
                 }
               }}
             >
-              <Text style={styles.launchOfferCtaText}>See offer</Text>
+              <Text style={styles.launchOfferCtaText}>View plans</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
           </View>
@@ -525,7 +525,7 @@ export default function HomeScreen({ navigation }: any) {
                           <View style={styles.headerButtons}>
                             <TouchableOpacity
                               style={styles.colorButton}
-                              onPress={(e) => {
+                              onPress={(e: any) => {
                                 e.stopPropagation();
                                 navigation.navigate('ColorPicker', {
                                   subjectId: subject.subject_id,
@@ -546,7 +546,7 @@ export default function HomeScreen({ navigation }: any) {
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.deleteButton}
-                              onPress={(e) => {
+                              onPress={(e: any) => {
                                 e.stopPropagation();
                                 handleSubjectLongPress(subject);
                               }}
@@ -577,7 +577,7 @@ export default function HomeScreen({ navigation }: any) {
                         <View style={styles.gridActions}>
                           <TouchableOpacity
                             style={styles.gridActionButton}
-                            onPress={(e) => {
+                            onPress={(e: any) => {
                               e.stopPropagation();
                               navigation.navigate('ColorPicker', {
                                 subjectId: subject.subject_id,
@@ -618,7 +618,7 @@ export default function HomeScreen({ navigation }: any) {
                 // Enforce Free plan subject limit at the entry point (in addition to server-side insert checks).
                 if (tier === 'free' && limits.maxSubjects !== -1 && userSubjects.length >= limits.maxSubjects) {
                   showUpgradePrompt({
-                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    message: 'The Free plan is limited to 1 subject. Keep studying like a Pro for unlimited subjects.',
                     navigation,
                   });
                   return;

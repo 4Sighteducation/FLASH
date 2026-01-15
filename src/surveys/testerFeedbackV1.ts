@@ -42,7 +42,7 @@ export const testerFeedbackV1: SurveyDefinition = {
           type: 'single_choice',
           prompt: 'Current plan',
           required: false,
-          options: ['Free', 'Premium', 'Pro', 'Not sure'],
+          options: ['Free', 'Pro', 'Not sure'],
         },
         {
           id: 'goals',
@@ -189,11 +189,11 @@ export const testerFeedbackV1: SurveyDefinition = {
           required: false,
         },
         { id: 'profile_notifications_clear', type: 'rating_1_7', prompt: 'Notifications settings were clear (Push vs Cards Due Reminders).', required: false },
-        { id: 'paywall_understand', type: 'rating_1_7', prompt: 'I understood Free vs Premium vs Pro.', required: false },
+        { id: 'paywall_understand', type: 'rating_1_7', prompt: 'I understood Free vs Pro.', required: false },
         {
           id: 'paywall_offer_clear',
           type: 'rating_1_7',
-          prompt: 'The “Launch offer: Premium Annual includes Pro features for a limited time” message was clear.',
+          prompt: 'The “2 months free on Annual” message was clear.',
           required: false,
         },
         { id: 'upgrade_reason', type: 'text', prompt: 'What would convince you to upgrade?', required: false },

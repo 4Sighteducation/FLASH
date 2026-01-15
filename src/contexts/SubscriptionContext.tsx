@@ -57,8 +57,9 @@ const subscriptionLimits: Record<SubscriptionTier, SubscriptionLimits> = {
     maxCards: -1,
     canUseAI: true,
     canExportCards: true,
-    canUseVoiceAnswers: false,
-    canAccessPapers: false,
+    // Transition safety: legacy Premium should behave like Pro (Premium is no longer sold).
+    canUseVoiceAnswers: true,
+    canAccessPapers: true,
   },
   pro: {
     maxSubjects: -1,
@@ -89,7 +90,8 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
   const celebrationKey = (userId?: string | null) => `celebration_pending_v1:${userId || 'anon'}`;
 
-  const tierRank = (t: SubscriptionTier) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
+  // Pro-only model: treat any legacy Premium as Pro.
+  const tierRank = (t: SubscriptionTier) => (t === 'pro' || t === 'premium' ? 2 : 0);
 
   const getBetaAccess = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
     try {
@@ -184,8 +186,10 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Legacy values
     if (raw === 'lite') return 'free';
     if (raw === 'full') return 'pro';
+    // Legacy tier still present in some environments; treat as Pro.
+    if (raw === 'premium') return 'pro';
     // Current values
-    if (raw === 'free' || raw === 'premium' || raw === 'pro') return raw;
+    if (raw === 'free' || raw === 'pro') return raw;
     return 'free';
   };
 
@@ -371,17 +375,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const exp = getExpirationIso(info);
       await applyTier(next, exp);
 
-      // Celebration for any successful purchase (monthly/annual, premium/pro).
+      // Celebration for any successful purchase.
       // We show a one-time modal immediately after purchase completes.
       try {
-        const title = next === 'pro' ? 'Welcome to Pro ⚡' : next === 'premium' ? 'Premium unlocked ✅' : 'Upgraded ✅';
-        const badge = next === 'pro' ? 'PRO' : next === 'premium' ? 'PREMIUM' : undefined;
-        const message =
-          next === 'pro'
-            ? 'Everything is unlocked — Past Papers, AI marking, and more.'
-            : next === 'premium'
-              ? 'Unlimited study essentials unlocked. You can upgrade to Pro any time.'
-              : 'Your subscription is now active.';
+        const title = next === 'pro' ? 'Welcome to Pro ⚡' : 'Upgraded ✅';
+        const badge = next === 'pro' ? 'PRO' : undefined;
+        const message = next === 'pro' ? 'Everything is unlocked — Past Papers, AI marking, and more.' : 'Your subscription is now active.';
         const payload = { title, badge, message, ctaLabel: 'Continue' };
         await AsyncStorage.setItem(celebrationKey(user.id), JSON.stringify(payload));
         try {

@@ -101,13 +101,30 @@ function AppContent() {
       void handleDeepLink(event.url);
     });
 
-    // Handle push notification taps (e.g. trial expiry warning -> open paywall)
+    // Handle push notification taps (e.g. trial expiry warning -> open in-app nudge modal -> paywall)
     const notificationResponseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       try {
         const data: any = response?.notification?.request?.content?.data || {};
         if (data?.type === 'trial_expiry') {
-          // Root modal paywall
-          navigate('PaywallModal' as never, { source: 'trial_expiry_push' } as never);
+          navigate(
+            'TrialExpiryNudgeModal' as never,
+            { source: 'trial_expiry_push', daysRemaining: data.daysRemaining, expiresAt: data.expiresAt } as never
+          );
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    // If a warning arrives while the app is open, show the same in-app nudge.
+    const notificationReceivedSub = Notifications.addNotificationReceivedListener((notif) => {
+      try {
+        const data: any = notif?.request?.content?.data || {};
+        if (data?.type === 'trial_expiry') {
+          navigate(
+            'TrialExpiryNudgeModal' as never,
+            { source: 'trial_expiry_push_foreground', daysRemaining: data.daysRemaining, expiresAt: data.expiresAt } as never
+          );
         }
       } catch {
         // ignore
@@ -119,7 +136,10 @@ function AppContent() {
       .then((resp) => {
         const data: any = resp?.notification?.request?.content?.data || {};
         if (data?.type === 'trial_expiry') {
-          navigate('PaywallModal' as never, { source: 'trial_expiry_push_initial' } as never);
+          navigate(
+            'TrialExpiryNudgeModal' as never,
+            { source: 'trial_expiry_push_initial', daysRemaining: data.daysRemaining, expiresAt: data.expiresAt } as never
+          );
         }
       })
       .catch(() => {
@@ -184,6 +204,7 @@ function AppContent() {
       authSubscription.unsubscribe();
       urlSubscription.remove();
       notificationResponseSub.remove();
+      notificationReceivedSub.remove();
     };
   }, []);
 

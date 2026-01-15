@@ -162,8 +162,8 @@ export default function ColorPickerScreen() {
       if (colorMode === 'gradient' && selectedGradient) {
         if (!canUseGradients) {
           showUpgradePrompt({
-            title: 'Premium feature',
-            message: 'Gradients are available on Premium and Pro plans.',
+            title: 'Pro feature',
+            message: 'Gradients are available on Pro.',
           });
           return;
         }
@@ -257,8 +257,8 @@ export default function ColorPickerScreen() {
             onPress={() => {
               if (!canUseGradients) {
                 showUpgradePrompt({
-                  title: 'Premium feature',
-                  message: 'Gradients are available on Premium and Pro plans.',
+                      title: 'Pro feature',
+                      message: 'Gradients are available on Pro.',
                 });
                 return;
               }

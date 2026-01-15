@@ -17,7 +17,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { configureRevenueCat, getOfferingPackagePricing, type OfferingPackagePricing } from '../../services/revenueCatService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRoute } from '@react-navigation/native';
 
 type BillingPeriod = 'monthly' | 'annual';
@@ -41,7 +40,6 @@ export default function PaywallScreen({ navigation }: any) {
   const [pricing, setPricing] = useState<Record<string, OfferingPackagePricing>>({});
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingNote, setPricingNote] = useState<string | null>(null);
-  const premiumCta = 'Start Premium';
 
   useEffect(() => {
     if (params.initialBilling) setBilling(params.initialBilling);
@@ -110,8 +108,8 @@ export default function PaywallScreen({ navigation }: any) {
     return `${amount.toFixed(2)} ${currencyCode}`;
   };
 
-  const getPriceLine = (plan: 'premium' | 'pro', bill: BillingPeriod): string => {
-    const key = `${plan}_${bill}`;
+  const getPriceLine = (bill: BillingPeriod): string => {
+    const key = `pro_${bill}`;
     const p = pricing[key];
     if (!p?.priceString) return pricingLoading ? 'Loading price…' : 'Price unavailable';
 
@@ -140,10 +138,9 @@ export default function PaywallScreen({ navigation }: any) {
 
             <View style={styles.brand}>
               <Image source={require('../../../assets/icon.png')} style={styles.logo} />
-              <Text style={styles.title}>Upgrade your study setup</Text>
+              <Text style={styles.title}>Study like a Pro</Text>
               <Text style={styles.subtitle}>
-                Choose a plan. Start with <Text style={styles.subtitleStrong}>Premium</Text>, or unlock everything with{' '}
-                <Text style={[styles.subtitleStrong, { color: colors.secondary }]}>Pro</Text>.
+                Keep studying like a Pro with full access to Papers and advanced features.
               </Text>
             </View>
           </View>
@@ -171,6 +168,7 @@ export default function PaywallScreen({ navigation }: any) {
               {billing === 'annual' ? 'Billed yearly' : 'Billed monthly'} • Prices pulled from{' '}
               {Platform.OS === 'ios' ? 'the App Store' : Platform.OS === 'android' ? 'Google Play' : 'the store'}
             </Text>
+            {billing === 'annual' ? <Text style={styles.savingsHint}>2 months free on Annual</Text> : null}
             {pricingLoading && (
               <View style={styles.pricingLoadingRow}>
                 <ActivityIndicator size="small" color={colors.textSecondary} />
@@ -179,15 +177,6 @@ export default function PaywallScreen({ navigation }: any) {
             )}
             {!!pricingNote && <Text style={styles.pricingNote}>{pricingNote}</Text>}
           </View>
-
-          {tier === 'free' && billing === 'annual' ? (
-            <View style={styles.offerBanner}>
-              <Text style={styles.offerBannerTitle}>Launch offer</Text>
-              <Text style={styles.offerBannerText}>
-                Premium Annual includes Pro features for a limited time.
-              </Text>
-            </View>
-          ) : null}
 
           <View style={styles.cards}>
             {/* Free */}
@@ -210,82 +199,22 @@ export default function PaywallScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Premium */}
-            <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.cardOuterGlow}>
-              <View style={styles.card}>
-                <View style={styles.cardTopRow}>
-                  <Text style={styles.cardTitle}>Premium</Text>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>POPULAR</Text>
-                  </View>
-                </View>
-                <Text style={styles.priceLine}>
-                  <Text style={styles.priceBig}>Premium</Text>
-                  <Text style={styles.priceSmall}> • Unlimited study essentials</Text>
-                </Text>
-                <Text style={styles.planPrice}>{getPriceLine('premium', billing)}</Text>
-                {billing === 'annual' ? (
-                  <View style={styles.offerInline}>
-                    <Ionicons name="sparkles" size={16} color="rgba(0,245,255,0.9)" />
-                    <Text style={styles.offerInlineText}>Launch offer: Premium Annual includes Pro (limited time).</Text>
-                  </View>
-                ) : null}
-                <View style={styles.featureList}>
-                  <Feature text="Unlimited subjects" />
-                  <Feature text="Unlimited flashcards" />
-                  <Feature text="All topics" />
-                  <Feature text="Smart revision scheduling" />
-                  <Feature text="Priority support" />
-                </View>
-
-                {tier === 'free' ? (
-                  <TouchableOpacity
-                    style={styles.primaryBtn}
-                    onPress={async () => {
-                      // If they purchase Premium Annual during the promo, we may upgrade them to Pro shortly after via webhook.
-                      // Mark it as pending so we can celebrate on upgrade.
-                      try {
-                        if (billing === 'annual' && user?.id) {
-                          await AsyncStorage.setItem(`launch_offer_pending_v1:${user.id}`, JSON.stringify({
-                            at: Date.now(),
-                            source: params.source || 'paywall',
-                          }));
-                        }
-                      } catch {
-                        // non-fatal
-                      }
-                      await purchasePlan('premium', billing);
-                    }}
-                  >
-                    <LinearGradient colors={colors.buttonGradient as any} style={styles.primaryBtnBg}>
-                      <Text style={styles.primaryBtnText}>{premiumCta}</Text>
-                      <Ionicons name="arrow-forward" size={18} color="#0B1220" />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.currentPill}>
-                    <Text style={styles.currentPillText}>You’re already upgraded</Text>
-                  </View>
-                )}
-              </View>
-            </LinearGradient>
-
             {/* Pro */}
             <LinearGradient colors={['rgba(255,0,110,0.55)', 'rgba(0,245,255,0.35)']} style={styles.cardOuterGlow}>
               <View style={styles.card}>
                 <View style={styles.cardTopRow}>
                   <Text style={styles.cardTitle}>Pro</Text>
                   <View style={[styles.badge, styles.badgePro]}>
-                    <Text style={styles.badgeText}>BEST VALUE</Text>
+                    <Text style={styles.badgeText}>{billing === 'annual' ? '2 MONTHS FREE' : 'BEST VALUE'}</Text>
                   </View>
                 </View>
                 <Text style={styles.priceLine}>
                   <Text style={styles.priceBig}>Pro</Text>
-                  <Text style={styles.priceSmall}> • Everything in Premium + Papers + AI</Text>
+                  <Text style={styles.priceSmall}> • Past Papers + advanced features</Text>
                 </Text>
-                <Text style={styles.planPrice}>{getPriceLine('pro', billing)}</Text>
+                <Text style={styles.planPrice}>{getPriceLine(billing)}</Text>
+                {billing === 'annual' ? <Text style={styles.proSavingsLine}>Annual includes 2 months free.</Text> : null}
                 <View style={styles.featureList}>
-                  <Feature text="Everything in Premium" />
                   <Feature text="Past Papers & mark schemes" />
                   <Feature text="AI marking & insights" />
                   <Feature text="AI card generation" />
@@ -297,7 +226,7 @@ export default function PaywallScreen({ navigation }: any) {
                     colors={[colors.secondary, colors.primary] as any}
                     style={styles.primaryBtnBg}
                   >
-                    <Text style={styles.primaryBtnText}>Go Pro</Text>
+                    <Text style={styles.primaryBtnText}>Keep studying like a Pro</Text>
                     <Ionicons name="flash" size={18} color="#0B1220" />
                   </LinearGradient>
                 </TouchableOpacity>
@@ -399,6 +328,7 @@ function createStyles(colors: any) {
     billingText: { color: colors.textSecondary, fontWeight: '700', fontSize: 13 },
     billingTextActive: { color: colors.text },
     billingHint: { marginTop: 8, color: colors.textSecondary, fontSize: 12 },
+    savingsHint: { marginTop: 6, color: 'rgba(0,245,255,0.95)', fontSize: 12, fontWeight: '900' },
     pricingLoadingRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 },
     pricingLoadingText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
     pricingNote: { marginTop: 8, color: 'rgba(148,163,184,0.85)', fontSize: 12, textAlign: 'center', maxWidth: 360 },
@@ -461,6 +391,7 @@ function createStyles(colors: any) {
     priceBig: { color: colors.text, fontSize: 26, fontWeight: '900' },
     priceSmall: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
     planPrice: { color: colors.text, fontSize: 14, fontWeight: '800', marginTop: -6, marginBottom: 10 },
+    proSavingsLine: { marginTop: -6, marginBottom: 10, color: 'rgba(0,245,255,0.92)', fontSize: 12, fontWeight: '900' },
     featureList: { marginTop: 4, marginBottom: 14 },
 
     primaryBtn: { borderRadius: 14, overflow: 'hidden' },

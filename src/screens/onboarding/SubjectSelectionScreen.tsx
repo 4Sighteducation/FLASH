@@ -178,7 +178,7 @@ export default function SubjectSelectionScreen() {
           
           if (!checkLimits('subject', currentSubjectCount + 1)) {
             showUpgradePrompt({
-              message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                message: 'The Free plan is limited to 1 subject. Keep studying like a Pro for unlimited subjects.',
               navigation,
             });
             return;

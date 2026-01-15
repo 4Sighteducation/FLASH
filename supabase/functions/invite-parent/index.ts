@@ -70,7 +70,7 @@ function buildParentInviteHtml(params: {
       </head>
       <body style="margin:0;padding:0;background:#070A12;color:#E6EAF2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-          A student has invited you to unlock FL4SH Pro for their account.
+          A student has invited you to keep FL4SH Pro on their account.
         </div>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#070A12;padding:28px 12px;">
@@ -82,7 +82,7 @@ function buildParentInviteHtml(params: {
                     <img src="https://www.fl4shcards.com/flash_assets/flash-logo-transparent.png" width="72" height="72" alt="FL4SH" style="display:block;margin:0 auto 10px auto;" />
                     <div style="font-size:22px;font-weight:800;letter-spacing:0.2px;">Help ${params.childUsername ? params.childUsername : 'your student'} unlock FL4SH</div>
                     <div style="margin-top:6px;font-size:14px;opacity:0.88;line-height:1.45;">
-                      <strong>${childLabel}</strong> is using FL4SH for revision and has invited you to unlock Pro access.
+                      <strong>${childLabel}</strong> is using FL4SH for revision. They get Pro free for their first 30 days — and they’ve invited you to keep Pro afterwards.
                     </div>
                   </td>
                 </tr>
@@ -99,7 +99,7 @@ function buildParentInviteHtml(params: {
                     <ol style="margin:0 0 0 18px;padding:0;">
                       <li>Open the parent page below (the student email is pre-filled).</li>
                       <li>Complete the checkout on your device.</li>
-                      <li>The student receives a code and redeems it in the app to unlock Pro.</li>
+                      <li>The student receives a code and redeems it in the app to keep Pro.</li>
                     </ol>
 
                     <div style="margin-top:16px;text-align:center;">

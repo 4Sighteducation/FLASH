@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 
 export type SubscriptionTier = 'free' | 'premium' | 'pro';
 export type BillingPeriod = 'monthly' | 'annual';
-export type Plan = 'premium' | 'pro';
+export type Plan = 'pro';
 
 interface SubscriptionLimits {
   maxSubjects: number;
@@ -40,8 +40,8 @@ const subscriptionLimits: Record<SubscriptionTier, SubscriptionLimits> = {
     maxCards: -1,
     canUseAI: true,
     canExportCards: true,
-    canUseVoiceAnswers: false,
-    canAccessPapers: false,
+    canUseVoiceAnswers: true,
+    canAccessPapers: true,
   },
   pro: {
     maxSubjects: -1,

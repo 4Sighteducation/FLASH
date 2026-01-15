@@ -20,7 +20,8 @@ function getPurchases(): PurchasesModule | null {
 }
 
 export type BillingPeriod = 'monthly' | 'annual';
-export type Plan = 'premium' | 'pro';
+// New pricing model: Pro-only (we keep backward-compat by mapping Premium entitlement -> Pro access).
+export type Plan = 'pro';
 
 export type RevenueCatTier = 'free' | 'premium' | 'pro';
 
@@ -37,8 +38,8 @@ export type OfferingPackagePricing = {
 
 export function resolveTierFromCustomerInfo(info: any): RevenueCatTier {
   const active = info?.entitlements?.active ?? {};
-  if (active.pro) return 'pro';
-  if (active.premium) return 'premium';
+  // Transition safety: treat any legacy Premium entitlement as Pro access.
+  if (active.pro || active.premium) return 'pro';
   return 'free';
 }
 
@@ -128,7 +129,7 @@ export async function getOfferingPackagePricing(offeringId: string): Promise<Rec
       if (!identifier) continue;
 
       const [planRaw, billingRaw] = identifier.split('_');
-      const plan = (planRaw === 'premium' || planRaw === 'pro' ? planRaw : null) as Plan | null;
+      const plan = (planRaw === 'pro' ? planRaw : null) as Plan | null;
       const billing = (billingRaw === 'monthly' || billingRaw === 'annual' ? billingRaw : null) as BillingPeriod | null;
       if (!plan || !billing) continue;
 

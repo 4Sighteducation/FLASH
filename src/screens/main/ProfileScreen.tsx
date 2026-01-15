@@ -158,8 +158,8 @@ export default function ProfileScreen() {
     }
   };
 
-  const tierRank = (t: string) => (t === 'pro' ? 2 : t === 'premium' ? 1 : 0);
-  const canUseDifficultyMode = tier === 'pro';
+  const tierRank = (t: string) => (t === 'pro' || t === 'premium' ? 2 : 0);
+  const canUseDifficultyMode = tierRank(tier) >= 2;
 
   // Open Difficulty modal if requested via navigation param
   useEffect(() => {
@@ -496,7 +496,7 @@ export default function ProfileScreen() {
           <View style={styles.subscriptionStatus}>
             <View style={styles.subscriptionInfo}>
               <Text style={styles.subscriptionTier}>
-                {tier === 'free' ? 'Free' : tier === 'premium' ? 'Premium' : 'Pro'}
+                {tier === 'free' ? 'Free' : 'Pro'}
               </Text>
               {tier === 'free' && (
                 <Text style={styles.subscriptionLimits}>

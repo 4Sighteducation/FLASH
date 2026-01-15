@@ -1,6 +1,6 @@
 {
   "name": "flash",
-  "version": "1.0.9",
+  "version": "2.0.1",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -16,7 +16,8 @@
     "build:android": "npm run iap:real && eas build --platform android",
     "build:ios": "npm run iap:real && eas build --platform ios",
     "build:android:dev": "npm run iap:real && eas build --platform android --profile development",
-    "build:ios:dev": "npm run iap:real && eas build --platform ios --profile development",
+    "build:ios:dev": "npm run iap:real && eas build --platform ios --profile development-device",
+    "build:ios:sim": "npm run iap:real && eas build --platform ios --profile development",
     "postinstall": "patch-package",
     "vercel-build": "npx expo export --platform web",
     "build:web": "npx expo export --platform web && cp -r api dist/api && cp vercel.json dist/vercel.json",
@@ -41,6 +42,7 @@
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.12",
     "expo-crypto": "~15.0.8",
+    "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.10",

@@ -61,10 +61,9 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
     if (tier !== 'pro') {
       showUpgradePrompt({
         title: 'Pro feature',
-        message:
-          'Past Papers are available on Pro.\n\nLaunch offer: Premium Annual includes Pro features for a limited time.',
+        message: 'Past Papers are available on Pro. Keep studying like a Pro to unlock them.',
         navigation,
-        ctaLabel: 'Unlock offer',
+        ctaLabel: 'View plans',
         paywallParams: { initialBilling: 'annual', highlightOffer: true, source: 'papers' },
       });
       // Send them back to a safe tab (Profile) so they don't sit on a locked page.

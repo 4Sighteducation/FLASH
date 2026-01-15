@@ -146,7 +146,7 @@ export default function CardSubjectSelector() {
               onPress={() => {
                 if (tier === 'free' && limits.maxSubjects !== -1 && userSubjects.length >= limits.maxSubjects) {
                   showUpgradePrompt({
-                    message: 'The Free plan is limited to 1 subject. Upgrade to Premium for unlimited subjects.',
+                    message: 'The Free plan is limited to 1 subject. Keep studying like a Pro for unlimited subjects.',
                     navigation,
                   });
                   return;
