@@ -683,6 +683,15 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.settingRow}
+            onPress={() => navigation.navigate('Walkthrough' as never)}
+          >
+            <Icon name="rocket-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.settingText}>Interactive walkthrough (sandbox)</Text>
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
             onPress={() => Linking.openURL('https://www.fl4shcards.com/privacy/')}
           >
             <Icon name="document-text-outline" size={22} color={colors.textSecondary} />

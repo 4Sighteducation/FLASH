@@ -38,6 +38,20 @@ export default function OnboardingCompleteScreen() {
     });
   };
 
+  const handleWalkthrough = () => {
+    // Jump into the main app + open the sandbox walkthrough in the Profile stack.
+    // This keeps the walkthrough separate from the user's real data flows.
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'Main' as never,
+          params: { screen: 'Profile', params: { screen: 'Walkthrough', params: { source: 'onboarding' } } } as never,
+        },
+      ],
+    });
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -102,6 +116,9 @@ export default function OnboardingCompleteScreen() {
 
         {/* Sticky CTA (absolute pinned so it's always tappable above home indicator) */}
         <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleWalkthrough}>
+            <Text style={styles.secondaryButtonText}>Take the interactive walkthrough (demo)</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
             <Text style={styles.buttonText}>Create Your First Flashcards →</Text>
           </TouchableOpacity>
@@ -249,6 +266,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0a0f1e',
     letterSpacing: 0.5,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.35)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   stickyFooter: {
     position: 'absolute',

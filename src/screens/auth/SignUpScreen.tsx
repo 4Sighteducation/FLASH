@@ -22,6 +22,7 @@ const { width } = Dimensions.get('window');
 export default function SignUpScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -107,15 +108,30 @@ export default function SignUpScreen({ navigation }: any) {
             </View>
 
             <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Password (min 6 characters)"
-                placeholderTextColor="#94A3B8"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                editable={!loading}
-              />
+              <View style={styles.passwordRow}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="Password (min 6 characters)"
+                  placeholderTextColor="#94A3B8"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword((v) => !v)}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Terms & Privacy Agreement */}
@@ -255,6 +271,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  passwordInput: {
+    flex: 1,
+    borderWidth: 0,
+  },
+  passwordToggle: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   button: {
     borderRadius: 12,
