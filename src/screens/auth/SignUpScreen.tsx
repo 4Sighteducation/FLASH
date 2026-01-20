@@ -109,15 +109,15 @@ export default function SignUpScreen({ navigation }: any) {
 
             <View style={styles.inputContainer}>
               <View style={styles.passwordRow}>
-                <TextInput
+              <TextInput
                   style={[styles.input, styles.passwordInput]}
-                  placeholder="Password (min 6 characters)"
-                  placeholderTextColor="#94A3B8"
-                  value={password}
-                  onChangeText={setPassword}
+                placeholder="Password (min 6 characters)"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  editable={!loading}
-                />
+                editable={!loading}
+              />
                 <TouchableOpacity
                   style={styles.passwordToggle}
                   onPress={() => setShowPassword((v) => !v)}

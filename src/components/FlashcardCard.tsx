@@ -70,6 +70,10 @@ interface FlashcardCardProps {
    * Intended for Study mode UX toggles.
    */
   voiceAnswerEnabled?: boolean;
+  /**
+   * Optional container style override for compact walkthrough layouts.
+   */
+  containerStyle?: any;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -147,6 +151,7 @@ export default function FlashcardCard({
   allowQuestionExpand = false,
   questionClampLines = 6,
   voiceAnswerEnabled = true,
+  containerStyle,
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
   const navigation = useNavigation();
@@ -750,7 +755,7 @@ export default function FlashcardCard({
 
   return (
     <>
-      <View style={[styles.container, variant === 'studyHero' && styles.containerStudyHero]}>
+      <View style={[styles.container, variant === 'studyHero' && styles.containerStudyHero, containerStyle]}>
         <Animated.View 
           style={[
             styles.card,

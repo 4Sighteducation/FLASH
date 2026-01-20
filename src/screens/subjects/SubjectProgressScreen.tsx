@@ -230,12 +230,11 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
         });
       });
 
-      setDiscoveredTopicIds(discoveredIds);
       setTopicProgress(progress);
       setOverviewCounts(overviewCountMap);
 
-      // 4) Priorities for discovered topics (and any card topics)
-      const idsForPriorities = Array.from(discoveredIds);
+      // 4) Priorities for this subject (even if no cards yet)
+      const idsForPriorities = topics.map((t) => t.id);
       if (idsForPriorities.length > 0) {
         const { data: priorities, error: prioritiesError } = await supabase
           .from('user_topic_priorities')
@@ -245,13 +244,21 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
 
         if (prioritiesError) throw prioritiesError;
         const pMap = new Map<string, number | null>();
+        const priorityTopicIds = new Set<string>();
         (priorities || []).forEach((p: any) => {
           pMap.set(p.topic_id, p.priority ?? null);
+          if (p.priority !== null && p.priority !== undefined) {
+            priorityTopicIds.add(p.topic_id);
+          }
         });
+        // Ensure priority topics appear in the tree/filter even if no cards yet.
+        priorityTopicIds.forEach((id) => discoveredIds.add(id));
         setTopicPriorities(pMap);
       } else {
         setTopicPriorities(new Map());
       }
+
+      setDiscoveredTopicIds(discoveredIds);
 
       // 5) Stats + completion
       const totalCards = (cards || []).length;
@@ -805,54 +812,59 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
             </TouchableOpacity>
           </View>
           <View style={styles.filterButtonsRow}>
-            <TouchableOpacity
-              style={[
-                styles.filterNumberButton,
-                priorityFilter === null && styles.filterNumberButtonActive,
-              ]}
-              onPress={() => setPriorityFilter(null)}
-            >
-              <Text
-                style={[
-                  styles.filterNumberText,
-                  priorityFilter === null && styles.filterNumberTextActive,
-                ]}
-              >
-                ALL
-              </Text>
-            </TouchableOpacity>
-            {TOPIC_PRIORITY_LEVELS.map((level) => (
+            <View style={styles.filterItem}>
               <TouchableOpacity
-                key={level.value}
                 style={[
                   styles.filterNumberButton,
-                  { borderColor: level.color },
-                  priorityFilter === level.value && [
-                    styles.filterNumberButtonActive,
-                    { backgroundColor: level.color, borderColor: level.color },
-                  ],
+                  priorityFilter === null && styles.filterNumberButtonActive,
                 ]}
-                onPress={() => setPriorityFilter(level.value)}
-                onLongPress={() => {
-                  setShowPriorityTooltip(level.value);
-                  setTimeout(() => setShowPriorityTooltip(null), 2500);
-                }}
+                onPress={() => setPriorityFilter(null)}
               >
                 <Text
                   style={[
                     styles.filterNumberText,
-                    { color: level.color },
-                    priorityFilter === level.value && styles.filterNumberTextActive,
+                    priorityFilter === null && styles.filterNumberTextActive,
                   ]}
                 >
-                  {level.number}
+                  All
                 </Text>
-                {showPriorityTooltip === level.value && (
-                  <View style={[styles.priorityTooltip, { backgroundColor: level.color }]}>
-                    <Text style={styles.priorityTooltipText}>{level.description}</Text>
-                  </View>
-                )}
               </TouchableOpacity>
+              <Text style={styles.filterLabel}>Everything</Text>
+            </View>
+            {TOPIC_PRIORITY_LEVELS.map((level) => (
+              <View key={level.value} style={styles.filterItem}>
+                <TouchableOpacity
+                  style={[
+                    styles.filterNumberButton,
+                    { borderColor: level.color },
+                    priorityFilter === level.value && [
+                      styles.filterNumberButtonActive,
+                      { backgroundColor: level.color, borderColor: level.color },
+                    ],
+                  ]}
+                  onPress={() => setPriorityFilter(level.value)}
+                  onLongPress={() => {
+                    setShowPriorityTooltip(level.value);
+                    setTimeout(() => setShowPriorityTooltip(null), 2500);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.filterNumberText,
+                      { color: level.color },
+                      priorityFilter === level.value && styles.filterNumberTextActive,
+                    ]}
+                  >
+                    {level.number}
+                  </Text>
+                  {showPriorityTooltip === level.value && (
+                    <View style={[styles.priorityTooltip, { backgroundColor: level.color }]}>
+                      <Text style={styles.priorityTooltipText}>{level.description}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.filterLabel}>{level.label}</Text>
+              </View>
             ))}
           </View>
         </View>
@@ -1278,8 +1290,12 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   },
   filterButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'center',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  filterItem: {
+    flex: 1,
+    alignItems: 'center',
   },
   filterNumberButton: {
     width: 40,  // Reduced from 56 (30% smaller)
@@ -1316,11 +1332,18 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     }),
   },
   filterNumberText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
   },
   filterNumberTextActive: {
     color: '#FFFFFF',
+  },
+  filterLabel: {
+    marginTop: 6,
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme === 'cyber' ? colors.textSecondary : '#6B7280',
+    textAlign: 'center',
   },
   topicsSection: {
     padding: 16,

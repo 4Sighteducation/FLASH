@@ -425,7 +425,10 @@ export default function WelcomeScreen() {
                       <Text style={[styles.featureIcon, isCompact && { fontSize: 24, marginRight: 10 }]}>
                         {feature.icon}
                       </Text>
-                      <Text style={[styles.featureText, isCompact && { fontSize: 13 }]}>
+                      <Text
+                        style={[styles.featureText, isCompact && { fontSize: 13 }]}
+                        numberOfLines={2}
+                      >
                         {feature.text}
                       </Text>
                     </View>

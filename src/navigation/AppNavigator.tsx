@@ -62,6 +62,8 @@ export default function AppNavigator() {
 
   useEffect(() => {
     console.log('AppNavigator useEffect - user:', user?.id, 'authLoading:', authLoading);
+    setLoading(true);
+    setIsOnboarded(null);
     if (user) {
       checkOnboardingStatus();
     } else {
@@ -121,7 +123,7 @@ export default function AppNavigator() {
     isOnboarded
   );
 
-  if (authLoading || loading) {
+  if (authLoading || loading || (user && isOnboarded === null)) {
     return <SplashScreen />;
   }
 

@@ -120,9 +120,14 @@ export default function VoiceAnswerModal({
       setState('analyzing');
 
       // Analyze answer
+      const fallbackAnswer =
+        card.detailed_answer ||
+        card.answer ||
+        (card.key_points?.length ? card.key_points.join('. ') : '') ||
+        card.question;
       const analysisResult = await aiAnalyzerService.analyzeAnswer(
         result.text,
-        card.answer || '',
+        fallbackAnswer,
         card.card_type,
         card.key_points
       );
@@ -186,22 +191,18 @@ export default function VoiceAnswerModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon name="close" size={24} color="#666" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Voice Answer</Text>
-          <View style={{ width: 40 }} />
-        </View>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={styles.sheetOverlay}>
+        <View style={styles.sheet}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Voice Answer</Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           {state === 'recording' && (
             <VoiceRecorder
               onRecordingComplete={handleRecordingComplete}
@@ -345,16 +346,26 @@ export default function VoiceAnswerModal({
               )}
             </View>
           )}
-        </ScrollView>
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  sheetOverlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  sheet: {
+    maxHeight: '85%',
+    minHeight: '60%',
     backgroundColor: '#fff',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -378,6 +389,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
+    paddingBottom: 16,
   },
   processingContainer: {
     flex: 1,

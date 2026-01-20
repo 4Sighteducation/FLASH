@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FL4SH - FAQs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0f;
+            --black-light: #12121a;
+            --black-card: #1a1a24;
+            --cyan: #00d4d7;
+            --cyan-glow: rgba(0, 212, 215, 0.3);
+            --cyan-subtle: rgba(0, 212, 215, 0.1);
+            --pink: #ff2d78;
+            --pink-glow: rgba(255, 45, 120, 0.3);
+            --white: #ffffff;
+            --white-muted: rgba(255, 255, 255, 0.7);
+            --white-faint: rgba(255, 255, 255, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--black);
+            color: var(--white);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--cyan-subtle) 1px, transparent 1px),
+                linear-gradient(90deg, var(--cyan-subtle) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Gradient orbs */
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-cyan {
+            width: 400px;
+            height: 400px;
+            background: var(--cyan);
+            top: -100px;
+            right: -100px;
+            opacity: 0.15;
+        }
+
+        .orb-pink {
+            width: 300px;
+            height: 300px;
+            background: var(--pink);
+            bottom: 10%;
+            left: -50px;
+            opacity: 0.1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-top: 20px;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+            filter: drop-shadow(0 0 30px var(--cyan-glow));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--white) 50%, var(--pink) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: var(--white-muted);
+            font-weight: 500;
+        }
+
+        /* Category sections */
+        .faq-category {
+            margin-bottom: 40px;
+        }
+
+        .category-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 20px;
+            padding-left: 16px;
+            border-left: 3px solid var(--pink);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        /* Accordion items */
+        .faq-item {
+            background: var(--black-card);
+            border: 1px solid rgba(0, 212, 215, 0.2);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item:hover {
+            border-color: rgba(0, 212, 215, 0.4);
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        .faq-item.active {
+            border-color: var(--cyan);
+            box-shadow: 0 0 30px var(--cyan-glow), inset 0 0 30px rgba(0, 212, 215, 0.05);
+        }
+
+        .faq-question {
+            width: 100%;
+            padding: 20px 24px;
+            background: transparent;
+            border: none;
+            color: var(--white);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .faq-question:hover {
+            color: var(--cyan);
+        }
+
+        .faq-item.active .faq-question {
+            color: var(--cyan);
+        }
+
+        .faq-icon {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            border: 2px solid var(--cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .faq-icon::before,
+        .faq-icon::after {
+            content: '';
+            position: absolute;
+            background: var(--cyan);
+            transition: all 0.3s ease;
+        }
+
+        .faq-icon::before {
+            width: 10px;
+            height: 2px;
+        }
+
+        .faq-icon::after {
+            width: 2px;
+            height: 10px;
+        }
+
+        .faq-item.active .faq-icon {
+            background: var(--pink);
+            border-color: var(--pink);
+            transform: rotate(45deg);
+        }
+
+        .faq-item.active .faq-icon::before,
+        .faq-item.active .faq-icon::after {
+            background: var(--white);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 1000px;
+        }
+
+        .faq-answer-content {
+            padding: 0 24px 24px;
+            color: var(--white-muted);
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+        .faq-answer-content p {
+            margin-bottom: 12px;
+        }
+
+        .faq-answer-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .faq-answer-content strong {
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        .faq-answer-content em {
+            color: var(--cyan);
+            font-style: normal;
+            font-weight: 600;
+        }
+
+        /* Highlight boxes within answers */
+        .highlight-box {
+            background: var(--cyan-subtle);
+            border-left: 3px solid var(--cyan);
+            padding: 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .highlight-box.pink {
+            background: rgba(255, 45, 120, 0.1);
+            border-left-color: var(--pink);
+        }
+
+        /* Lists */
+        .faq-answer-content ul {
+            margin: 12px 0;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .faq-answer-content li {
+            padding: 8px 0 8px 24px;
+            position: relative;
+        }
+
+        .faq-answer-content li::before {
+            content: '⚡';
+            position: absolute;
+            left: 0;
+            color: var(--pink);
+            font-size: 0.9rem;
+        }
+
+        /* Mode list styling */
+        .mode-list {
+            margin: 16px 0;
+        }
+
+        .mode-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--cyan);
+        }
+
+        .mode-item:nth-child(odd) {
+            border-left-color: var(--pink);
+        }
+
+        .mode-item strong {
+            color: var(--cyan);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .mode-item:nth-child(odd) strong {
+            color: var(--pink);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--white-faint);
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: var(--cyan);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: var(--pink);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2rem;
+                letter-spacing: 2px;
+            }
+
+            .category-title {
+                font-size: 1.1rem;
+            }
+
+            .faq-question {
+                font-size: 1rem;
+                padding: 16px 20px;
+            }
+
+            .faq-answer-content {
+                padding: 0 20px 20px;
+                font-size: 0.95rem;
+            }
+        }
+
+        /* Scroll animation */
+        .faq-item {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .faq-category:nth-child(1) .faq-item:nth-child(1) { animation-delay: 0.1s; }
+        .faq-category:nth-child(1) .faq-item:nth-child(2) { animation-delay: 0.15s; }
+        .faq-category:nth-child(1) .faq-item:nth-child(3) { animation-delay: 0.2s; }
+        .faq-category:nth-child(1) .faq-item:nth-child(4) { animation-delay: 0.25s; }
+        .faq-category:nth-child(2) .faq-item:nth-child(1) { animation-delay: 0.3s; }
+        .faq-category:nth-child(2) .faq-item:nth-child(2) { animation-delay: 0.35s; }
+        .faq-category:nth-child(2) .faq-item:nth-child(3) { animation-delay: 0.4s; }
+        .faq-category:nth-child(2) .faq-item:nth-child(4) { animation-delay: 0.45s; }
+        .faq-category:nth-child(2) .faq-item:nth-child(5) { animation-delay: 0.5s; }
+    </style>
+</head>
+<body>
+    <div class="orb orb-cyan"></div>
+    <div class="orb orb-pink"></div>
+
+    <div class="container">
+        <header class="header">
+            <img src="flashv2.png" alt="FL4SH Logo" class="logo">
+            <h1>FAQs</h1>
+            <p>Everything you need to know about FL4SH</p>
+        </header>
+
+        <!-- Getting Started -->
+        <section class="faq-category">
+            <h2 class="category-title">Getting Started</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What is FL4SH?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH is an AI-powered flashcard app designed specifically for UK students studying GCSEs and A-Levels. Unlike generic flashcard apps, every card is generated directly from your exam board's official specification — so you only revise what can actually come up in your exam.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Which exam boards and subjects do you cover?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We cover all major UK exam boards including <strong>AQA, Edexcel, OCR, WJEC</strong>, and more across a wide range of GCSE and A-Level subjects. When you search for a subject, we'll show you all available exam board options so you can pick the exact spec you're studying.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>I don't know which exam board I'm on. Can I still use FL4SH?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes! When you search for a subject, we show you all available options. If you're not sure which one is yours, check with your teacher or look at the front of your textbook — it usually says. You can also select multiple specs if you want to compare.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Is FL4SH free?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><strong>FL4SH Pro is completely free for your first month</strong> — no card required, no catches. After that, you can choose to continue with a monthly or annual subscription, or drop back to the limited free version.</p>
+                        <p>The free version still lets you revise, but Pro unlocks unlimited card generation, all card types, voice feedback, and more. Most students find the Pro features worth it once they've tried them.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Finding Topics -->
+        <section class="faq-category">
+            <h2 class="category-title">Finding Topics</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I find topics to study?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>You have two options:</p>
+                        <ul>
+                            <li>Use the <em>search bar</em> to type any topic — our smart search understands what you mean, not just what you type (so "plant energy" will find photosynthesis)</li>
+                            <li>Tap the <em>menu icon</em> to browse every topic for your subject and exam board, organised by component and section</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What do you mean by "smart search"?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH uses something called vector search, which matches your query by meaning rather than just keywords. So if you can't remember the exact name of a topic, just describe it in your own words and we'll find the right content.</p>
+                        <div class="highlight-box">
+                            <p>It's like having a study buddy who actually gets what you're looking for.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What does "Best Match" mean in search results?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>When you search for a topic, we show you a match percentage. <em>"Best Match"</em> highlights the result most closely aligned with your search. The percentage shows how relevant each result is to what you typed.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Can I see all topics for my subject?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes. Tap the hamburger menu icon on the Discover Topics screen to open the full topic list for your selected subject and exam board, organised by component and section.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Creating Flashcards -->
+        <section class="faq-category">
+            <h2 class="category-title">Creating Flashcards</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I create flashcards?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH gives you three ways to create cards:</p>
+                        <div class="mode-list">
+                            <div class="mode-item">
+                                <strong>AI Generated</strong>
+                                Find a topic and let AI create exam-specific flashcards directly from your curriculum. Fast, accurate, and guaranteed to be on-spec.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Create Manually</strong>
+                                Write your own custom flashcards for any topic. This is one of the most effective revision techniques because the act of creating cards is itself a form of learning.
+                            </div>
+                            <div class="mode-item">
+                                <strong>From Image</strong>
+                                Take a photo of your notes, textbook, or any study material and FL4SH will generate flashcards from it using AI. Perfect for turning class notes into study cards in seconds.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Why should I create my own cards?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Here's a revision hack backed by science: <strong>creating flashcards is almost as valuable as studying them</strong>.</p>
+                        <p>When you write your own questions and answers, you're forcing your brain to process and reorganise information — which strengthens memory before you even start revising. It's called the "generation effect" and it's seriously underrated.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>When should I use AI Generated vs Create Manually vs From Image?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <ul>
+                            <li><em>Use AI Generated when:</em> You want quick, reliable cards that are guaranteed to match your exam spec. Great for covering a topic comprehensively without missing anything.</li>
+                            <li><em>Use Create Manually when:</em> You want to reinforce learning by writing cards yourself, or you have specific questions you know you struggle with.</li>
+                            <li><em>Use From Image when:</em> You've got handwritten notes, textbook pages, or class worksheets you want to turn into flashcards quickly.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What card types are available?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH offers four card types:</p>
+                        <div class="mode-list">
+                            <div class="mode-item">
+                                <strong>Multiple Choice</strong>
+                                Quick-fire questions with automatic marking. Perfect for fast revision and spaced repetition practice.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Short Answer</strong>
+                                You type or recall the answer, then mark yourself correct or incorrect. Great for testing real recall.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Essay</strong>
+                                Focuses on structure and key points for longer exam answers. You can also use voice answers for AI feedback.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Acronym</strong>
+                                Memory hooks and mnemonics to help tricky information stick.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What kind of images work best for "From Image"?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Clear, well-lit photos work best. Handwritten notes, printed textbooks, worksheets, and revision guides all work. Avoid blurry images or photos taken at sharp angles. The AI will extract the text and generate relevant flashcards from the content.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Can I delete cards I don't want?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes. After generating cards, you can test them, delete any you don't like, and then save the ones you want to keep to your study deck.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Studying & Spaced Repetition -->
+        <section class="faq-category">
+            <h2 class="category-title">Studying & Spaced Repetition</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How does studying work in FL4SH?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH uses the <strong>Leitner system</strong> — a proven spaced repetition method. Cards move through five boxes based on whether you answer correctly or incorrectly. This ensures you see difficult cards more often and mastered cards less frequently, which is scientifically proven to improve long-term memory.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What are the five boxes?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <div class="mode-list">
+                            <div class="mode-item">
+                                <strong>Box 1 — Everyday</strong>
+                                All new cards start here. You'll see these daily.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Box 2 — Every Other Day</strong>
+                                Cards you've answered correctly once.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Box 3 — Every 3 Days</strong>
+                                Getting more familiar now.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Box 4 — Weekly</strong>
+                                You know these pretty well.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Box 5 — Retired</strong>
+                                You've mastered these. They'll pop up occasionally just to keep you sharp.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What happens if I get a card wrong?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>It goes <strong>straight back to Box 1</strong>, no matter which box it was in. Sounds harsh, but this is exactly what makes spaced repetition effective — it identifies gaps in your knowledge and makes sure you address them.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What's the difference between Study and Practice mode?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p><em>Study mode</em> is the real deal — your answers affect which box cards move to, and it follows the spaced repetition schedule.</p>
+                        <p><em>Practice mode</em> lets you preview and rehearse cards before they're officially due, with no consequences. Think of it as a warm-up.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What are the difficulty modes?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>FL4SH has five difficulty settings you can change in your profile:</p>
+                        <div class="mode-list">
+                            <div class="mode-item">
+                                <strong>Safe Mode</strong>
+                                No timer, no shuffle. Training wheels for building confidence. XP x1.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Standard</strong>
+                                Shuffle on, timer off. The default balanced experience. XP x1.1.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Turbo</strong>
+                                30-second timer. Things are heating up. XP x1.5.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Overdrive</strong>
+                                15-second timer. For the ambitious. XP x2.
+                            </div>
+                            <div class="mode-item">
+                                <strong>Beast Mode</strong>
+                                5 seconds. No mercy, no hints, no excuses. XP x3.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Voice Answers -->
+        <section class="faq-category">
+            <h2 class="category-title">Voice Answers</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What is the voice answer feature?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>For Short Answer and Essay cards, you can tap the microphone button and speak your answer out loud. FL4SH will analyse what you said and give you feedback on what you got right and what you missed.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Why should I use voice answers?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Speaking answers out loud is one of the most effective revision techniques — and one most students never use.</p>
+                        <div class="highlight-box pink">
+                            <p>It forces active recall (rather than passive recognition), helps identify gaps in your understanding, and mimics exam conditions where you need to explain things in your own words. Plus, you get AI feedback like having a tutor in your pocket.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Does voice answer work offline?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Voice analysis requires an internet connection to process your answer and provide feedback.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Managing Cards & Priorities -->
+        <section class="faq-category">
+            <h2 class="category-title">Managing Cards & Priorities</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Where do I manage my cards?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>The <strong>Manage section</strong> is your revision command centre. Get there by tapping any topic with cards on your homepage, or use the "Manage Cards" button in Quick Actions.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What is the priority system?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>You can assign a priority (1-4) to each topic. This helps you focus on what matters most. Your homepage can be sorted by priority so urgent topics stay front and centre.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How should I use priorities?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Here's a revision hack most students ignore:</p>
+                        <div class="highlight-box">
+                            <p><strong>Priority 1 should be your weakest topics</strong> — the ones you dislike or find hardest. Working on weak spots rather than staying comfortable with topics you already know is where the biggest gains happen.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Should I change priorities over time?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Absolutely. Every couple of weeks, revisit your priorities. Topics you've improved on? Move them down. New weak spots appearing? Bump them up. Your revision should evolve as you improve.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- XP & Gamification -->
+        <section class="faq-category">
+            <h2 class="category-title">XP & Gamification</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>What is XP?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>XP (experience points) is FL4SH's way of rewarding your revision efforts. You earn XP by studying cards, completing the walkthrough, and hitting milestones. Higher difficulty modes earn more XP per card.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How much XP do I earn per card?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>It depends on your difficulty mode:</p>
+                        <ul>
+                            <li>Safe Mode: XP x1</li>
+                            <li>Standard: XP x1.1</li>
+                            <li>Turbo: XP x1.5</li>
+                            <li>Overdrive: XP x2</li>
+                            <li>Beast Mode: XP x3</li>
+                        </ul>
+                        <p>Cards in higher boxes also earn more XP when answered correctly.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Account & Settings -->
+        <section class="faq-category">
+            <h2 class="category-title">Account & Settings</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I change my subjects or exam boards?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Go to your profile settings to add, remove, or change your selected subjects and exam boards at any time.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Can I use FL4SH on multiple devices?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes. Sign in with the same account and your cards, progress, and settings will sync across devices.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I reset my progress?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Contact support if you need to reset your study progress. Be aware this will move all cards back to Box 1.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="faq-category">
+            <h2 class="category-title">Troubleshooting</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>My cards aren't generating. What's wrong?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Check your internet connection — card generation requires online access. If you're still having issues, try closing and reopening the app, or contact support.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>I can't find my subject or exam board.</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We're constantly expanding our coverage. Use the "Not found the topic you need?" option to request your subject or exam board, and we'll prioritise adding it.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Voice answers aren't working.</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Make sure you've granted FL4SH microphone permissions in your device settings. You also need an internet connection for voice analysis.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>I found a mistake in a card. How do I report it?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>On any topic, you'll see a "Not found the topic you need?" prompt. Use this to tell us what's missing or incorrect and we'll improve the curriculum. You can also report specific card errors through the app's feedback option.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact & Support -->
+        <section class="faq-category">
+            <h2 class="category-title">Contact & Support</h2>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I contact support?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Use the help option in the app menu, or email us at <a href="mailto:support@fl4shcards.com">support@fl4shcards.com</a>. We aim to respond within 24 hours.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>How do I give feedback or suggest features?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We love hearing from students! Use the feedback option in the app or email us at <a href="mailto:support@fl4shcards.com">support@fl4shcards.com</a>. Many of our best features have come from user suggestions.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>Where can I follow FL4SH for updates?</span>
+                    <span class="faq-icon"></span>
+                </button>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Follow us on TikTok and Instagram for revision tips, updates, and student content.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Still have questions? <a href="mailto:support@fl4shcards.com">Contact Support</a></p>
+            <p style="margin-top: 8px;">© 2025 FL4SH. Revision, supercharged.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Accordion functionality
+        document.querySelectorAll('.faq-question').forEach(button => {
+            button.addEventListener('click', () => {
+                const item = button.parentElement;
+                const isActive = item.classList.contains('active');
+                
+                // Optional: close other open items (uncomment for single-open behavior)
+                // document.querySelectorAll('.faq-item.active').forEach(activeItem => {
+                //     activeItem.classList.remove('active');
+                // });
+                
+                item.classList.toggle('active', !isActive);
+            });
+        });
+
+        // Add entrance animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.faq-item').forEach(item => {
+            item.style.animationPlayState = 'paused';
+            observer.observe(item);
+        });
+    </script>
+</body>
+</html>

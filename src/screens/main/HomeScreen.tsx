@@ -29,6 +29,7 @@ import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 import { navigate as rootNavigate } from '../../navigation/RootNavigation';
+import { captureFeedbackScreenshot } from '../../utils/feedbackScreenshot';
 import { pushNotificationService } from '../../services/pushNotificationService';
 
 interface UserSubject {
@@ -323,6 +324,15 @@ export default function HomeScreen({ navigation }: any) {
     setDeleteModal({ visible: true, subject });
   };
 
+  const openFaqs = () => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) {
+      parent.navigate('Profile', { screen: 'ProfileMain', params: { openFaq: true } });
+      return;
+    }
+    rootNavigate('Profile', { screen: 'ProfileMain', params: { openFaq: true } } as never);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -338,6 +348,9 @@ export default function HomeScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.faqFloatingButton} onPress={openFaqs}>
+        <Text style={styles.faqFloatingButtonText}>?</Text>
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LinearGradient
           colors={colors.gradient}
@@ -479,16 +492,82 @@ export default function HomeScreen({ navigation }: any) {
           totalPoints={totalPoints}
         />
 
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>Quick Actions</Text>
+          <TouchableOpacity
+            style={styles.feedbackPill}
+            onPress={async () => {
+              let uri: string | undefined;
+              try {
+                uri = await captureFeedbackScreenshot();
+              } catch {
+                // non-fatal
+              }
+              rootNavigate('FeedbackModal', {
+                mode: 'feedback',
+                contextTitle: 'App feedback & support',
+                contextHint: 'Tell us what you need help with or what to improve.',
+                sourceRouteName: 'Home',
+                sourceRouteParams: null,
+                defaultCategory: 'bug',
+                initialScreenshotUri: uri,
+              });
+            }}
+          >
+            <Text style={styles.feedbackPillText}>Feedback/Support</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CardSubjectSelector')}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="add-circle" size={24} color="#34C759" />
+            </View>
+            <Text style={styles.actionText}>Create Card</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CardSubjectSelector', { 
+              mode: 'image' 
+            })}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="camera" size={24} color="#007AFF" />
+            </View>
+            <Text style={styles.actionText}>Scan Image</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.actionCard,
+              userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0 && styles.actionCardDisabled
+            ]}
+            onPress={() => {
+              const totalCards = userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
+              if (totalCards > 0) {
+                navigation.navigate('ManageAllCards');
+              }
+            }}
+            disabled={userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="settings-outline" size={24} color="#FF9500" />
+            </View>
+            <Text style={styles.actionText}>Manage Cards</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Subjects</Text>
           <TouchableOpacity
             style={styles.viewToggle}
             onPress={() => setIsGridView(!isGridView)}
           >
-            <Ionicons 
-              name={isGridView ? "list" : "grid"} 
-              size={20} 
-              color="#6366F1" 
+            <Ionicons
+              name={isGridView ? "list" : "grid"}
+              size={20}
+              color="#6366F1"
             />
           </TouchableOpacity>
         </View>
@@ -664,48 +743,6 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
         )}
-
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('CardSubjectSelector')}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="add-circle" size={24} color="#34C759" />
-            </View>
-            <Text style={styles.actionText}>Create Card</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('CardSubjectSelector', { 
-              mode: 'image' 
-            })}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="camera" size={24} color="#007AFF" />
-            </View>
-            <Text style={styles.actionText}>Scan Image</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionCard,
-              userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0 && styles.actionCardDisabled
-            ]}
-            onPress={() => {
-              const totalCards = userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
-              if (totalCards > 0) {
-                navigation.navigate('ManageAllCards');
-              }
-            }}
-            disabled={userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="settings-outline" size={24} color="#FF9500" />
-            </View>
-            <Text style={styles.actionText}>Manage Cards</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
       
       <DeleteConfirmationModal
@@ -743,6 +780,26 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme === 'cyber' ? colors.background : '#f0f0f0',
+  },
+  faqFloatingButton: {
+    position: 'absolute',
+    top: 56,
+    right: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.55)',
+    zIndex: 6,
+  },
+  faqFloatingButtonText: {
+    color: '#00F5FF',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: -1,
   },
   loadingContainer: {
     flex: 1,
@@ -920,6 +977,42 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
       textShadowRadius: 4,
     }),
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 10,
+  },
+  sectionTitleInline: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme === 'cyber' ? colors.text : '#333',
+    ...(theme === 'cyber' && {
+      textShadowColor: colors.primary,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 4,
+    }),
+  },
+  feedbackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  feedbackPillText: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1059,13 +1152,14 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 18,
     gap: 12,
   },
   actionCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    padding: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 16,
     alignItems: 'center',
     minWidth: 90,
@@ -1089,8 +1183,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     opacity: 0.4,
   },
   actionText: {
-    marginTop: 8,
-    fontSize: 12,
+    marginTop: 6,
+    fontSize: 11,
     color: theme === 'cyber' ? colors.text : '#333',
     fontWeight: '600',
     textAlign: 'center',
@@ -1327,12 +1421,12 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     top: 1,
   },
   actionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   gridActions: {
     position: 'absolute',

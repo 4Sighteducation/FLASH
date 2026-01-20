@@ -275,13 +275,13 @@ export default function SubjectSearchScreen() {
     }
   };
 
-  const toggleSubjectExpansion = (subjectName: string) => {
+  const toggleSubjectExpansion = (subjectKey: string) => {
     setExpandedSubjects((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(subjectName)) {
-        newSet.delete(subjectName);
+      if (newSet.has(subjectKey)) {
+        newSet.delete(subjectKey);
       } else {
-        newSet.add(subjectName);
+        newSet.add(subjectKey);
       }
       return newSet;
     });
@@ -329,7 +329,7 @@ export default function SubjectSearchScreen() {
         routeNames.includes('OnboardingComplete') || parentRouteNames.includes('OnboardingComplete');
 
       if (canGoToOnboardingComplete) {
-        (navigation as any).navigate('OnboardingComplete');
+        (navigation as any).navigate('OnboardingComplete', { autoWalkthrough: true });
         return;
       }
 
@@ -512,7 +512,7 @@ export default function SubjectSearchScreen() {
             )}
             <TextInput
               style={styles.searchInput}
-              placeholder="Type a subject name... (e.g., Physics, Biology)"
+              placeholder="Type a subject name (e.g. Physics)"
               placeholderTextColor="#666"
               value={searchQuery}
               onChangeText={handleSearch}
@@ -578,11 +578,13 @@ export default function SubjectSearchScreen() {
               Found {searchResults.length} subject{searchResults.length > 1 ? 's' : ''}
             </Text>
 
-            {searchResults.map((result) => (
-              <View key={result.subject_name} style={styles.subjectGroup}>
+            {searchResults.map((result) => {
+              const subjectKey = `${result.subject_name}__${result.qualification_level || 'any'}`;
+              return (
+              <View key={subjectKey} style={styles.subjectGroup}>
                 <TouchableOpacity
                   style={styles.subjectGroupHeader}
-                  onPress={() => toggleSubjectExpansion(result.subject_name)}
+                  onPress={() => toggleSubjectExpansion(subjectKey)}
                 >
                   <View style={styles.subjectGroupHeaderContent}>
                     <Text style={styles.subjectGroupTitle}>
@@ -596,12 +598,12 @@ export default function SubjectSearchScreen() {
                   </View>
                   {Platform.OS === 'web' ? (
                     <Text style={{ fontSize: 24, color: '#00F5FF' }}>
-                      {expandedSubjects.has(result.subject_name) ? '▼' : '▶'}
+                      {expandedSubjects.has(subjectKey) ? '▼' : '▶'}
                     </Text>
                   ) : (
                     <Ionicons
                       name={
-                        expandedSubjects.has(result.subject_name)
+                        expandedSubjects.has(subjectKey)
                           ? 'chevron-down'
                           : 'chevron-forward'
                       }
@@ -611,7 +613,7 @@ export default function SubjectSearchScreen() {
                   )}
                 </TouchableOpacity>
 
-                {expandedSubjects.has(result.subject_name) && (
+                {expandedSubjects.has(subjectKey) && (
                   <View style={styles.examBoardList}>
                     {result.exam_board_options.map((option) => {
                       const selected = isSubjectSelected(option.subject_id);
@@ -651,7 +653,7 @@ export default function SubjectSearchScreen() {
                   </View>
                 )}
               </View>
-            ))}
+            );})}
           </View>
         ) : searchQuery.length > 0 ? (
           <View style={styles.emptyState}>

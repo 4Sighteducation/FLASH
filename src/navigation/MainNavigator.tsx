@@ -38,7 +38,6 @@ import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
-import PrioritySupportFab from '../components/support/PrioritySupportFab';
 import ParentInviteFab from '../components/support/ParentInviteFab';
 import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
 import InteractiveWalkthroughScreen from '../screens/walkthrough/InteractiveWalkthroughScreen';
@@ -338,9 +337,6 @@ export default function MainNavigator() {
         />
         <Tab.Screen name="Profile" component={ProfileStack} />
       </Tab.Navigator>
-
-      {/* Pro-only floating button for priority support */}
-      <PrioritySupportFab />
 
       {/* Free-only floating CTA to invite a parent/guardian */}
       <ParentInviteFab />
