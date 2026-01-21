@@ -19,7 +19,7 @@ import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, ThemeMode, ColorScheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAdminAccess } from '../../hooks/useAdminAccess';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
@@ -393,7 +393,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const route = useRoute();
-  const { theme, colors, setTheme } = useTheme();
+  const { theme, themeMode, colorScheme, colors, setTheme, setThemeMode, setColorScheme, toggleColorScheme } = useTheme();
   const styles = createStyles(colors);
   const { tier, limits, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
@@ -488,20 +488,22 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   const themeUnlocks = gamificationConfig.themeUnlocks;
+  const canUseCyber = true; // Always unlocked
   const canUsePulse = totalPoints >= themeUnlocks.pulse;
   const canUseAurora = totalPoints >= themeUnlocks.aurora;
   const canUseSingularity = totalPoints >= themeUnlocks.singularity;
 
   const themeOptions: Array<{
-    key: 'default' | 'pulse' | 'aurora' | 'singularity';
+    key: ThemeMode;
     name: string;
     requiredXp: number;
     unlocked: boolean;
+    tagline: string;
   }> = [
-    { key: 'default', name: 'Default', requiredXp: 0, unlocked: true },
-    { key: 'pulse', name: 'Pulse', requiredXp: themeUnlocks.pulse, unlocked: canUsePulse },
-    { key: 'aurora', name: 'Aurora', requiredXp: themeUnlocks.aurora, unlocked: canUseAurora },
-    { key: 'singularity', name: 'Singularity', requiredXp: themeUnlocks.singularity, unlocked: canUseSingularity },
+    { key: 'cyber', name: 'Cyber', requiredXp: 0, unlocked: true, tagline: 'System initialised. Welcome to the grid.' },
+    { key: 'pulse', name: 'Pulse', requiredXp: themeUnlocks.pulse, unlocked: canUsePulse, tagline: 'First heartbeat detected. System alive.' },
+    { key: 'aurora', name: 'Aurora', requiredXp: themeUnlocks.aurora, unlocked: canUseAurora, tagline: "You've transcended the grid." },
+    { key: 'singularity', name: 'Singularity', requiredXp: themeUnlocks.singularity, unlocked: canUseSingularity, tagline: 'You ARE the revision.' },
   ];
 
   const loadNotificationPreferences = async () => {
@@ -657,14 +659,14 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleSelectTheme = async (next: 'default' | 'pulse' | 'aurora' | 'singularity') => {
+  const handleSelectTheme = async (next: ThemeMode) => {
     const option = themeOptions.find((t) => t.key === next);
     if (!option) return;
     if (!option.unlocked) {
       Alert.alert('Theme locked', `Unlock ${option.name} at ${option.requiredXp.toLocaleString()} XP.`);
       return;
     }
-    setTheme(next);
+    setThemeMode(next);
   };
 
   type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
@@ -1010,14 +1012,57 @@ export default function ProfileScreen() {
           <View style={styles.themesBlock}>
             <View style={styles.themesHeaderRow}>
               <Icon name="color-palette-outline" size={22} color={colors.textSecondary} />
-              <Text style={styles.themesTitle}>Themes</Text>
+              <Text style={styles.themesTitle}>Themes & Color Mode</Text>
             </View>
-            <Text style={styles.themesHint}>
+            
+            {/* Color Scheme Toggle */}
+            <View style={styles.colorSchemeSection}>
+              <Text style={[styles.themesHint, { marginBottom: 8 }]}>
+                Color Mode
+              </Text>
+              <View style={styles.colorSchemeToggleContainer}>
+                <View style={[
+                  styles.colorSchemeToggle,
+                  { backgroundColor: colors.surface, borderColor: colors.border }
+                ]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.colorSchemeOption,
+                      colorScheme === 'dark' && { backgroundColor: colors.primary }
+                    ]}
+                    onPress={() => setColorScheme('dark')}
+                  >
+                    <Text style={[
+                      styles.colorSchemeOptionText,
+                      { color: colorScheme === 'dark' ? colors.textOnPrimary : colors.textSecondary }
+                    ]}>
+                      🌙 Dark
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.colorSchemeOption,
+                      colorScheme === 'light' && { backgroundColor: colors.primary }
+                    ]}
+                    onPress={() => setColorScheme('light')}
+                  >
+                    <Text style={[
+                      styles.colorSchemeOptionText,
+                      { color: colorScheme === 'light' ? colors.textOnPrimary : colors.textSecondary }
+                    ]}>
+                      ☀️ Light
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <Text style={[styles.themesHint, { marginTop: 16 }]}>
               Unlock themes at {themeUnlocks.pulse.toLocaleString()} XP, {themeUnlocks.aurora.toLocaleString()} XP, and {themeUnlocks.singularity.toLocaleString()} XP.
             </Text>
             <View style={styles.themesList}>
               {themeOptions.map((opt) => {
-                const isSelected = theme === opt.key;
+                const isSelected = themeMode === opt.key;
                 const label = opt.unlocked ? opt.name : `${opt.name} (locked)`;
                 return (
                   <TouchableOpacity
@@ -1033,6 +1078,11 @@ export default function ProfileScreen() {
                       <Text style={[styles.themeOptionTitle, isSelected && styles.themeOptionTitleSelected]}>
                         {label}
                       </Text>
+                      {opt.unlocked && (
+                        <Text style={styles.themeOptionSubtitle}>
+                          {opt.tagline}
+                        </Text>
+                      )}
                       {!opt.unlocked && (
                         <Text style={styles.themeOptionSubtitle}>
                           Unlock at {opt.requiredXp.toLocaleString()} XP
@@ -1560,6 +1610,28 @@ const createStyles = (colors: any) =>
     fontSize: 16,
     fontWeight: '900',
     color: colors.text,
+  },
+  colorSchemeSection: {
+    marginTop: 12,
+  },
+  colorSchemeToggleContainer: {
+    alignItems: 'center',
+  },
+  colorSchemeToggle: {
+    flexDirection: 'row',
+    borderRadius: 999,
+    padding: 3,
+    borderWidth: 1,
+    alignSelf: 'center',
+  },
+  colorSchemeOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+  },
+  colorSchemeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   themesHint: {
     marginTop: 6,
