@@ -59,8 +59,8 @@ interface UserData {
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { tier, limits } = useSubscription();
-  const { colors, theme } = useTheme();
-  const styles = createStyles(colors, theme);
+  const { colors, themeMode } = useTheme();
+  const styles = createStyles(colors, themeMode);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -359,8 +359,8 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
-                <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                <SystemStatusRankIcon rankKey={rank.current.key} size={40} withContainerGlow={false} />
+              <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
+                <SystemStatusRankIcon rankKey={rank.current.key} size={67} withContainerGlow={false} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -776,10 +776,10 @@ const adjustColor = (color: string, amount: number): string => {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
-const createStyles = (colors: any, theme: string) => StyleSheet.create({
+const createStyles = (colors: any, themeMode: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.background : '#f0f0f0',
+    backgroundColor: colors.background,
   },
   faqFloatingButton: {
     position: 'absolute',
@@ -827,14 +827,20 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     gap: 12,
   },
   headerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 245, 255, 0.18)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#0B1220',
     borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    shadowColor: '#14b8a6',
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   headerAvatarImage: {
     width: 38,
@@ -856,8 +862,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
+    borderColor: colors.border,
   },
   rankBadgeText: {
     fontSize: 12,
@@ -872,7 +879,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   rankProgressBar: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.borderSubtle,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -885,28 +892,28 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.20)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: colors.border,
   },
   lockPillText: {
     fontSize: 12,
-    color: '#E2E8F0',
+    color: colors.text,
     fontWeight: '700',
   },
   lockPillTextLine1: {
     fontSize: 12,
-    color: '#E2E8F0',
+    color: colors.text,
     fontWeight: '900',
   },
   lockPillTextLine2: {
     marginTop: 2,
     fontSize: 11,
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     fontWeight: '800',
   },
   lockPillTextDim: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '900',
   },
   greeting: {
@@ -922,15 +929,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     textShadowRadius: 10,
   },
   examTypeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     alignSelf: 'flex-start',
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   examTypeText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -943,7 +952,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
@@ -957,21 +966,21 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: colors.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 5,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginBottom: 15,
     paddingHorizontal: 20,
     marginTop: 20,
-    ...(theme === 'cyber' && {
+    ...(themeMode === 'cyber' && {
       textShadowColor: colors.primary,
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
@@ -989,8 +998,8 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   sectionTitleInline: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
-    ...(theme === 'cyber' && {
+    color: colors.text,
+    ...(themeMode === 'cyber' && {
       textShadowColor: colors.primary,
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
@@ -1004,11 +1013,11 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(0,245,255,0.35)',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   feedbackPillText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.2,
@@ -1023,10 +1032,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   viewToggle: {
     padding: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   subjectsGrid: {
     paddingHorizontal: 20,
@@ -1185,38 +1194,38 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   actionText: {
     marginTop: 6,
     fontSize: 11,
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     fontWeight: '600',
     textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
     padding: 40,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     marginHorizontal: 20,
     marginBottom: 30,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 15,
   },
   addSubjectButton: {
     marginTop: 15,
-    backgroundColor: '#6366F1',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
   },
   addSubjectText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontWeight: '600',
   },
   addMoreButton: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -1224,10 +1233,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   addMoreText: {
-    color: '#6366F1',
+    color: colors.primary,
     fontWeight: '600',
     marginLeft: 8,
   },
@@ -1323,13 +1332,15 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   headerStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 8,
     flexWrap: 'wrap',
     justifyContent: 'space-around',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerStatItem: {
     alignItems: 'center',
@@ -1339,18 +1350,18 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   headerStatNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginTop: 2,
   },
   headerStatLabel: {
     fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   headerStatDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: colors.borderSubtle,
   },
   notificationBadgeContainer: {
     position: 'absolute',
@@ -1391,7 +1402,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 2,
@@ -1403,19 +1414,19 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   statProgressBar: {
     height: 12,
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.borderSubtle,
     borderRadius: 6,
     overflow: 'hidden',
     marginBottom: 2,
   },
   statProgressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
     borderRadius: 6,
   },
   percentageText: {
     position: 'absolute',
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 9,
     fontWeight: 'bold',
     top: 1,
@@ -1435,7 +1446,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   gridActionButton: {
     padding: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
   },
 }); 

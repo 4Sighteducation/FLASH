@@ -729,6 +729,14 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 20,
+    ...(Platform.OS === 'web'
+      ? {
+          width: '100%',
+          maxWidth: 1200,
+          alignSelf: 'center',
+          paddingHorizontal: 40,
+        }
+      : null),
   },
   header: {
     paddingHorizontal: 20,

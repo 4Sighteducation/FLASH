@@ -247,7 +247,7 @@ export default function SubjectSelectionScreen() {
 
       const { error: subjectsError } = await supabase
         .from('user_subjects')
-        .insert(subjectsToInsert);
+        .upsert(subjectsToInsert, { onConflict: 'user_id,subject_id' });
 
       if (subjectsError) throw subjectsError;
 
@@ -508,6 +508,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 180, // Space for sticky footer
     paddingTop: 16,
+    ...(Platform.OS === 'web'
+      ? {
+          width: '100%',
+          maxWidth: 1200,
+          alignSelf: 'center',
+          paddingHorizontal: 40,
+        }
+      : null),
   },
   backButton: {
     marginBottom: 24,

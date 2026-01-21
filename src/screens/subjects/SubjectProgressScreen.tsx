@@ -49,9 +49,9 @@ type SubjectProgressScreenProps = any;
 export default function SubjectProgressScreen({ route, navigation }: SubjectProgressScreenProps) {
   const { subjectId, subjectName, subjectColor, examBoard, examType } = route?.params || {};
   const { user } = useAuth();
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
   const safeSubjectColor = subjectColor || '#6366F1'; // Fallback color if null
-  const styles = createStyles(colors, theme, safeSubjectColor);
+  const styles = createStyles(colors, safeSubjectColor);
   
   // Generate color palette for hierarchy
   const colorPalette = generateHierarchyPalette(safeSubjectColor);
@@ -759,7 +759,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={theme === 'cyber' ? colors.text : '#333'} />
+          <Icon name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>{subjectName}</Text>
@@ -808,7 +808,7 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
           <View style={styles.filterTitleRow}>
             <Text style={styles.filterTitle}>FILTER BY PRIORITY</Text>
             <TouchableOpacity onPress={() => setShowPriorityExplainer(true)} style={styles.filterInfoButton}>
-              <Icon name="help-circle-outline" size={18} color={theme === 'cyber' ? colors.text : '#333'} />
+              <Icon name="help-circle-outline" size={18} color={colors.text} />
             </TouchableOpacity>
           </View>
           <View style={styles.filterButtonsRow}>
@@ -927,8 +927,8 @@ export default function SubjectProgressScreen({ route, navigation }: SubjectProg
                   <Text style={{ color: '#fff', fontWeight: '900' }}>{p.number}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '800', color: theme === 'cyber' ? colors.text : '#111827' }}>{p.label}</Text>
-                  <Text style={{ color: theme === 'cyber' ? colors.textSecondary : '#6B7280', marginTop: 2 }}>
+                  <Text style={{ fontWeight: '800', color: colors.text }}>{p.label}</Text>
+                  <Text style={{ color: colors.textSecondary, marginTop: 2 }}>
                     {p.description}
                   </Text>
                 </View>
@@ -1131,10 +1131,10 @@ const getTopicShade = (topicId: string, baseColor: string, allTopicIds: string[]
   return adjustColor(baseColor, variation);
 };
 
-const createStyles = (colors: any, theme: string, subjectColor: string) => StyleSheet.create({
+const createStyles = (colors: any, subjectColor: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.background : '#f5f5f5',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -1145,9 +1145,9 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   backButton: {
     padding: 4,
@@ -1159,11 +1159,11 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   scrollView: {
@@ -1232,18 +1232,18 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     alignItems: 'center',
     padding: 40,
     margin: 16,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
   },
   emptyTitle: {
     fontSize: 24,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginTop: 16,
   },
   emptyText: {
     fontSize: 16,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
@@ -1258,16 +1258,16 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     gap: 8,
   },
   discoverButtonText: {
-    color: '#fff',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
   filterSection: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme === 'cyber' ? colors.border : '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   filterTitleRow: {
     flexDirection: 'row',
@@ -1278,14 +1278,14 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 12,
-    ...(theme === 'cyber'
-      ? { backgroundColor: 'rgba(255,255,255,0.06)' }
-      : { backgroundColor: '#F3F4F6' }),
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   filterTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   filterButtonsRow: {
@@ -1302,8 +1302,8 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     height: 40,  // Reduced from 56
     borderRadius: 20,  // Half of width/height
     borderWidth: 2,
-    borderColor: theme === 'cyber' ? colors.border : '#D1D5DB',
-    backgroundColor: theme === 'cyber' ? colors.surface : '#FFFFFF',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
@@ -1342,7 +1342,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     marginTop: 6,
     fontSize: 10,
     fontWeight: '700',
-    color: theme === 'cyber' ? colors.textSecondary : '#6B7280',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   topicsSection: {
@@ -1351,12 +1351,12 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginBottom: 12,
   },
   topicGroup: {
     marginBottom: 8,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -1365,10 +1365,10 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
   },
   level0Header: {
-    backgroundColor: theme === 'cyber' ? 'rgba(99, 102, 241, 0.15)' : '#f0f0ff',
+    backgroundColor: colors.surfaceElevated,
     borderLeftWidth: 4,
     borderLeftColor: subjectColor || '#6366F1',
     marginBottom: 4,
@@ -1381,7 +1381,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     paddingLeft: 8,
   },
   level1Header: {
-    backgroundColor: theme === 'cyber' ? 'rgba(99, 102, 241, 0.08)' : '#f8f8ff',
+    backgroundColor: colors.surface,
     paddingLeft: 20,
     borderLeftWidth: 3,
     borderLeftColor: subjectColor || '#6366F1',
@@ -1397,16 +1397,16 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     marginBottom: 8,
   },
   level2Header: {
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     paddingLeft: 32,
     paddingVertical: 12,
     borderLeftWidth: 2,
-    borderLeftColor: theme === 'cyber' ? 'rgba(0, 245, 255, 0.3)' : '#ddd',
+    borderLeftColor: colors.borderSubtle,
   },
   level2Title: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme === 'cyber' ? colors.text : '#555',
+    color: colors.text,
   },
   level2Content: {
     paddingLeft: 20,
@@ -1426,11 +1426,11 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   groupTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
   },
   groupSubtitle: {
     fontSize: 14,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   groupHeaderRight: {
@@ -1441,7 +1441,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   cardCountBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme === 'cyber' ? 'rgba(0, 212, 255, 0.1)' : '#f0f0f0',
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -1455,7 +1455,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   topicsList: {
     paddingTop: 8,
     paddingBottom: 8,
-    backgroundColor: theme === 'cyber' ? 'rgba(0, 0, 0, 0.2)' : '#f9f9f9',
+    backgroundColor: colors.background,
   },
   topicCard: {
     flexDirection: 'row',
@@ -1463,7 +1463,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     padding: 12,
     marginHorizontal: 12,
     marginVertical: 4,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
   },
   topicCardLeft: {
@@ -1495,7 +1495,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   topicName: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     flex: 1,
   },
   priorityStar: {
@@ -1526,11 +1526,11 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   },
   topicMetaText: {
     fontSize: 12,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
   },
   topicMetaDivider: {
     fontSize: 12,
-    color: theme === 'cyber' ? colors.textSecondary : '#999',
+    color: colors.textMuted,
     marginHorizontal: 6,
   },
   topicMetaTextMastered: {
@@ -1539,7 +1539,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     fontWeight: '500',
   },
   newBadge: {
-    backgroundColor: '#00D4FF',
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1548,7 +1548,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   newBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textOnPrimary,
   },
   discoverMoreButton: {
     flexDirection: 'row',
@@ -1556,7 +1556,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     justifyContent: 'center',
     margin: 16,
     padding: 16,
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: subjectColor || '#6366F1',
@@ -1575,25 +1575,23 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     padding: 20,
   },
   optionsCard: {
-    backgroundColor: theme === 'cyber' ? colors.surface : '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 400,
-    ...( theme === 'cyber' && {
-      borderWidth: 1,
-      borderColor: colors.border,
-    }),
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   optionsTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginBottom: 8,
   },
   optionsSubtitle: {
     fontSize: 14,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
     marginBottom: 24,
   },
   optionButton: {
@@ -1609,14 +1607,14 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     backgroundColor: subjectColor || '#6366F1',
   },
   optionSecondary: {
-    backgroundColor: theme === 'cyber' ? 'rgba(0, 0, 0, 0.2)' : '#f5f5f5',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 2,
     borderColor: subjectColor || '#6366F1',
   },
   optionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textOnPrimary,
   },
   optionButtonTextSecondary: {
     fontSize: 16,
@@ -1628,7 +1626,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   },
   optionCancelText: {
     fontSize: 15,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
   },
   overviewButton: {
     flexDirection: 'row',
@@ -1640,7 +1638,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: 'dashed',
-    backgroundColor: theme === 'cyber' ? 'rgba(0, 245, 255, 0.05)' : 'rgba(99, 102, 241, 0.05)',
+    backgroundColor: colors.surface,
     gap: 12,
   },
   overviewButtonContent: {
@@ -1653,7 +1651,7 @@ const createStyles = (colors: any, theme: string, subjectColor: string) => Style
   },
   overviewButtonSubtitle: {
     fontSize: 12,
-    color: theme === 'cyber' ? colors.textSecondary : '#666',
+    color: colors.textSecondary,
   },
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "flash",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -20,7 +20,7 @@
     "build:ios:sim": "npm run iap:real && eas build --platform ios --profile development",
     "postinstall": "patch-package",
     "vercel-build": "npx expo export --platform web",
-    "build:web": "npx expo export --platform web && cp -r api dist/api && cp vercel.json dist/vercel.json",
+    "build:web": "npx expo export --platform web && node -e \"const fs=require('fs');fs.cpSync('api','dist/api',{recursive:true,force:true});fs.copyFileSync('vercel.json','dist/vercel.json');\"",
     "deploy:web": "npm run build:web && cd dist && vercel --prod"
   },
   "dependencies": {

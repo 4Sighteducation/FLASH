@@ -49,7 +49,13 @@ export default function AppNavigator() {
   const linking = useMemo(
     () =>
       ({
-        prefixes: [Linking.createURL('/'), 'https://www.fl4sh.cards', 'https://fl4sh.cards'],
+        prefixes: [
+          Linking.createURL('/'),
+          'https://www.fl4sh.cards',
+          'https://fl4sh.cards',
+          'https://www.fl4shcards.com',
+          'https://fl4shcards.com',
+        ],
         config: {
           screens: {
             TesterFeedback: 'tester-feedback',
@@ -85,23 +91,22 @@ export default function AppNavigator() {
       }
 
       const { data, error } = (await withTimeout(
-        supabase.from('users').select('is_onboarded').eq('id', user.id).single() as any,
+        supabase.from('users').select('is_onboarded').eq('id', user.id).maybeSingle() as any,
         12000,
         'checkOnboardingStatus'
       )) as any;
 
       if (error) {
         console.error('Supabase error checking onboarding:', error);
-        // If user record doesn't exist, assume not onboarded
-        if (error.code === 'PGRST116') {
-          console.log('User record not found, assuming not onboarded');
-          setIsOnboarded(false);
-        } else {
-          throw error;
-        }
+        throw error;
+      }
+
+      if (!data) {
+        console.log('User record not found, assuming not onboarded');
+        setIsOnboarded(false);
       } else {
         console.log('Onboarding status:', data?.is_onboarded);
-        setIsOnboarded(data?.is_onboarded || false);
+        setIsOnboarded(!!data?.is_onboarded);
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);

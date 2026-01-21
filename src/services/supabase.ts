@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // Get environment variables from app.config.js extra field
 const extra = Constants.expoConfig?.extra || {};
@@ -23,7 +24,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Web needs this to complete OAuth PKCE redirects.
+    detectSessionInUrl: Platform.OS === 'web',
     // Add flow type to prevent refresh token issues
     flowType: 'pkce',
     // Add storage key to prevent conflicts
