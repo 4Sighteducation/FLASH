@@ -394,7 +394,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { theme, themeMode, colorScheme, colors, setTheme, setThemeMode, setColorScheme, toggleColorScheme } = useTheme();
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, colorScheme);
   const { tier, limits, restorePurchases } = useSubscription();
   const { isAdmin } = useAdminAccess();
   const { profile } = useUserProfile();
@@ -1328,6 +1328,9 @@ export default function ProfileScreen() {
               <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
                 We’ll email them a link to the parent page. If they purchase, you’ll receive a code to redeem in the app.
               </Text>
+              <Text style={[styles.themeOptionSubtitle, { marginTop: 6 }]}>
+                If payment isn’t received within 7 days, your account reverts to Free and all cards/progress are deleted.
+              </Text>
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalButtonSecondary}
@@ -1425,7 +1428,7 @@ export default function ProfileScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: any, colorScheme: ColorScheme) =>
   StyleSheet.create({
   container: {
     flex: 1,
@@ -1746,7 +1749,7 @@ const createStyles = (colors: any) =>
     flex: 1,
     borderRadius: 16,
     padding: 16,
-    backgroundColor: '#0B1220',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     maxHeight: '90%',
@@ -1770,9 +1773,9 @@ const createStyles = (colors: any) =>
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: colorScheme === 'light' ? colors.backgroundAlt : 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: colors.border,
   },
   faqOverlayClose: {
     position: 'absolute',
@@ -1803,15 +1806,15 @@ const createStyles = (colors: any) =>
     textTransform: 'uppercase',
   },
   faqItem: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: colors.backgroundAlt,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: colors.borderSubtle,
     marginBottom: 10,
     overflow: 'hidden',
   },
   faqItemOpen: {
-    borderColor: 'rgba(0,245,255,0.35)',
+    borderColor: colors.primaryMuted,
   },
   faqQuestionRow: {
     flexDirection: 'row',
