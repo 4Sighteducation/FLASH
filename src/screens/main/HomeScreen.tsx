@@ -58,7 +58,7 @@ interface UserData {
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { tier, limits } = useSubscription();
+  const { tier, limits, trial } = useSubscription();
   const { colors, themeMode } = useTheme();
   const styles = createStyles(colors, themeMode);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -346,6 +346,46 @@ export default function HomeScreen({ navigation }: any) {
   const totalPoints = userStats?.total_points ?? 0;
   const rank = getRankForXp(totalPoints);
 
+  const openProOptions = () => {
+    Alert.alert(
+      'Keep Pro',
+      'Choose how you want to unlock Pro.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Pay myself',
+          onPress: () => {
+            try {
+              rootNavigate('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: trial.isActive ? 'trial_banner' : 'home' });
+            } catch {
+              // fallback: nested navigation
+              try {
+                navigation.getParent?.()?.navigate?.('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: 'home' });
+              } catch {
+                // ignore
+              }
+            }
+          },
+        },
+        {
+          text: 'Ask someone else to pay*',
+          onPress: () => {
+            try {
+              rootNavigate('Profile' as never, { screen: 'ProfileMain', params: { openParentInvite: true } } as never);
+            } catch {
+              try {
+                navigation.getParent?.()?.navigate?.('Profile', { screen: 'ProfileMain', params: { openParentInvite: true } });
+              } catch {
+                // ignore
+              }
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity style={styles.faqFloatingButton} onPress={openFaqs}>
@@ -455,8 +495,31 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </LinearGradient>
 
-        {/* Free -> Pro CTA banner */}
-        {tier === 'free' ? (
+        {/* Trial countdown banner (persistent reminder) */}
+        {trial.isActive ? (
+          <View style={styles.trialCard}>
+            <View style={styles.launchOfferTop}>
+              <Text style={styles.launchOfferTitle}>Free Pro month</Text>
+              <View style={styles.launchOfferPill}>
+                <Text style={styles.launchOfferPillText}>PRO</Text>
+              </View>
+            </View>
+            <Text style={styles.trialText}>
+              {typeof trial.daysRemaining === 'number'
+                ? `${trial.daysRemaining} day${trial.daysRemaining === 1 ? '' : 's'} left`
+                : 'Trial active'}
+            </Text>
+            <View style={styles.trialProgressTrack}>
+              <View style={[styles.trialProgressFill, { width: `${Math.round(((trial.progress ?? 0) as number) * 100)}%` }]} />
+            </View>
+            <TouchableOpacity style={styles.launchOfferCta} onPress={openProOptions}>
+              <Text style={styles.launchOfferCtaText}>Get Pro for a year</Text>
+              <Ionicons name="arrow-forward" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            <Text style={styles.trialFootnote}>*Use this to send to a parent, guardian, or generous friend.</Text>
+          </View>
+        ) : tier === 'free' ? (
+          /* Free -> Pro CTA banner */
           <View style={styles.launchOfferCard}>
             <View style={styles.launchOfferTop}>
               <Text style={styles.launchOfferTitle}>Study like a Pro</Text>
@@ -464,22 +527,8 @@ export default function HomeScreen({ navigation }: any) {
                 <Text style={styles.launchOfferPillText}>PRO</Text>
               </View>
             </View>
-            <Text style={styles.launchOfferText}>
-              Unlock Past Papers and advanced features.
-            </Text>
-            <TouchableOpacity
-              style={styles.launchOfferCta}
-              onPress={() => {
-                // Open the global paywall modal with Annual preselected.
-                navigation.getParent?.()?.navigate?.('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: 'home' });
-                // Fallback: nested navigation
-                try {
-                  navigation.navigate('Profile' as never, { screen: 'Paywall', params: { initialBilling: 'annual', highlightOffer: true, source: 'home' } } as never);
-                } catch {
-                  // ignore
-                }
-              }}
-            >
+            <Text style={styles.launchOfferText}>Unlock Past Papers and advanced features.</Text>
+            <TouchableOpacity style={styles.launchOfferCta} onPress={openProOptions}>
               <Text style={styles.launchOfferCtaText}>View plans</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
@@ -1307,6 +1356,52 @@ const createStyles = (colors: any, themeMode: string) => StyleSheet.create({
     color: '#0B1220',
     fontSize: 14,
     fontWeight: '900',
+  },
+  trialCard: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,110,0.26)',
+    backgroundColor: 'rgba(11,18,32,0.92)',
+    ...Platform.select({
+      default: {
+        shadowColor: '#FF006E',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.10,
+        shadowRadius: 14,
+        elevation: 3,
+      },
+    }),
+  },
+  trialText: {
+    marginTop: 10,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  trialProgressTrack: {
+    marginTop: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148,163,184,0.22)',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.18)',
+  },
+  trialProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#00F5FF',
+  },
+  trialFootnote: {
+    marginTop: 8,
+    color: colors.textSecondary,
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   deleteButton: {
     padding: 8,

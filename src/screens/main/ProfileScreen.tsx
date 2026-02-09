@@ -395,7 +395,7 @@ export default function ProfileScreen() {
   const route = useRoute();
   const { theme, themeMode, colorScheme, colors, setTheme, setThemeMode, setColorScheme, toggleColorScheme } = useTheme();
   const styles = createStyles(colors, colorScheme);
-  const { tier, limits, restorePurchases } = useSubscription();
+  const { tier, limits, restorePurchases, trial } = useSubscription();
   const { isAdmin } = useAdminAccess();
   const { profile } = useUserProfile();
   const [totalPoints, setTotalPoints] = useState(0);
@@ -890,7 +890,11 @@ export default function ProfileScreen() {
             <View style={styles.sectionHeaderLeft}>
               <Text style={styles.sectionTitle}>Subscription</Text>
               <Text style={styles.sectionSummary}>
-                {tier === 'free' ? `Free • ${limits.maxSubjects} subjects` : 'Pro active'}
+                {trial.isActive && typeof trial.daysRemaining === 'number'
+                  ? `Free month • ${trial.daysRemaining} day${trial.daysRemaining === 1 ? '' : 's'} left`
+                  : tier === 'free'
+                    ? `Free • ${limits.maxSubjects} subjects`
+                    : 'Pro active'}
               </Text>
             </View>
             <Ionicons
@@ -903,7 +907,7 @@ export default function ProfileScreen() {
             <View style={styles.subscriptionStatus}>
               <View style={styles.subscriptionInfo}>
                 <Text style={styles.subscriptionTier}>
-                  {tier === 'free' ? 'Free' : 'Pro'}
+                  {trial.isActive ? 'Pro (free month)' : tier === 'free' ? 'Free' : 'Pro'}
                 </Text>
                 {tier === 'free' && (
                   <Text style={styles.subscriptionLimits}>
@@ -924,12 +928,12 @@ export default function ProfileScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {tier === 'free' && (
+                {(tier === 'free' || trial.isActive) && (
                   <TouchableOpacity
                     style={styles.manageStoreButton}
                     onPress={() => setParentInviteVisible(true)}
                   >
-                    <Text style={styles.manageStoreButtonText}>Invite parent / guardian</Text>
+                    <Text style={styles.manageStoreButtonText}>Ask someone else to pay*</Text>
                   </TouchableOpacity>
                 )}
 
@@ -1304,7 +1308,7 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
-        {/* Parent Invite Modal (Free plan) */}
+        {/* "Ask someone else to pay" Modal (Free plan) */}
         <Modal
           visible={parentInviteVisible}
           transparent
@@ -1313,23 +1317,26 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Invite a parent/guardian</Text>
-              <Text style={styles.modalLabel}>Parent / guardian email</Text>
+              <Text style={styles.modalTitle}>Ask someone else to pay</Text>
+              <Text style={styles.modalLabel}>Their email</Text>
               <TextInput
                 style={styles.modalInput}
                 value={parentInviteEmail}
                 onChangeText={setParentInviteEmail}
-                placeholder="parent@example.com"
+                placeholder="someone@example.com"
                 placeholderTextColor={colors.textSecondary}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!sendingParentInvite}
               />
               <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
-                We’ll email them a link to the parent page. If they purchase, you’ll receive a code to redeem in the app.
+                *Use this to send to a parent, guardian, or generous friend.
+              </Text>
+              <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
+                We’ll email them a link to the payment page. If they purchase, you’ll receive a code to redeem in the app.
               </Text>
               <Text style={[styles.themeOptionSubtitle, { marginTop: 6 }]}>
-                If payment isn’t received within 7 days, your account reverts to Free and all cards/progress are deleted.
+                If your free month has ended, you’ll get a 7-day grace window for them to pay before your cards/progress are deleted.
               </Text>
               <View style={styles.modalActions}>
                 <TouchableOpacity

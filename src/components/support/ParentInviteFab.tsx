@@ -6,9 +6,10 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 import { navigate } from '../../navigation/RootNavigation';
 
 export default function ParentInviteFab() {
-  const { tier } = useSubscription();
+  const { tier, trial } = useSubscription();
 
-  if (tier !== 'free') return null;
+  // Show during Free plan OR during the free Pro trial (trial users are `tier === 'pro'`).
+  if (!(tier === 'free' || trial.isActive)) return null;
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
@@ -25,7 +26,7 @@ export default function ParentInviteFab() {
           style={styles.fab}
         >
           <Icon name="mail-outline" size={18} color="#0B1020" />
-          <Text style={styles.text}>Ask a parent</Text>
+          <Text style={styles.text}>Ask someone else</Text>
         </LinearGradient>
       </TouchableOpacity>
     </View>

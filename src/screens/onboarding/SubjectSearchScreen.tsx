@@ -382,6 +382,16 @@ export default function SubjectSearchScreen() {
       });
       if (ensureError) {
         console.warn('[Onboarding] ensure_user_profile failed:', ensureError);
+        if (String((ensureError as any).code) === '23505') {
+          const { error: retryError } = await supabase.rpc('ensure_user_profile', {
+            p_user_id: user.id,
+            p_email: user.email,
+            p_username: null,
+          });
+          if (retryError) {
+            console.warn('[Onboarding] ensure_user_profile retry failed:', retryError);
+          }
+        }
       }
 
       console.log('💾 Saving subjects...', selectedSubjects);
@@ -395,15 +405,40 @@ export default function SubjectSearchScreen() {
 
       console.log('📝 Inserting to user_subjects:', subjectsToInsert);
 
-      const { data: insertData, error: subjectsError } = await supabase
-        .from('user_subjects')
-        .upsert(subjectsToInsert, {
-          onConflict: 'user_id,subject_id',
-        });
+      let existingSubjectIds = new Set<string>();
+      if (subjectsToInsert.length > 0) {
+        const { data: existingRows, error: existingError } = await supabase
+          .from('user_subjects')
+          .select('subject_id')
+          .eq('user_id', user?.id)
+          .in(
+            'subject_id',
+            subjectsToInsert.map((s) => s.subject_id)
+          );
 
-      if (subjectsError) {
-        console.error('❌ Subjects insert error:', subjectsError);
-        throw subjectsError;
+        if (existingError) {
+          console.error('❌ Subjects fetch error:', existingError);
+          throw existingError;
+        }
+
+        existingSubjectIds = new Set(
+          (existingRows || []).map((row: any) => String(row.subject_id))
+        );
+      }
+
+      const missingSubjects = subjectsToInsert.filter(
+        (s) => !existingSubjectIds.has(String(s.subject_id))
+      );
+
+      if (missingSubjects.length > 0) {
+        const { error: insertError } = await supabase
+          .from('user_subjects')
+          .insert(missingSubjects);
+
+        if (insertError && insertError.status !== 409 && insertError.code !== '23505') {
+          console.error('❌ Subjects insert error:', insertError);
+          throw insertError;
+        }
       }
 
       console.log('✅ Subjects saved successfully!');

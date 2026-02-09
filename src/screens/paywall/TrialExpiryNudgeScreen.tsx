@@ -158,8 +158,11 @@ export default function TrialExpiryNudgeScreen({ navigation, route }: any) {
             {isLastDay ? (
               <>
                 <TouchableOpacity style={styles.tertiaryBtn} onPress={onAskParent}>
-                  <Text style={styles.tertiaryBtnText}>Ask a parent to pay</Text>
+                  <Text style={styles.tertiaryBtnText}>Ask someone else to pay*</Text>
                 </TouchableOpacity>
+                <Text style={styles.graceNote}>
+                  *Use this to send to a parent, guardian, or generous friend.
+                </Text>
                 <Text style={styles.graceNote}>
                   If payment isn’t received within 7 days, your account reverts to Free and all cards/progress are deleted.
                 </Text>

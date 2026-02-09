@@ -137,11 +137,35 @@ serve(async (req) => {
       }
     }
 
-    // 2) NOTE: We intentionally do NOT hard-wipe here.
-    // Rationale: push notifications may be disabled; the authoritative warning should be shown in-app
-    // on next login/open, then the user confirms the reset.
+    // 2) Process expiries where the user already chose "ask someone else to pay" after expiry
+    // AND the 7-day grace has ended.
+    //
+    // We still do NOT wipe users who simply stop opening the app at day 30 without taking action.
     const expiredUsers: Array<{ user_id: string }> = [];
     const processed: Array<{ user_id: string; ok: boolean; reason: string }> = [];
+
+    const { data: expData, error: expErr } = await sb.rpc('get_expired_trial_users', { p_limit: 500 });
+    if (expErr) throw expErr;
+    expiredUsers.push(...(((expData as any) || []) as Array<{ user_id: string }>));
+
+    for (const u of expiredUsers) {
+      const uid = (u as any)?.user_id;
+      if (!uid) continue;
+      try {
+        const { data: res, error: procErr } = await sb.rpc('process_expired_trial_user', {
+          p_user_id: uid,
+          p_force: false,
+        });
+        if (procErr) {
+          processed.push({ user_id: uid, ok: false, reason: procErr.message });
+        } else {
+          const row = Array.isArray(res) ? res[0] : res;
+          processed.push({ user_id: uid, ok: !!row?.ok, reason: String(row?.reason || 'processed') });
+        }
+      } catch (e: any) {
+        processed.push({ user_id: uid, ok: false, reason: e?.message || 'error' });
+      }
+    }
 
     return new Response(
       JSON.stringify({

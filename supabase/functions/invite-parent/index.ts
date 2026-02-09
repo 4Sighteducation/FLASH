@@ -70,7 +70,7 @@ function buildParentInviteHtml(params: {
       </head>
       <body style="margin:0;padding:0;background:#070A12;color:#E6EAF2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-          A student has invited you to keep FL4SH Pro on their account.
+          A student has invited you to help pay for FL4SH Pro.
         </div>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#070A12;padding:28px 12px;">
@@ -80,9 +80,9 @@ function buildParentInviteHtml(params: {
                 <tr>
                   <td style="padding:22px 22px 14px 22px;text-align:center;">
                     <img src="https://www.fl4shcards.com/flash_assets/flash-logo-transparent.png" width="72" height="72" alt="FL4SH" style="display:block;margin:0 auto 10px auto;" />
-                    <div style="font-size:22px;font-weight:800;letter-spacing:0.2px;">Help ${params.childUsername ? params.childUsername : 'your student'} unlock FL4SH</div>
+                    <div style="font-size:22px;font-weight:800;letter-spacing:0.2px;">Help ${params.childUsername ? params.childUsername : 'your student'} keep FL4SH Pro</div>
                     <div style="margin-top:6px;font-size:14px;opacity:0.88;line-height:1.45;">
-                      <strong>${childLabel}</strong> is using FL4SH for revision. They get Pro free for their first 30 days — and they’ve invited you to keep Pro afterwards.
+                      <strong>${childLabel}</strong> is using FL4SH for revision. They get Pro free for their first 30 days — and they’ve asked someone else (parent, guardian, or generous friend) to help pay to keep Pro afterwards.
                     </div>
                   </td>
                 </tr>
@@ -97,14 +97,14 @@ function buildParentInviteHtml(params: {
                   <td style="padding:0 22px 18px 22px;font-size:14px;line-height:1.7;">
                     <div style="font-weight:800;margin-bottom:6px;">How it works</div>
                     <ol style="margin:0 0 0 18px;padding:0;">
-                      <li>Open the parent page below (the student email is pre-filled).</li>
+                      <li>Open the payment page below (the student email is pre-filled).</li>
                       <li>Complete the checkout on your device.</li>
                       <li>The student receives a code and redeems it in the app to keep Pro.</li>
                     </ol>
 
                     <div style="margin-top:16px;text-align:center;">
                       <a href="${purchaseLink}" style="display:inline-block;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#00E5FF,#FF4FD8);color:#0B1020;font-weight:800;text-decoration:none;">
-                        Open parent page
+                        Open payment page
                       </a>
                     </div>
 
@@ -144,7 +144,7 @@ serve(async (req) => {
     const { parentEmail } = (await req.json()) as Payload;
     const parentEmailNorm = sanitizeEmail(parentEmail || '');
     if (!parentEmailNorm || !isValidEmail(parentEmailNorm)) {
-      return new Response(JSON.stringify({ ok: false, error: 'Please enter a valid parent/guardian email.' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'Please enter a valid email address.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -237,7 +237,7 @@ serve(async (req) => {
       await sendSendGridEmail({
         to: parentEmailNorm,
         fromEmail,
-        subject: 'FL4SH — Parent/guardian invite',
+      subject: 'FL4SH — Someone else to pay invite',
         html,
       });
 

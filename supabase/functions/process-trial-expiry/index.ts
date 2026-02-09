@@ -20,6 +20,9 @@ serve(async (req) => {
   if (req.method !== 'POST') return json(405, { ok: false, error: 'Method not allowed' });
 
   try {
+    const payload = await req.json().catch(() => ({} as any));
+    const force = !!(payload as any)?.force;
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !serviceKey) {
@@ -53,7 +56,7 @@ serve(async (req) => {
     if (alreadyProcessed) return json(200, { ok: true, alreadyProcessed: true });
     if (!isExpired) return json(400, { ok: false, error: 'Trial not expired yet' });
 
-    const { data: rpcData, error: rpcErr } = await sb.rpc('process_expired_trial_user', { p_user_id: userId });
+    const { data: rpcData, error: rpcErr } = await sb.rpc('process_expired_trial_user', { p_user_id: userId, p_force: force });
     if (rpcErr) return json(500, { ok: false, error: rpcErr.message });
 
     const row = Array.isArray(rpcData) ? rpcData[0] : rpcData;
