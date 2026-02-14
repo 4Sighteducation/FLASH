@@ -19,6 +19,7 @@ import { navigationRef } from './RootNavigation';
 import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
 import TesterFeedbackScreen from '../screens/support/TesterFeedbackScreen';
 import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
+import ReviewPromptModalScreen from '../screens/modals/ReviewPromptModalScreen';
 import TrialExpiredScreen from '../screens/paywall/TrialExpiredScreen';
 import TrialExpiryNudgeScreen from '../screens/paywall/TrialExpiryNudgeScreen';
 
@@ -183,6 +184,13 @@ export default function AppNavigator() {
           <Stack.Screen
             name="CelebrationModal"
             component={CelebrationModalScreen}
+            options={{ headerShown: false, presentation: 'transparentModal' }}
+          />
+
+          {/* Global app-store review prompt modal */}
+          <Stack.Screen
+            name="ReviewPromptModal"
+            component={ReviewPromptModalScreen}
             options={{ headerShown: false, presentation: 'transparentModal' }}
           />
 

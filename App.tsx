@@ -12,9 +12,37 @@ import * as Linking from 'expo-linking';
 import 'react-native-url-polyfill/auto';
 import { handleOAuthCallback } from './src/utils/oauthHandler';
 import * as Notifications from 'expo-notifications';
+import { markPromptShown, recordAppLaunch, shouldShowReviewPrompt } from './src/utils/reviewPrompt';
 
 function AppContent() {
   useEffect(() => {
+    // Track launches and show an occasional review prompt after meaningful usage.
+    // Defaults are conservative to avoid annoying students.
+    recordAppLaunch()
+      .then(async (state) => {
+        // Only consider prompting if they're signed in.
+        const { data } = await supabase.auth.getSession();
+        const hasUser = !!data?.session?.user?.id;
+        if (!hasUser) return;
+
+        if (!shouldShowReviewPrompt(state)) return;
+
+        // Mark as shown up-front so we never loop if navigation fails.
+        await markPromptShown();
+
+        // Give the app a moment to settle (avoid colliding with onboarding/paywall modals).
+        setTimeout(() => {
+          try {
+            navigate('ReviewPromptModal' as never);
+          } catch {
+            // ignore
+          }
+        }, 4500);
+      })
+      .catch(() => {
+        // ignore
+      });
+
     // Handle deep links for OAuth
     const handleDeepLink = async (url: string) => {
       // Redeem deep link: com.foursighteducation.flash://redeem?code=XXXX
