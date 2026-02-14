@@ -1,6 +1,6 @@
 -- VERIFY: pgvector Setup Complete
--- Run this AFTER running 001_setup_pgvector_topic_search.sql
--- All queries should return results with no errors
+-- This is a manual verification script (NOT a migration).
+-- Run this after 001_setup_pgvector_topic_search.sql if you want to sanity-check the setup.
 
 -- ========================================
 -- 1. CHECK PGVECTOR EXTENSION
@@ -11,7 +11,6 @@ SELECT
   extversion
 FROM pg_extension 
 WHERE extname = 'vector';
--- Expected: 1 row showing 'vector' extension
 
 -- ========================================
 -- 2. CHECK TABLE EXISTS
@@ -24,7 +23,6 @@ SELECT
     ELSE 'Has data - incremental updates will work'
   END as status
 FROM topic_ai_metadata;
--- Expected: 0 rows initially
 
 -- ========================================
 -- 3. CHECK INDEXES
@@ -35,7 +33,6 @@ SELECT
 FROM pg_indexes 
 WHERE tablename = 'topic_ai_metadata'
 ORDER BY indexname;
--- Expected: 6-7 indexes including one with 'hnsw' or 'ivf' in name
 
 -- ========================================
 -- 4. CHECK VIEW WORKS
@@ -47,7 +44,6 @@ SELECT
   COUNT(DISTINCT qualification_level) as qual_levels,
   COUNT(DISTINCT subject_name) as subjects
 FROM topics_with_context;
--- Expected: ~54,000 topics, 7 boards, 2-4 qual levels, 300+ subjects
 
 -- ========================================
 -- 5. CHECK HELPER FUNCTION
@@ -58,7 +54,6 @@ SELECT
   COUNT(DISTINCT exam_board) as boards,
   COUNT(DISTINCT subject_name) as subjects
 FROM get_topics_needing_metadata();
--- Expected: Same as total topics (all need metadata initially)
 
 -- ========================================
 -- 6. SAMPLE TOPICS FROM VIEW
@@ -75,21 +70,16 @@ SELECT
 FROM topics_with_context
 ORDER BY exam_board, qualification_level, subject_name, topic_level
 LIMIT 10;
--- Expected: 10 sample topics with full hierarchical paths
 
 -- ========================================
 -- 7. TEST RPC FUNCTION (with dummy embedding)
 -- ========================================
-
--- Create a test embedding (all zeros - just for testing structure)
 DO $$
 DECLARE
   test_embedding vector(1536);
 BEGIN
-  -- Generate dummy embedding
   test_embedding := array_fill(0, ARRAY[1536])::vector(1536);
   
-  -- Test the RPC function
   PERFORM * FROM match_topics(
     test_embedding,
     NULL,  -- no board filter
@@ -100,7 +90,6 @@ BEGIN
   );
   
   RAISE NOTICE '✅ Check 7: match_topics RPC function works ✓';
-  
 EXCEPTION WHEN OTHERS THEN
   RAISE EXCEPTION '❌ match_topics RPC function failed: %', SQLERRM;
 END $$;
@@ -116,12 +105,10 @@ SELECT
 FROM topics_with_context
 GROUP BY exam_board, qualification_level
 ORDER BY exam_board, qualification_level;
--- Expected: Breakdown showing AQA, Edexcel, OCR etc. with topic counts
 
 -- ========================================
 -- FINAL STATUS
 -- ========================================
-
 SELECT 
   '🎉 SETUP COMPLETE!' as status,
   'Ready for batch metadata generation' as next_step,
