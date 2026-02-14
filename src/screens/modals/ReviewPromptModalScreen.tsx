@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Linking, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as StoreReview from 'expo-store-review';
@@ -87,7 +87,11 @@ export default function ReviewPromptModalScreen({ navigation }: any) {
     <View style={styles.backdrop}>
       <LinearGradient colors={['rgba(0,245,255,0.10)', 'rgba(255,0,110,0.08)', 'rgba(11,18,32,0.98)']} style={styles.card}>
         <View style={styles.iconWrap}>
-          <Ionicons name="star" size={28} color="#00F5FF" />
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <Text style={styles.title}>Enjoying FL4SH?</Text>
@@ -142,6 +146,11 @@ function createStyles(colors: any) {
       borderColor: 'rgba(0,245,255,0.25)',
       alignSelf: 'center',
       marginBottom: 12,
+    },
+    logo: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
     },
     title: {
       color: colors.text,
