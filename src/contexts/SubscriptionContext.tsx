@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 // import * as InAppPurchases from 'expo-in-app-purchases';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
@@ -111,6 +111,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const unsubscribeRef = React.useRef<null | (() => void)>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const tierStorageKey = (userId?: string | null) => `subscriptionTier:${userId || 'anon'}`;
   const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
@@ -125,7 +126,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const isTrial = String(meta.source || '') === 'trial' && !!meta.expiresAt;
     const expiresAtMs = meta.expiresAt ? Date.parse(meta.expiresAt) : NaN;
     const startedAtMs = meta.startedAt ? Date.parse(meta.startedAt) : NaN;
-    const now = Date.now();
+    const now = nowMs;
 
     const isActive = isTrial && Number.isFinite(expiresAtMs) && expiresAtMs > now;
 
@@ -156,6 +157,23 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       progress,
     };
   };
+
+  // Ensure trial countdown updates even if subscription state is stable.
+  // Without this, `daysRemaining` can appear "stuck" until some unrelated state change causes a re-render.
+  useEffect(() => {
+    // Update on foregrounding
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNowMs(Date.now());
+    });
+
+    // Also tick periodically (cheap; keeps UI accurate during longer sessions).
+    const t = setInterval(() => setNowMs(Date.now()), 60 * 60 * 1000);
+
+    return () => {
+      sub.remove();
+      clearInterval(t);
+    };
+  }, []);
 
   const getBetaAccess = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
     try {
