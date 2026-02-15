@@ -20,6 +20,7 @@ import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
 import TesterFeedbackScreen from '../screens/support/TesterFeedbackScreen';
 import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
 import ReviewPromptModalScreen from '../screens/modals/ReviewPromptModalScreen';
+import PrintCardsModalScreen from '../screens/modals/PrintCardsModalScreen';
 import TrialExpiredScreen from '../screens/paywall/TrialExpiredScreen';
 import TrialExpiryNudgeScreen from '../screens/paywall/TrialExpiryNudgeScreen';
 
@@ -56,7 +57,7 @@ export default function AppNavigator() {
           'https://fl4sh.cards',
           'https://www.fl4shcards.com',
           'https://fl4shcards.com',
-        ],
+        ] as string[],
         config: {
           screens: {
             TesterFeedback: 'tester-feedback',
@@ -191,6 +192,13 @@ export default function AppNavigator() {
           <Stack.Screen
             name="ReviewPromptModal"
             component={ReviewPromptModalScreen}
+            options={{ headerShown: false, presentation: 'transparentModal' }}
+          />
+
+          {/* Global print cards modal */}
+          <Stack.Screen
+            name="PrintCardsModal"
+            component={PrintCardsModalScreen}
             options={{ headerShown: false, presentation: 'transparentModal' }}
           />
 

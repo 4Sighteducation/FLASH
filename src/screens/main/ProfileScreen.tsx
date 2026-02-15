@@ -161,6 +161,20 @@ const FAQS: FaqCategory[] = [
         ],
       },
       {
+        id: 'cards-print',
+        question: 'Can I print my flashcards as 3×5 index cards?',
+        answer: [
+          'Yes. You can print your cards as true-to-size 3×5 inch index cards.',
+          'Go to Manage All Cards, then tap the printer icon on a subject or topic.',
+        ],
+        bullets: [
+          'Cut‑out (easy): prints multiple 3×5 cards per page so you can cut them out.',
+          'Direct 3×5 (advanced): prints one card per page for printers that support 3×5 index cards.',
+          'Tip: for true size, set Scale to 100% and disable “Fit to page”.',
+          'For double‑sided cards, print fronts first, then print backs after flipping your pages/stack.',
+        ],
+      },
+      {
         id: 'cards-image',
         question: 'What kind of images work best for “From Image”?',
         answer: [

@@ -18,10 +18,13 @@ import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TOPIC_PRIORITY_LEVELS } from '../../constants/topicPriorities';
+import { navigate } from '../../navigation/RootNavigation';
 
 // Priority levels are shared across the app:
 // 1 = highest priority, 4 = lowest priority.
 const PRIORITY_LEVELS = TOPIC_PRIORITY_LEVELS;
+// Enabled by default in production; can be disabled explicitly with EXPO_PUBLIC_ENABLE_PRINT_CARDS=false.
+const PRINT_CARDS_ENABLED = process.env.EXPO_PUBLIC_ENABLE_PRINT_CARDS !== 'false';
 
 interface TopicNode {
   id: string;
@@ -308,6 +311,23 @@ export default function ManageAllCardsScreen() {
     } as never);
   };
 
+  const collectTopicIdsWithCards = (node: TopicNode, out: string[] = []) => {
+    if (node.cardCount > 0) out.push(node.id);
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((c) => collectTopicIdsWithCards(c, out));
+    }
+    return out;
+  };
+
+  const openPrintModal = (title: string, topicIds: string[]) => {
+    if (!PRINT_CARDS_ENABLED) return;
+    if (!topicIds || topicIds.length === 0) {
+      Alert.alert('No cards found', 'There are no cards in this selection yet.');
+      return;
+    }
+    navigate('PrintCardsModal' as never, { title, topicIds } as never);
+  };
+
   const renderTopicNode = (node: TopicNode, subject: SubjectData, depth: number = 0): React.ReactNode => {
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children.length > 0;
@@ -379,6 +399,19 @@ export default function ManageAllCardsScreen() {
                 {priorityInfo?.number || '○'}
               </Text>
             </TouchableOpacity>
+
+            {PRINT_CARDS_ENABLED && node.hasCards ? (
+              <TouchableOpacity
+                style={styles.printButton}
+                onPress={() => {
+                  const topicIds = collectTopicIdsWithCards(node, []);
+                  const title = `${subject.subjectName} • ${node.name}`;
+                  openPrintModal(title, topicIds);
+                }}
+              >
+                <Icon name="print-outline" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ) : null}
 
             {/* Card count or Add button */}
             {node.cardCount > 0 ? (
@@ -536,8 +569,22 @@ export default function ManageAllCardsScreen() {
                       <Text style={styles.subjectMeta}>{subject.examBoard}</Text>
                     </View>
                   </View>
-                  <View style={styles.subjectBadge}>
-                    <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
+                  <View style={styles.subjectHeaderRight}>
+                    {PRINT_CARDS_ENABLED && subject.totalCards > 0 ? (
+                      <TouchableOpacity
+                        style={styles.subjectPrintButton}
+                        onPress={() => {
+                          const topicIds: string[] = [];
+                          subject.rootTopics.forEach((rt) => collectTopicIdsWithCards(rt, topicIds));
+                          openPrintModal(subject.subjectName, topicIds);
+                        }}
+                      >
+                        <Icon name="print-outline" size={18} color={colors.textOnPrimary} />
+                      </TouchableOpacity>
+                    ) : null}
+                    <View style={styles.subjectBadge}>
+                      <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
+                    </View>
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
@@ -690,6 +737,21 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
+  subjectHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  subjectPrintButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
   subjectBadgeText: {
     color: colors.text,
     fontSize: 14,
@@ -800,6 +862,16 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  printButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   priorityPickerButton: {
     width: 32,
