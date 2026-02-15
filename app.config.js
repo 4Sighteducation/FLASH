@@ -34,7 +34,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "35",
+      buildNumber: "36",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -57,8 +57,11 @@ export default {
         foregroundImage: "./assets/adaptive-icon-foreground.png",
         backgroundColor: "#0F172A"
       },
+      // Required for Android push notifications (Firebase initialization).
+      // Prefer EAS file secret path when provided; fallback to repo-local file if present.
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       package: "com.foursighteducation.flash",
-      versionCode: 25,
+      versionCode: 26,
       // Ensure OAuth redirects can deep-link back into the app on Android.
       // We support both the canonical scheme and the legacy "flash" scheme for safety.
       intentFilters: [
@@ -91,7 +94,13 @@ export default {
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          color: "#00E5FF"
+        }
+      ]
     ],
     extra: {
       eas: {
