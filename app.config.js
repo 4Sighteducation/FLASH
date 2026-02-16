@@ -34,7 +34,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "37",
+      buildNumber: "38",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -61,7 +61,7 @@ export default {
       // Prefer EAS file secret path when provided; fallback to repo-local file if present.
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       package: "com.foursighteducation.flash",
-      versionCode: 27,
+      versionCode: 28,
       // Ensure OAuth redirects can deep-link back into the app on Android.
       // We support both the canonical scheme and the legacy "flash" scheme for safety.
       intentFilters: [
