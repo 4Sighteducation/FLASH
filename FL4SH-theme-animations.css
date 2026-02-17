@@ -1,0 +1,795 @@
+/* ============================================================================
+   FL4SH THEME ANIMATIONS & EFFECTS
+   ============================================================================
+   Modern CSS wizardry for each theme tier
+   Cyber < Pulse < Aurora < Singularity (progressively more impressive)
+   ============================================================================ */
+
+/* ============================================================================
+   CSS CUSTOM PROPERTIES (set by theme context in React Native Web or web builds)
+   ============================================================================ */
+
+:root {
+  /* These get overridden by JavaScript theme context */
+  --fl4sh-primary: #00F5FF;
+  --fl4sh-secondary: #FF006E;
+  --fl4sh-tertiary: #7C4DFF;
+  --fl4sh-background: #0A0F1E;
+  --fl4sh-glow-primary: rgba(0, 245, 255, 0.5);
+  --fl4sh-glow-secondary: rgba(255, 0, 110, 0.5);
+}
+
+/* ============================================================================
+   CYBER THEME ANIMATIONS (Default - Technical, Digital, Precise)
+   ============================================================================ */
+
+/* Subtle neon pulse for active elements */
+@keyframes cyber-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px var(--fl4sh-glow-primary),
+                0 0 20px var(--fl4sh-glow-primary);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--fl4sh-glow-primary),
+                0 0 30px var(--fl4sh-glow-primary),
+                0 0 45px var(--fl4sh-glow-primary);
+  }
+}
+
+/* Hard neon glow flicker */
+@keyframes cyber-glow {
+  0%, 100% {
+    filter: brightness(1) drop-shadow(0 0 8px var(--fl4sh-glow-primary));
+  }
+  50% {
+    filter: brightness(1.2) drop-shadow(0 0 16px var(--fl4sh-glow-primary));
+  }
+}
+
+/* Digital shimmer sweep */
+@keyframes cyber-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* CRT scanline effect */
+@keyframes cyber-scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+/* Glitch effect for special moments */
+@keyframes cyber-glitch {
+  0%, 90%, 100% {
+    transform: translate(0);
+    filter: none;
+  }
+  92% {
+    transform: translate(-2px, 1px);
+    filter: hue-rotate(90deg);
+  }
+  94% {
+    transform: translate(2px, -1px);
+    filter: hue-rotate(-90deg);
+  }
+  96% {
+    transform: translate(-1px, -1px);
+    filter: hue-rotate(45deg);
+  }
+  98% {
+    transform: translate(1px, 2px);
+    filter: hue-rotate(-45deg);
+  }
+}
+
+/* Cyber utility classes */
+.cyber-scanlines {
+  position: relative;
+}
+.cyber-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  animation: cyber-scanline 3s linear infinite;
+}
+
+.cyber-border-glow {
+  position: relative;
+}
+.cyber-border-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(45deg, var(--fl4sh-primary), var(--fl4sh-secondary), var(--fl4sh-primary));
+  border-radius: inherit;
+  z-index: -1;
+  filter: blur(4px);
+  opacity: 0.6;
+}
+
+/* ============================================================================
+   PULSE THEME ANIMATIONS (1,000 XP - Organic, Warm, Breathing)
+   ============================================================================ */
+
+/* Gentle breathing scale animation */
+@keyframes pulse-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.95;
+  }
+}
+
+/* Heartbeat-like glow pulse */
+@keyframes pulse-heartbeat {
+  0%, 100% {
+    box-shadow: 0 0 15px var(--fl4sh-glow-primary);
+  }
+  14% {
+    box-shadow: 0 0 25px var(--fl4sh-glow-primary),
+                0 0 40px var(--fl4sh-glow-secondary);
+  }
+  28% {
+    box-shadow: 0 0 15px var(--fl4sh-glow-primary);
+  }
+  42% {
+    box-shadow: 0 0 30px var(--fl4sh-glow-primary),
+                0 0 50px var(--fl4sh-glow-secondary);
+  }
+}
+
+/* Ember glow pulsation */
+@keyframes pulse-ember {
+  0%, 100% {
+    filter: brightness(1) saturate(1);
+    box-shadow: 0 0 20px var(--fl4sh-glow-primary);
+  }
+  50% {
+    filter: brightness(1.1) saturate(1.2);
+    box-shadow: 0 0 35px var(--fl4sh-glow-primary),
+                0 0 60px var(--fl4sh-glow-secondary);
+  }
+}
+
+/* Warm shimmer */
+@keyframes pulse-shimmer {
+  0%, 100% {
+    background-position: -200% center;
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Gentle float */
+@keyframes pulse-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Ripple effect for interactions */
+@keyframes pulse-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Pulse utility classes */
+.pulse-breathing {
+  animation: pulse-breathe 3s ease-in-out infinite;
+}
+
+.pulse-card {
+  position: relative;
+  overflow: hidden;
+}
+.pulse-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    var(--fl4sh-glow-primary) 0%,
+    transparent 70%
+  );
+  opacity: 0.15;
+  animation: pulse-ember 3s ease-in-out infinite;
+}
+
+/* ============================================================================
+   AURORA THEME ANIMATIONS (20,000 XP - Ethereal, Flowing, Transcendent)
+   ============================================================================ */
+
+/* Multi-color wave flowing */
+@keyframes aurora-wave {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Iridescent shimmer */
+@keyframes aurora-shimmer {
+  0%, 100% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  33% {
+    filter: hue-rotate(15deg) brightness(1.1);
+  }
+  66% {
+    filter: hue-rotate(-15deg) brightness(1.05);
+  }
+}
+
+/* Continuous flowing gradient */
+@keyframes aurora-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 200%;
+  }
+}
+
+/* Gentle floating drift */
+@keyframes aurora-drift {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-4px) rotate(0.5deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-4px) rotate(-0.5deg);
+  }
+}
+
+/* Northern lights background effect */
+@keyframes aurora-lights {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%;
+    opacity: 0.6;
+  }
+  25% {
+    background-position: 50% 25%, 50% 75%;
+    opacity: 0.8;
+  }
+  50% {
+    background-position: 100% 50%, 0% 50%;
+    opacity: 0.7;
+  }
+  75% {
+    background-position: 50% 75%, 50% 25%;
+    opacity: 0.9;
+  }
+}
+
+/* Particle field effect */
+@keyframes aurora-particles {
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Color shift for text/borders */
+@keyframes aurora-color-shift {
+  0%, 100% {
+    color: #22D3EE;
+    border-color: rgba(34, 211, 238, 0.3);
+  }
+  33% {
+    color: #A855F7;
+    border-color: rgba(168, 85, 247, 0.3);
+  }
+  66% {
+    color: #34D399;
+    border-color: rgba(52, 211, 153, 0.3);
+  }
+}
+
+/* Aurora utility classes */
+.aurora-background {
+  position: relative;
+  overflow: hidden;
+}
+.aurora-background::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: 
+    radial-gradient(ellipse at 20% 20%, rgba(34, 211, 238, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(52, 211, 153, 0.2) 0%, transparent 60%);
+  background-size: 200% 200%;
+  animation: aurora-lights 15s ease-in-out infinite;
+  filter: blur(40px);
+  z-index: 0;
+}
+
+.aurora-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 25, 50, 0.85) 0%,
+    rgba(10, 16, 32, 0.9) 100%
+  );
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.aurora-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(34, 211, 238, 0.5),
+    rgba(168, 85, 247, 0.5),
+    rgba(52, 211, 153, 0.5)
+  );
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: aurora-wave 8s ease-in-out infinite;
+  background-size: 300% 300%;
+}
+
+/* Glass morphism for aurora */
+.aurora-glass {
+  background: rgba(10, 16, 32, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+/* Shimmer text effect */
+.aurora-text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #22D3EE 0%,
+    #A855F7 25%,
+    #34D399 50%,
+    #A855F7 75%,
+    #22D3EE 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: aurora-wave 4s linear infinite;
+}
+
+/* ============================================================================
+   SINGULARITY THEME ANIMATIONS (200,000 XP - Cosmic, Reality-Bending, Ultimate)
+   ============================================================================ */
+
+/* Gravitational pulse - intense glow */
+@keyframes singularity-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 
+      0 0 30px var(--fl4sh-glow-primary),
+      0 0 60px var(--fl4sh-glow-primary),
+      inset 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    transform: scale(1.01);
+    box-shadow: 
+      0 0 50px var(--fl4sh-glow-primary),
+      0 0 100px var(--fl4sh-glow-primary),
+      0 0 150px var(--fl4sh-glow-secondary),
+      inset 0 0 30px rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* White-hot core glow */
+@keyframes singularity-glow {
+  0%, 100% {
+    filter: brightness(1) contrast(1.1);
+    text-shadow: 
+      0 0 10px var(--fl4sh-primary),
+      0 0 20px var(--fl4sh-primary),
+      0 0 40px var(--fl4sh-secondary);
+  }
+  50% {
+    filter: brightness(1.3) contrast(1.2);
+    text-shadow: 
+      0 0 15px var(--fl4sh-primary),
+      0 0 30px var(--fl4sh-primary),
+      0 0 60px var(--fl4sh-secondary),
+      0 0 80px #FFFFFF;
+  }
+}
+
+/* Gold shimmer with white-hot center */
+@keyframes singularity-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Gravitational warp - subtle distortion */
+@keyframes singularity-warp {
+  0%, 100% {
+    transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+  }
+  25% {
+    transform: perspective(1000px) rotateX(1deg) rotateY(-1deg);
+  }
+  50% {
+    transform: perspective(1000px) rotateX(-0.5deg) rotateY(0.5deg);
+  }
+  75% {
+    transform: perspective(1000px) rotateX(0.5deg) rotateY(1deg);
+  }
+}
+
+/* Black hole vortex rotation */
+@keyframes singularity-vortex {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Starfield twinkle */
+@keyframes singularity-twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Reality glitch effect */
+@keyframes singularity-reality-break {
+  0%, 95%, 100% {
+    transform: translate(0) skewX(0);
+    filter: none;
+    opacity: 1;
+  }
+  96% {
+    transform: translate(-4px, 2px) skewX(-2deg);
+    filter: hue-rotate(180deg) saturate(2);
+    opacity: 0.8;
+  }
+  97% {
+    transform: translate(4px, -2px) skewX(2deg);
+    filter: hue-rotate(-180deg) saturate(0.5);
+    opacity: 0.9;
+  }
+  98% {
+    transform: translate(-2px, -1px) skewX(1deg);
+    filter: invert(1);
+    opacity: 0.7;
+  }
+  99% {
+    transform: translate(2px, 1px) skewX(-1deg);
+    filter: hue-rotate(90deg);
+    opacity: 0.95;
+  }
+}
+
+/* Event horizon ring */
+@keyframes singularity-event-horizon {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.8;
+    box-shadow: 
+      0 0 50px var(--fl4sh-glow-primary),
+      inset 0 0 50px var(--fl4sh-glow-secondary);
+  }
+  50% {
+    transform: scale(1.05) rotate(180deg);
+    opacity: 1;
+    box-shadow: 
+      0 0 80px var(--fl4sh-glow-primary),
+      0 0 120px var(--fl4sh-glow-secondary),
+      inset 0 0 80px var(--fl4sh-glow-tertiary);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 0.8;
+    box-shadow: 
+      0 0 50px var(--fl4sh-glow-primary),
+      inset 0 0 50px var(--fl4sh-glow-secondary);
+  }
+}
+
+/* Accretion disk */
+@keyframes singularity-accretion {
+  from {
+    transform: rotate(0deg);
+    filter: hue-rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* Singularity utility classes */
+.singularity-background {
+  position: relative;
+  overflow: hidden;
+  background: #000000;
+}
+.singularity-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 30%, rgba(244, 114, 182, 0.1) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 70%, rgba(255, 255, 255, 0.05) 0%, transparent 30%);
+  animation: singularity-warp 8s ease-in-out infinite;
+}
+
+/* Starfield background */
+.singularity-starfield {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #FFFFFF, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(251, 191, 36, 0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, #FFFFFF, transparent),
+    radial-gradient(2px 2px at 130px 80px, rgba(244, 114, 182, 0.6), transparent),
+    radial-gradient(1px 1px at 160px 120px, #FFFFFF, transparent),
+    radial-gradient(1px 1px at 200px 60px, rgba(251, 191, 36, 0.7), transparent);
+  background-repeat: repeat;
+  background-size: 250px 150px;
+  animation: singularity-twinkle 3s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+/* Gold border with white-hot glow */
+.singularity-border {
+  position: relative;
+}
+.singularity-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    135deg,
+    #FBBF24 0%,
+    #FFFFFF 25%,
+    #FBBF24 50%,
+    #F472B6 75%,
+    #FBBF24 100%
+  );
+  background-size: 300% 300%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: aurora-wave 4s linear infinite;
+  filter: blur(2px);
+}
+.singularity-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  border-radius: inherit;
+}
+
+/* Vortex element (for loaders, etc) */
+.singularity-vortex {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+.singularity-vortex::before,
+.singularity-vortex::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+.singularity-vortex::before {
+  border-top-color: #FBBF24;
+  border-right-color: #FBBF24;
+  animation: singularity-vortex 2s linear infinite;
+}
+.singularity-vortex::after {
+  border-bottom-color: #F472B6;
+  border-left-color: #F472B6;
+  animation: singularity-vortex 2s linear infinite reverse;
+  inset: 10px;
+}
+
+/* Event horizon ring decoration */
+.singularity-event-horizon {
+  position: relative;
+}
+.singularity-event-horizon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 
+    0 0 30px rgba(251, 191, 36, 0.3),
+    inset 0 0 30px rgba(244, 114, 182, 0.2);
+  animation: singularity-event-horizon 8s linear infinite;
+  pointer-events: none;
+}
+
+/* Gold shimmer text - THE premium effect */
+.singularity-text {
+  background: linear-gradient(
+    90deg,
+    #FBBF24 0%,
+    #FFFFFF 20%,
+    #FBBF24 40%,
+    #F472B6 60%,
+    #FBBF24 80%,
+    #FFFFFF 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: singularity-shimmer 3s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+}
+
+/* Glass with gold tint */
+.singularity-glass {
+  background: rgba(5, 3, 10, 0.8);
+  backdrop-filter: blur(24px) saturate(200%) brightness(0.9);
+  -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(0.9);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 
+    0 0 20px rgba(251, 191, 36, 0.2),
+    inset 0 0 20px rgba(251, 191, 36, 0.05);
+}
+
+/* Reality break on hover (use sparingly) */
+.singularity-reality-break:hover {
+  animation: singularity-reality-break 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   MODERN CSS FEATURES - Use where supported
+   ============================================================================ */
+
+/* Container queries for responsive theming */
+@container (min-width: 400px) {
+  .theme-card {
+    padding: 24px;
+  }
+}
+
+/* Scroll-driven animations (Chrome 115+) */
+@supports (animation-timeline: scroll()) {
+  .scroll-fade-in {
+    animation: fade-in linear;
+    animation-timeline: view();
+    animation-range: entry 0% cover 40%;
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* View transitions (for page/screen changes) */
+@supports (view-transition-name: none) {
+  .page-transition {
+    view-transition-name: page;
+  }
+  
+  ::view-transition-old(page) {
+    animation: fade-out 0.3s ease-out;
+  }
+  
+  ::view-transition-new(page) {
+    animation: fade-in 0.3s ease-in;
+  }
+  
+  @keyframes fade-out {
+    to { opacity: 0; transform: scale(0.95); }
+  }
+}
+
+/* Relative color syntax (for dynamic variations) */
+@supports (color: oklch(from red l c h)) {
+  .dynamic-hover:hover {
+    background-color: oklch(from var(--fl4sh-primary) calc(l * 1.2) c h);
+  }
+}
+
+/* Color-mix for theme variations */
+@supports (color: color-mix(in oklch, red, blue)) {
+  .muted-primary {
+    color: color-mix(in oklch, var(--fl4sh-primary) 70%, transparent);
+  }
+}
+
+/* ============================================================================
+   REDUCED MOTION - Respect user preferences
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

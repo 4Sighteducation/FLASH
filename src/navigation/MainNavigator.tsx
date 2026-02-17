@@ -38,7 +38,6 @@ import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
-import ParentInviteFab from '../components/support/ParentInviteFab';
 import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
 import InteractiveWalkthroughScreen from '../screens/walkthrough/InteractiveWalkthroughScreen';
 
@@ -290,8 +289,7 @@ export default function MainNavigator() {
   const { tier } = useSubscription();
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
+    <Tab.Navigator
         screenOptions={({ route }: any) => ({
           tabBarIcon: ({ focused, color, size }: any) => {
             let iconName: keyof typeof Ionicons.glyphMap;
@@ -337,10 +335,6 @@ export default function MainNavigator() {
         />
         <Tab.Screen name="Profile" component={ProfileStack} />
       </Tab.Navigator>
-
-      {/* Free-only floating CTA to invite a parent/guardian */}
-      <ParentInviteFab />
-    </View>
   );
 }
 

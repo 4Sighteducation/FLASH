@@ -367,23 +367,21 @@ export default function HomeScreen({ navigation }: any) {
             }
           },
         },
-        {
-          text: 'Ask someone else to pay*',
-          onPress: () => {
-            try {
-              rootNavigate('Profile' as never, { screen: 'ProfileMain', params: { openParentInvite: true } } as never);
-            } catch {
-              try {
-                navigation.getParent?.()?.navigate?.('Profile', { screen: 'ProfileMain', params: { openParentInvite: true } });
-              } catch {
-                // ignore
-              }
-            }
-          },
-        },
       ],
       { cancelable: true }
     );
+  };
+
+  const openAskSomeoneElse = () => {
+    try {
+      rootNavigate('Profile' as never, { screen: 'ProfileMain', params: { openParentInvite: true } } as never);
+    } catch {
+      try {
+        navigation.getParent?.()?.navigate?.('Profile', { screen: 'ProfileMain', params: { openParentInvite: true } });
+      } catch {
+        // ignore
+      }
+    }
   };
 
   return (
@@ -516,7 +514,13 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={styles.launchOfferCtaText}>Get Pro for a year</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
-            <Text style={styles.trialFootnote}>*Use this to send to a parent, guardian, or generous friend.</Text>
+            <View style={styles.offerSecondaryRow}>
+              <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
+              <TouchableOpacity onPress={openAskSomeoneElse}>
+                <Text style={styles.offerSecondaryLink}>Ask someone else</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.trialFootnote}>Parent, guardian, or generous friend.</Text>
           </View>
         ) : tier === 'free' ? (
           /* Free -> Pro CTA banner */
@@ -532,6 +536,12 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={styles.launchOfferCtaText}>View plans</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
+            <View style={styles.offerSecondaryRow}>
+              <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
+              <TouchableOpacity onPress={openAskSomeoneElse}>
+                <Text style={styles.offerSecondaryLink}>Ask someone else</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : null}
 
@@ -1397,11 +1407,29 @@ const createStyles = (colors: any, themeMode: string) => StyleSheet.create({
     backgroundColor: '#00F5FF',
   },
   trialFootnote: {
-    marginTop: 8,
+    marginTop: 4,
     color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 13,
+  },
+  offerSecondaryRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  offerSecondaryHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  offerSecondaryLink: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   deleteButton: {
     padding: 8,
