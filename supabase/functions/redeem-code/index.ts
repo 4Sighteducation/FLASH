@@ -184,7 +184,7 @@ serve(async (req) => {
     await supabase.from('user_subscriptions').upsert({
       user_id: userId,
       tier: 'pro',
-      platform: 'server',
+      platform: 'web',
       expires_at: safeIsoFromMs(expiresAtMs),
       updated_at: new Date().toISOString(),
     });

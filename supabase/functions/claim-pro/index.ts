@@ -224,7 +224,7 @@ serve(async (req) => {
           user_id: userId,
           tier: 'pro',
           source: 'access_code',
-          platform: 'server',
+          platform: 'web',
           expires_at: safeIsoFromMs(expiresAtMs),
           updated_at: new Date().toISOString(),
         });
