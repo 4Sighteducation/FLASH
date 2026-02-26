@@ -107,7 +107,7 @@ CONTENT GUIDANCE:
 - Create challenging yet fair multiple choice questions
 - Provide exactly 4 COMPLETE options (NOT just single letters!)
 - Each option must be a full phrase or sentence (e.g., "Deontology", not just "D")
-- Label options as a), b), c), d)
+- Return options as plain text only (do NOT prefix with a)/b)/c)/d) or A./B./C./D.)
 - Distribute the correct answer randomly among the four positions
 - All four options should be plausible and related to ${topic}
 - DO NOT include placeholder options like "E" or single letters
@@ -249,6 +249,19 @@ CONTENT GUIDANCE:
       }
 
       if (functionArgs && functionArgs.cards && Array.isArray(functionArgs.cards)) {
+        const stripMcqLabel = (raw) => {
+          let s = typeof raw === 'string' ? raw : String(raw ?? '');
+          // Remove one or more leading labels like "a) ", "A. ", "B - ", "c: "
+          // Apply repeatedly to handle accidental double-labels.
+          for (let i = 0; i < 3; i++) {
+            const next = s.replace(/^\s*[A-Da-d]\s*[\)\.\:\-]\s*/u, '');
+            if (next === s) break;
+            s = next;
+          }
+          return s.trim();
+        };
+        const norm = (x) => String(x ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+
         // Process and return the cards
         const processedCards = functionArgs.cards.map(card => {
           const processedCard = {
@@ -279,14 +292,47 @@ CONTENT GUIDANCE:
                 .filter(Boolean)
                 .filter((s) => s !== '[object Object]');
 
-              processedCard.options = normalizedOptions.filter((s) => {
-                // Keep options that are:
-                // - More than 2 characters (exclude "E", "a)", etc.)
-                // - OR start with a letter followed by ) (like "a) Something")
-                return s.length > 2 || /^[a-d]\)/.test(s.toLowerCase());
+              // Strip any letter labels (sometimes duplicated) so UI can render its own A/B/C/D consistently.
+              let cleanedOptions = normalizedOptions
+                .map(stripMcqLabel)
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .filter((s) => s.length > 1 && s.toLowerCase() !== 'e' && s.toLowerCase() !== 'option');
+
+              // De-dupe while preserving order (by normalized text)
+              const seen = new Set();
+              cleanedOptions = cleanedOptions.filter((s) => {
+                const k = norm(s);
+                if (!k) return false;
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
               });
-              
-              processedCard.correctAnswer = typeof card.correctAnswer === 'string' ? card.correctAnswer : String(card.correctAnswer || '');
+
+              let cleanedCorrect = typeof card.correctAnswer === 'string' ? card.correctAnswer : String(card.correctAnswer || '');
+              cleanedCorrect = stripMcqLabel(cleanedCorrect);
+
+              // Ensure correct answer matches one of the options as closely as possible.
+              const correctNorm = norm(cleanedCorrect);
+              if (correctNorm) {
+                const idx = cleanedOptions.findIndex((o) => norm(o) === correctNorm);
+                if (idx >= 0) {
+                  cleanedCorrect = cleanedOptions[idx];
+                }
+              }
+
+              // Ensure exactly 4 options while trying to keep the correct answer included.
+              if (cleanedOptions.length > 4) {
+                const idx = correctNorm ? cleanedOptions.findIndex((o) => norm(o) === correctNorm) : -1;
+                if (idx >= 0 && idx >= 4) {
+                  cleanedOptions = [...cleanedOptions.slice(0, 3), cleanedOptions[idx]];
+                } else {
+                  cleanedOptions = cleanedOptions.slice(0, 4);
+                }
+              }
+
+              processedCard.options = cleanedOptions;
+              processedCard.correctAnswer = cleanedCorrect;
               processedCard.detailedAnswer = typeof card.detailedAnswer === 'string' ? card.detailedAnswer : String(card.detailedAnswer || '');
               
               // Ensure we have exactly 4 options

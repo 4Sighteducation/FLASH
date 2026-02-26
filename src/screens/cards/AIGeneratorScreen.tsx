@@ -481,6 +481,10 @@ export default function AIGeneratorScreen() {
                   color="#6366F1"
                   showDeleteButton={false}
                   variant="studyHero"
+                  allowQuestionExpand={true}
+                  questionClampLines={5}
+                  mcqOptionLines={2}
+                  optionsPopout="on"
                 />
               </View>
             </View>
