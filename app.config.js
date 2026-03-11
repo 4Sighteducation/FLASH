@@ -19,7 +19,7 @@ export default {
   expo: {
     name: "FLASH",
     slug: "flash",
-    version: "2.0.6",
+    version: "2.0.7",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -34,7 +34,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.foursighteducation.flash",
-      buildNumber: "42",
+      buildNumber: "43",
       usesAppleSignIn: true,
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -61,7 +61,7 @@ export default {
       // Prefer EAS file secret path when provided; fallback to repo-local file if present.
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       package: "com.foursighteducation.flash",
-      versionCode: 31,
+      versionCode: 32,
       // Ensure OAuth redirects can deep-link back into the app on Android.
       // We support both the canonical scheme and the legacy "flash" scheme for safety.
       intentFilters: [
