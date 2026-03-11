@@ -571,6 +571,11 @@ export default function ManageTopicScreen() {
                         card={card as any}
                         color={subjectColor || '#6366F1'}
                         showDeleteButton={false}
+                        variant="studyHero"
+                        allowQuestionExpand={true}
+                        questionClampLines={5}
+                        mcqOptionLines={2}
+                        optionsPopout="on"
                       />
                     </View>
                   </View>

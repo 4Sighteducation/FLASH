@@ -12,6 +12,8 @@ import { Audio } from 'expo-av';
 import Icon from './Icon';
 import { audioService } from '../services/audioService';
 
+let activeRecording: Audio.Recording | null = null;
+
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string) => void;
   onCancel: () => void;
@@ -28,20 +30,29 @@ export default function VoiceRecorder({
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [duration, setDuration] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isCleanedUp, setIsCleanedUp] = useState(false);
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const levelAnim = useRef(new Animated.Value(0)).current;
-  const durationInterval = useRef<NodeJS.Timeout | null>(null);
-  const meteringInterval = useRef<NodeJS.Timeout | null>(null);
+  const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const meteringInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasStartedRef = useRef(false);
+  const startupTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Start recording immediately
-    startRecording();
+    if (!hasStartedRef.current) {
+      void startRecording();
+    }
     
     return () => {
+      hasStartedRef.current = false;
+      if (startupTimeout.current) {
+        clearTimeout(startupTimeout.current);
+        startupTimeout.current = null;
+      }
       setIsCleanedUp(true);
       cleanup();
     };
@@ -57,6 +68,10 @@ export default function VoiceRecorder({
       clearInterval(meteringInterval.current);
       meteringInterval.current = null;
     }
+    if (startupTimeout.current) {
+      clearTimeout(startupTimeout.current);
+      startupTimeout.current = null;
+    }
     
     // Stop recording if still active
     try {
@@ -66,6 +81,12 @@ export default function VoiceRecorder({
           await recording.stopAndUnloadAsync();
         }
       }
+      if (activeRecording === recording) {
+        activeRecording = null;
+      }
+      setRecording(null);
+      setIsRecording(false);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error stopping recorder during cleanup:', error);
     }
@@ -102,7 +123,19 @@ export default function VoiceRecorder({
 
   const startRecording = async () => {
     try {
+      if (hasStartedRef.current || isLoading || isRecording) return;
+      hasStartedRef.current = true;
       setIsLoading(true);
+
+      if (startupTimeout.current) {
+        clearTimeout(startupTimeout.current);
+      }
+      startupTimeout.current = setTimeout(() => {
+        if (!isRecording) {
+          setIsLoading(false);
+          hasStartedRef.current = false;
+        }
+      }, 3000);
       
       // Check permissions
       const permission = await Audio.requestPermissionsAsync();
@@ -112,11 +145,28 @@ export default function VoiceRecorder({
           'Please grant microphone access to use voice answers.',
           [{ text: 'OK', onPress: onCancel }]
         );
+        setIsLoading(false);
+        hasStartedRef.current = false;
         return;
       }
 
       // Prepare audio mode
       await audioService.prepareAudioMode();
+
+      // If a previous recording exists, release it before starting a new one.
+      if (activeRecording) {
+        try {
+          const status = await activeRecording.getStatusAsync();
+          if (status.isRecording) {
+            await activeRecording.stopAndUnloadAsync();
+          } else {
+            await activeRecording.stopAndUnloadAsync();
+          }
+        } catch (err) {
+          console.log('Previous recording cleanup skipped:', err);
+        }
+        activeRecording = null;
+      }
 
       // Create and start recording
       const { recording: newRecording } = await Audio.Recording.createAsync(
@@ -126,12 +176,19 @@ export default function VoiceRecorder({
       // Check if component was cleaned up during async operations
       if (isCleanedUp) {
         await newRecording.stopAndUnloadAsync();
+        setIsLoading(false);
+        hasStartedRef.current = false;
         return;
       }
       
       setRecording(newRecording);
+      activeRecording = newRecording;
       setIsRecording(true);
       setIsLoading(false);
+      if (startupTimeout.current) {
+        clearTimeout(startupTimeout.current);
+        startupTimeout.current = null;
+      }
 
       // Start duration timer
       durationInterval.current = setInterval(() => {
@@ -162,7 +219,12 @@ export default function VoiceRecorder({
       }, 100);
     } catch (error) {
       console.error('Failed to start recording:', error);
+      hasStartedRef.current = false;
       setIsLoading(false);
+      if (startupTimeout.current) {
+        clearTimeout(startupTimeout.current);
+        startupTimeout.current = null;
+      }
       Alert.alert('Recording Error', 'Failed to start recording. Please try again.');
       onCancel();
     }
@@ -189,6 +251,9 @@ export default function VoiceRecorder({
 
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
+      if (activeRecording === recording) {
+        activeRecording = null;
+      }
       
       if (uri && !isCleanedUp) {
         onRecordingComplete(uri);
@@ -204,6 +269,7 @@ export default function VoiceRecorder({
     } finally {
       setIsRecording(false);
       setIsLoading(false);
+      setRecording(null);
     }
   };
 
@@ -218,6 +284,12 @@ export default function VoiceRecorder({
         if (uri) {
           await audioService.deleteRecording(uri);
         }
+        if (activeRecording === recording) {
+          activeRecording = null;
+        }
+        setRecording(null);
+        setIsRecording(false);
+        setIsLoading(false);
       } catch (error) {
         console.error('Error canceling recording:', error);
       }
@@ -281,23 +353,39 @@ export default function VoiceRecorder({
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.button,
-            styles.stopButton,
-            { backgroundColor: color },
-            isLoading && styles.buttonDisabled,
-          ]}
-          onPress={stopRecording}
-          disabled={isLoading || !isRecording}
-        >
-          <Ionicons name="stop" size={24} color="white" />
-          <Text style={styles.stopButtonText}>Stop</Text>
-        </TouchableOpacity>
+        {!isRecording ? (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.stopButton,
+              { backgroundColor: color },
+              isLoading && styles.buttonDisabled,
+            ]}
+            onPress={startRecording}
+            disabled={isLoading}
+          >
+            <Ionicons name="mic" size={24} color="white" />
+            <Text style={styles.stopButtonText}>{isLoading ? 'Starting…' : 'Start'}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.button,
+              styles.stopButton,
+              { backgroundColor: color },
+              isLoading && styles.buttonDisabled,
+            ]}
+            onPress={stopRecording}
+            disabled={isLoading || !isRecording}
+          >
+            <Ionicons name="stop" size={24} color="white" />
+            <Text style={styles.stopButtonText}>Stop</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading && (
-        <View style={styles.loadingOverlay}>
+        <View style={styles.loadingOverlay} pointerEvents="none">
           <Text style={styles.loadingText}>Processing...</Text>
         </View>
       )}
@@ -308,13 +396,13 @@ export default function VoiceRecorder({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 18,
   },
   title: {
     fontSize: 24,
@@ -328,7 +416,7 @@ const styles = StyleSheet.create({
   },
   visualizer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   recordingIndicator: {
     width: 80,
@@ -349,7 +437,7 @@ const styles = StyleSheet.create({
   },
   timerContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
   },
   timer: {
     fontSize: 48,

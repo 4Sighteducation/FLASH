@@ -38,9 +38,8 @@ import PaperDetailScreen from '../screens/papers/PaperDetailScreen';
 import QuestionPracticeScreen from '../screens/papers/QuestionPracticeScreen';
 import PaperCompletionScreen from '../screens/papers/PaperCompletionScreen';
 import StatisticsScreen from '../screens/main/StatisticsScreen';
-import PrioritySupportFab from '../components/support/PrioritySupportFab';
-import ParentInviteFab from '../components/support/ParentInviteFab';
 import DeleteAccountScreen from '../screens/settings/DeleteAccountScreen';
+import InteractiveWalkthroughScreen from '../screens/walkthrough/InteractiveWalkthroughScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -231,6 +230,7 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="Walkthrough" component={InteractiveWalkthroughScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen name="RedeemCode" component={RedeemCodeScreen} options={{ headerShown: false, presentation: 'modal' }} />
       <Stack.Screen
@@ -289,8 +289,7 @@ export default function MainNavigator() {
   const { tier } = useSubscription();
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
+    <Tab.Navigator
         screenOptions={({ route }: any) => ({
           tabBarIcon: ({ focused, color, size }: any) => {
             let iconName: keyof typeof Ionicons.glyphMap;
@@ -336,13 +335,6 @@ export default function MainNavigator() {
         />
         <Tab.Screen name="Profile" component={ProfileStack} />
       </Tab.Navigator>
-
-      {/* Pro-only floating button for priority support */}
-      <PrioritySupportFab />
-
-      {/* Free-only floating CTA to invite a parent/guardian */}
-      <ParentInviteFab />
-    </View>
   );
 }
 

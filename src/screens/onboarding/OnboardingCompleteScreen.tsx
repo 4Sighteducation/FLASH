@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { supabase } from '../../services/supabase';
@@ -9,13 +9,23 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function OnboardingCompleteScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const hasAutoLaunchedRef = useRef(false);
+  const [showPreWalkthrough, setShowPreWalkthrough] = useState(false);
 
   useEffect(() => {
     // Mark user as onboarded
     markUserAsOnboarded();
   }, []);
+
+  useEffect(() => {
+    const params = (route.params || {}) as { autoWalkthrough?: boolean };
+    if (!params.autoWalkthrough || hasAutoLaunchedRef.current) return;
+    hasAutoLaunchedRef.current = true;
+    setShowPreWalkthrough(true);
+  }, [route.params]);
 
   const markUserAsOnboarded = async () => {
     try {
@@ -38,10 +48,75 @@ export default function OnboardingCompleteScreen() {
     });
   };
 
+  const handleWalkthrough = () => {
+    // Jump into the main app + open the sandbox walkthrough in the Profile stack.
+    // Use nested state so React Navigation reliably lands on the modal screen.
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'Main' as never,
+          state: {
+            index: 3,
+            routes: [
+              { name: 'Home' },
+              { name: 'Study' },
+              { name: 'Papers' },
+              {
+                name: 'Profile',
+                state: {
+                  index: 1,
+                  routes: [
+                    { name: 'ProfileMain' },
+                    { name: 'Walkthrough', params: { source: 'onboarding' } },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.inner}>
+        <Modal
+          visible={showPreWalkthrough}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPreWalkthrough(false)}
+        >
+          <View style={styles.preWalkthroughOverlay}>
+            <View style={styles.preWalkthroughCard}>
+              <Text style={styles.preWalkthroughTitle}>First time here?</Text>
+              <Text style={styles.preWalkthroughBody}>
+                Take a quick tour and earn 250 XP while you learn the app. It only takes 3 minutes —
+                and you'll know exactly how to ace your revision.
+              </Text>
+              <TouchableOpacity
+                style={styles.preWalkthroughPrimary}
+                onPress={() => {
+                  setShowPreWalkthrough(false);
+                  handleWalkthrough();
+                }}
+              >
+                <Text style={styles.preWalkthroughPrimaryText}>Let's go →</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.preWalkthroughSecondary}
+                onPress={() => {
+                  setShowPreWalkthrough(false);
+                  handleGetStarted();
+                }}
+              >
+                <Text style={styles.preWalkthroughSecondaryText}>I'll figure it out myself</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -102,6 +177,9 @@ export default function OnboardingCompleteScreen() {
 
         {/* Sticky CTA (absolute pinned so it's always tappable above home indicator) */}
         <View style={[styles.stickyFooter, { paddingBottom: 12 + insets.bottom }]}>
+          <TouchableOpacity style={styles.secondaryButton} onPress={handleWalkthrough}>
+            <Text style={styles.secondaryButtonText}>Take the interactive walkthrough (demo)</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.button} onPress={handleGetStarted}>
             <Text style={styles.buttonText}>Create Your First Flashcards →</Text>
           </TouchableOpacity>
@@ -249,6 +327,71 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0a0f1e',
     letterSpacing: 0.5,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.35)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  preWalkthroughOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  preWalkthroughCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#0b1220',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  preWalkthroughTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  preWalkthroughBody: {
+    fontSize: 14,
+    color: '#94A3B8',
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  preWalkthroughPrimary: {
+    backgroundColor: '#00F5FF',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  preWalkthroughPrimaryText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0a0f1e',
+  },
+  preWalkthroughSecondary: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  preWalkthroughSecondaryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#94A3B8',
   },
   stickyFooter: {
     position: 'absolute',

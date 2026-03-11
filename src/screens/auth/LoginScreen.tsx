@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Image,
   Linking,
   Dimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -34,6 +36,7 @@ export default function LoginScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const { signIn } = useAuth();
   const { colors } = useTheme();
+  const passwordRef = useRef<TextInput>(null);
 
   // Clear any stale auth tokens on mount
   useEffect(() => {
@@ -166,12 +169,13 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={styles.content}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.content}>
           {/* Logo Section */}
           <View style={styles.logoContainer}>
             <View style={styles.logoGlow}>
@@ -209,12 +213,15 @@ export default function LoginScreen({ navigation }: any) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!loading && !socialLoading}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
               />
             </View>
 
             <View style={styles.inputContainer}>
               <View style={styles.passwordRow}>
                 <TextInput
+                  ref={passwordRef}
                   style={[styles.input, styles.passwordInput]}
                   placeholder="Password"
                   placeholderTextColor="#94A3B8"
@@ -225,6 +232,8 @@ export default function LoginScreen({ navigation }: any) {
                   }}
                   secureTextEntry={!showPassword}
                   editable={!loading && !socialLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
                 />
                 <TouchableOpacity
                   style={styles.passwordToggle}
@@ -341,9 +350,10 @@ export default function LoginScreen({ navigation }: any) {
           </View>
 
 
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

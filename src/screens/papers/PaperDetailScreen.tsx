@@ -14,6 +14,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ExamPaper {
   id: string;
@@ -33,6 +34,8 @@ export default function PaperDetailScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { stagingSubjectId, subjectName, examBoard, subjectColor } = route.params as any;
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   
   const [papers, setPapers] = useState<ExamPaper[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +158,7 @@ export default function PaperDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00F5FF" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
@@ -167,7 +170,7 @@ export default function PaperDetailScreen() {
         {/* Header */}
         <View style={styles.pageHeader}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Icon name="arrow-back" size={24} color="#00F5FF" />
+            <Icon name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>{subjectName}</Text>
@@ -263,7 +266,7 @@ export default function PaperDetailScreen() {
                             style={styles.actionButton}
                             onPress={() => openPDF(paper.question_paper_url!)}
                           >
-                            <Icon name="document-text" size={16} color="#00F5FF" />
+                            <Icon name="document-text" size={16} color={colors.primary} />
                             <Text style={styles.actionButtonText}>Question</Text>
                           </TouchableOpacity>
                         )}
@@ -272,7 +275,7 @@ export default function PaperDetailScreen() {
                             style={styles.actionButton}
                             onPress={() => openPDF(paper.mark_scheme_url!)}
                           >
-                            <Icon name="checkmark-circle" size={16} color="#10B981" />
+                            <Icon name="checkmark-circle" size={16} color={colors.success} />
                             <Text style={styles.actionButtonText}>Marks</Text>
                           </TouchableOpacity>
                         )}
@@ -281,7 +284,7 @@ export default function PaperDetailScreen() {
                             style={styles.actionButton}
                             onPress={() => openPDF(paper.examiner_report_url!)}
                           >
-                            <Icon name="stats-chart" size={16} color="#F59E0B" />
+                            <Icon name="stats-chart" size={16} color={colors.warning} />
                             <Text style={styles.actionButtonText}>Report</Text>
                           </TouchableOpacity>
                         )}
@@ -294,7 +297,7 @@ export default function PaperDetailScreen() {
                         ]}
                         onPress={() => startPractice(paper)}
                       >
-                        <Icon name="play-circle" size={20} color="#FFFFFF" />
+                        <Icon name="play-circle" size={20} color={colors.textOnPrimary} />
                         <Text style={styles.practiceButtonText}>
                           {paper.questions_extracted ? 'Practice (Ready)' : 'Practice Questions'}
                         </Text>
@@ -310,10 +313,10 @@ export default function PaperDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -331,9 +334,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.22)',
+    borderColor: colors.border,
   },
   headerTextContainer: {
     flex: 1,
@@ -341,12 +344,12 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 4,
   },
   pageSubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: colors.textSecondary,
   },
   filterScroll: {
     marginBottom: 20,
@@ -360,21 +363,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: colors.border,
   },
   filterChipActive: {
-    backgroundColor: 'rgba(0, 245, 255, 0.2)',
-    borderColor: '#00F5FF',
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.primary,
   },
   filterChipText: {
-    color: '#94A3B8',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
   filterChipTextActive: {
-    color: '#00F5FF',
+    color: colors.primary,
   },
   papersContainer: {
     paddingHorizontal: 20,
@@ -385,16 +388,16 @@ const styles = StyleSheet.create({
   yearTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#00F5FF',
+    color: colors.primary,
     marginBottom: 12,
   },
   paperCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
     position: 'relative',
   },
   paperCardReady: {
@@ -425,7 +428,7 @@ const styles = StyleSheet.create({
   paperTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 8,
   },
   paperMeta: {
@@ -440,7 +443,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tierBadgeText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -465,14 +468,14 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   actionButtonText: {
-    color: '#E2E8F0',
+    color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '500',
   },
@@ -480,7 +483,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00F5FF',
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 8,
     gap: 8,
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F59E0B',
   },
   practiceButtonText: {
-    color: '#0a0f1e',
+    color: colors.textOnPrimary,
     fontSize: 14,
     fontWeight: 'bold',
   },

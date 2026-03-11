@@ -70,6 +70,24 @@ interface FlashcardCardProps {
    * Intended for Study mode UX toggles.
    */
   voiceAnswerEnabled?: boolean;
+  /**
+   * Optional container style override for compact walkthrough layouts.
+   */
+  containerStyle?: any;
+  /**
+   * MCQ option display: limit each option to N lines on the card face.
+   * Undefined keeps the existing behaviour (no clamp) in non-study views.
+   */
+  mcqOptionLines?: number;
+  /**
+   * Options-only "pop-out" modal visibility.
+   * - 'off': never show
+   * - 'auto': show only when content is likely to truncate
+   * - 'on': always show for MCQ cards (good accessibility)
+   *
+   * Defaults to 'on' for Study MCQ, otherwise 'off' to avoid breaking changes.
+   */
+  optionsPopout?: 'off' | 'auto' | 'on';
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -127,6 +145,17 @@ const getOptionsFontSize = (options: string[], baseSize: number = 14): number =>
   return baseSize;
 };
 
+const getStudyMcqQuestionFontSize = (text: string, baseSize: number): number => {
+  const safe = text || '';
+  const length = safe.length;
+  // Study MCQ has fixed vertical real estate; be more aggressive than getDynamicFontSize.
+  if (length < 70) return baseSize;
+  if (length < 120) return Math.max(baseSize - 2, 14);
+  if (length < 180) return Math.max(baseSize - 3, 13);
+  if (length < 260) return Math.max(baseSize - 4, 12);
+  return 12;
+};
+
 // Helper function to strip exam type from subject name
 const stripExamType = (subjectName: string): string => {
   const cleaned = sanitizeTopicLabel(subjectName, { maxLength: 140 });
@@ -147,6 +176,9 @@ export default function FlashcardCard({
   allowQuestionExpand = false,
   questionClampLines = 6,
   voiceAnswerEnabled = true,
+  containerStyle,
+  mcqOptionLines,
+  optionsPopout,
 }: FlashcardCardProps) {
   const { colors, theme } = useTheme();
   const navigation = useNavigation();
@@ -159,6 +191,7 @@ export default function FlashcardCard({
   const [userAnswerCorrect, setUserAnswerCorrect] = useState<boolean | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   
   // Get box info for display
@@ -172,6 +205,7 @@ export default function FlashcardCard({
     setUserAnswerCorrect(null);
     setShowFeedback(false);
     setShowQuestionModal(false);
+    setShowOptionsModal(false);
     flipAnimation.setValue(0);
     setOrderedOptions(null);
   }, [card.id]);
@@ -334,12 +368,32 @@ export default function FlashcardCard({
 
     const allowTapFlip = interactionMode !== 'study' && (!isMultipleChoice || !!selectedOption);
     const isStudyMcq = interactionMode === 'study' && isMultipleChoice;
-    const longestOptionLen = Array.isArray(card.options)
-      ? Math.max(0, ...card.options.map(o => (o || '').length))
-      : 0;
-    const uniformOptionHeight = IS_MOBILE
-      ? (longestOptionLen > 110 ? 86 : longestOptionLen > 80 ? 78 : 70)
-      : (longestOptionLen > 110 ? 92 : longestOptionLen > 80 ? 84 : 76);
+    const optsForMeasure = Array.isArray(card.options) ? card.options.map(o => String(o ?? '')) : [];
+    const longestOptionLen = optsForMeasure.length ? Math.max(0, ...optsForMeasure.map(o => o.length)) : 0;
+    const totalOptionsLen = optsForMeasure.join('').length;
+    const popoutSetting: 'off' | 'auto' | 'on' =
+      optionsPopout ?? (isStudyMcq ? 'on' : 'off');
+    const popoutRecommended =
+      isStudyMcq &&
+      Array.isArray(card.options) &&
+      (longestOptionLen > 90 || totalOptionsLen > 320 || questionText.length > 160);
+    const popoutRecommendedGeneral =
+      isMultipleChoice &&
+      Array.isArray(card.options) &&
+      (longestOptionLen > 90 || totalOptionsLen > 320 || questionText.length > 160);
+    const shouldShowOptionsPopout =
+      popoutSetting === 'on'
+        ? (isMultipleChoice && Array.isArray(card.options))
+        : popoutSetting === 'auto'
+          ? popoutRecommendedGeneral
+          : false;
+    const studyQuestionFontSize = isStudyMcq
+      ? getStudyMcqQuestionFontSize(questionText, IS_MOBILE ? 18 : 22)
+      : questionFontSize;
+    const effectiveQuestionClampLines = isStudyMcq && hasLongContent
+      ? Math.max(4, Math.min(questionClampLines, IS_MOBILE ? 5 : questionClampLines))
+      : questionClampLines;
+    const effectiveMcqOptionLines = isStudyMcq ? (mcqOptionLines ?? 2) : mcqOptionLines;
 
     return (
       <TouchableWithoutFeedback onPress={allowTapFlip ? flipCard : undefined}>
@@ -385,9 +439,9 @@ export default function FlashcardCard({
                 style={[
                   styles.question,
                   styles.questionInBox,
-                  { fontSize: questionFontSize, lineHeight: Math.round(questionFontSize * 1.3) },
+                  { fontSize: studyQuestionFontSize, lineHeight: Math.round(studyQuestionFontSize * 1.28) },
                 ]}
-                numberOfLines={allowQuestionExpand ? questionClampLines : undefined}
+                numberOfLines={allowQuestionExpand ? effectiveQuestionClampLines : undefined}
                 ellipsizeMode={allowQuestionExpand ? 'tail' : undefined}
               >
                 {questionText || 'No question available'}
@@ -397,8 +451,27 @@ export default function FlashcardCard({
               )}
             </TouchableOpacity>
 
+            {shouldShowOptionsPopout ? (
+              <TouchableOpacity
+                style={[
+                  styles.optionsPopoutPill,
+                  popoutRecommended && styles.optionsPopoutPillRecommended,
+                ]}
+                onPress={() => setShowOptionsModal(true)}
+              >
+                <Text style={styles.optionsPopoutPillText}>
+                  {popoutRecommended ? 'View full options (recommended)' : 'View full options'}
+                </Text>
+                <Icon name="open-outline" size={18} color="rgba(0,245,255,0.95)" />
+              </TouchableOpacity>
+            ) : null}
+
             {isMultipleChoice && card.options && (
-              <View style={styles.studyOptionsContainer}>
+              <View style={[
+                styles.studyOptionsContainer,
+                !hasLongContent && { justifyContent: 'space-evenly' },
+                hasLongContent && { gap: IS_MOBILE ? 8 : 10 },
+              ]}>
                 {(orderedOptions || card.options).map((option, index) => {
                   const optionStr = String((option as any) ?? '');
                   // Check if option already has a letter prefix (e.g., "A) ", "a) ", "A. ", "a. ")
@@ -419,18 +492,23 @@ export default function FlashcardCard({
                       style={[
                         styles.optionButton,
                         styles.studyUniformOptionButton,
-                        { height: uniformOptionHeight },
+                        { minHeight: IS_MOBILE ? 56 : 62 },
+                        hasLongContent && { paddingVertical: 9, paddingHorizontal: 12 },
                         getOptionStyle(optionStr),
                       ]}
                       onPress={() => handleOptionSelect(optionStr)}
                       disabled={selectedOption !== null}
                     >
-                      <Text style={[
-                        styles.optionText,
-                        styles.optionTextStudy,
-                        { fontSize: optionFontSize, lineHeight: Math.round(optionFontSize * 1.32) },
-                        normalizeMcqOption(selectedOption) === normalizeMcqOption(optionStr) && styles.selectedOptionText,
-                      ]}>
+                      <Text
+                        numberOfLines={effectiveMcqOptionLines}
+                        ellipsizeMode="tail"
+                        style={[
+                          styles.optionText,
+                          styles.optionTextStudy,
+                          { fontSize: optionFontSize, lineHeight: Math.round(optionFontSize * 1.30) },
+                          normalizeMcqOption(selectedOption) === normalizeMcqOption(optionStr) && styles.selectedOptionText,
+                        ]}
+                      >
                         {displayText}
                       </Text>
                     </TouchableOpacity>
@@ -505,6 +583,22 @@ export default function FlashcardCard({
               </Text>
             )}
 
+            {/* Options popout (non-study MCQ, opt-in) */}
+            {isMultipleChoice && shouldShowOptionsPopout ? (
+              <TouchableOpacity
+                style={[
+                  styles.optionsPopoutPill,
+                  popoutRecommendedGeneral && styles.optionsPopoutPillRecommended,
+                ]}
+                onPress={() => setShowOptionsModal(true)}
+              >
+                <Text style={styles.optionsPopoutPillText}>
+                  {popoutRecommendedGeneral ? 'View full options (recommended)' : 'View full options'}
+                </Text>
+                <Icon name="open-outline" size={18} color="rgba(0,245,255,0.95)" />
+              </TouchableOpacity>
+            ) : null}
+
             {/* MCQ options (default layout) */}
             {isMultipleChoice && Array.isArray(card.options) && (
               <View style={[styles.optionsContainer, hasLongContent && styles.compactOptionsContainer]}>
@@ -528,11 +622,15 @@ export default function FlashcardCard({
                       onPress={() => handleOptionSelect(optionStr)}
                       disabled={selectedOption !== null}
                     >
-                      <Text style={[
-                        styles.optionText,
-                        { fontSize: optionFontSize, lineHeight: Math.round(optionFontSize * 1.38) },
-                        normalizeMcqOption(selectedOption) === normalizeMcqOption(optionStr) && styles.selectedOptionText,
-                      ]}>
+                      <Text
+                        numberOfLines={effectiveMcqOptionLines}
+                        ellipsizeMode={effectiveMcqOptionLines ? 'tail' : undefined}
+                        style={[
+                          styles.optionText,
+                          { fontSize: optionFontSize, lineHeight: Math.round(optionFontSize * 1.38) },
+                          normalizeMcqOption(selectedOption) === normalizeMcqOption(optionStr) && styles.selectedOptionText,
+                        ]}
+                      >
                         {displayText}
                       </Text>
                     </TouchableOpacity>
@@ -629,22 +727,25 @@ export default function FlashcardCard({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.backHeader}>
-              <Text style={[styles.answerLabel, { color }]}>Answer</Text>
-              {(card.detailed_answer || (card.card_type === 'short_answer' && card.key_points && card.answer)) && (
-                <TouchableOpacity
-                  style={styles.infoButton}
-                  onPress={(e: any) => {
-                    e.stopPropagation();
-                    setShowDetailedModal(true);
-                  }}
-                >
-                  <Ionicons 
-                    name="information-circle-outline"
-                    size={24} 
-                    color={color} 
-                  />
-                </TouchableOpacity>
-              )}
+              <View style={styles.answerHeaderLeft}>
+                <Text style={[styles.answerLabel, { color }]}>Answer</Text>
+                {(card.detailed_answer || (card.card_type === 'short_answer' && card.key_points && card.answer)) && (
+                  <TouchableOpacity
+                    style={styles.infoButton}
+                    onPress={(e: any) => {
+                      e.stopPropagation();
+                      setShowDetailedModal(true);
+                    }}
+                  >
+                    <Ionicons 
+                      name="information-circle"
+                      size={20} 
+                      color="#0B1220" 
+                    />
+                    <Text style={styles.infoButtonText}>Explain</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             <View style={styles.answerContent}>
@@ -750,7 +851,7 @@ export default function FlashcardCard({
 
   return (
     <>
-      <View style={[styles.container, variant === 'studyHero' && styles.containerStudyHero]}>
+      <View style={[styles.container, variant === 'studyHero' && styles.containerStudyHero, containerStyle]}>
         <Animated.View 
           style={[
             styles.card,
@@ -811,6 +912,43 @@ export default function FlashcardCard({
           </SafeAreaView>
         </Modal>
       ) : null}
+
+      {/* Options-only popout modal (Study MCQ only) */}
+      <Modal
+        visible={showOptionsModal}
+        animationType="slide"
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <SafeAreaView style={styles.optionsModalContainer}>
+          <View style={styles.optionsModalHeader}>
+            <TouchableOpacity onPress={() => setShowOptionsModal(false)} style={styles.optionsModalClose}>
+              <Icon name="close" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.optionsModalTitle}>Options</Text>
+            <View style={{ width: 40 }} />
+          </View>
+          <ScrollView
+            style={styles.optionsModalScroll}
+            contentContainerStyle={styles.optionsModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {(orderedOptions || optionsArray || []).map((opt, index) => {
+              const optionStr = String((opt as any) ?? '');
+              const letterPrefixMatch = optionStr.match(/^[A-Za-z][\)\.]\s*/);
+              const cleanOption = letterPrefixMatch
+                ? optionStr.substring(letterPrefixMatch[0].length).trim()
+                : optionStr;
+              const displayText = `${String.fromCharCode(65 + index)}. ${cleanOption}`;
+              return (
+                <View key={`opt-full-${index}`} style={styles.optionsModalOptionCard}>
+                  <Text style={styles.optionsModalOptionText}>{displayText}</Text>
+                </View>
+              );
+            })}
+            <View style={{ height: 10 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       <DetailedAnswerModal
         visible={showDetailedModal}
@@ -939,7 +1077,7 @@ const styles = StyleSheet.create({
   },
   studyOptionsContainer: {
     flex: 1,
-    justifyContent: 'space-evenly',
+    justifyContent: 'flex-start',
     gap: IS_MOBILE ? 10 : 12,
     paddingBottom: 10,
   },
@@ -950,6 +1088,29 @@ const styles = StyleSheet.create({
   },
   optionTextStudy: {
     flexShrink: 1,
+  },
+  optionsPopoutPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.30)',
+    backgroundColor: 'rgba(0,245,255,0.08)',
+    marginBottom: 10,
+  },
+  optionsPopoutPillRecommended: {
+    borderColor: 'rgba(255,0,110,0.40)',
+    backgroundColor: 'rgba(255,0,110,0.10)',
+  },
+  optionsPopoutPillText: {
+    color: 'rgba(0,245,255,0.95)',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
   compactOptionsContainer: {
     marginTop: 4,
@@ -1014,13 +1175,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  answerHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   answerLabel: {
     fontSize: 14,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   infoButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#39FF14',
+  },
+  infoButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0B1220',
+    textTransform: 'uppercase',
   },
   answerContainer: {
     marginBottom: 16,
@@ -1329,6 +1507,48 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     lineHeight: 28,
+    fontWeight: '700',
+  },
+  optionsModalContainer: {
+    flex: 1,
+    backgroundColor: '#0a0f1e',
+  },
+  optionsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  optionsModalClose: {
+    padding: 8,
+  },
+  optionsModalTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  optionsModalScroll: {
+    flex: 1,
+  },
+  optionsModalContent: {
+    padding: 18,
+    gap: 10,
+  },
+  optionsModalOptionCard: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.25)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  optionsModalOptionText: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    lineHeight: 26,
     fontWeight: '700',
   },
   createdDate: {

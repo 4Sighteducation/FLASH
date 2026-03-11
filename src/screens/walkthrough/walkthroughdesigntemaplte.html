@@ -1,0 +1,486 @@
+import React, { useState } from 'react';
+
+const WalkthroughCardTemplate = () => {
+  const [currentCard, setCurrentCard] = useState(0);
+  const [xpEarned, setXpEarned] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+
+  const cards = [
+    {
+      id: '1a',
+      title: 'Find exactly what you need',
+      body: "Type any topic and we'll find the perfect flashcards for you. Let's try it — search for \"photosynthesis\".",
+      type: 'search-input',
+      xp: 5,
+      xpMessage: 'Nice one! 🔍'
+    },
+    {
+      id: '1b',
+      title: 'Smarter than keyword search',
+      body: "FL4SH understands what you mean, not just what you type. Search \"plant energy\" and you'll still find photosynthesis. It's like having a study buddy who actually gets it.",
+      type: 'action-button',
+      buttonText: 'Search to continue',
+      xp: 10,
+      xpMessage: "You've unlocked Topic Discovery! 🎯"
+    },
+    {
+      id: '1c',
+      title: 'Prefer to browse?',
+      body: "Tap the menu icon to see every topic for your subject and exam board, neatly organised. Sometimes it's easier to explore than search.",
+      type: 'icon-tap',
+      xp: 5,
+      xpMessage: 'Now you know both ways! 📚'
+    }
+  ];
+
+  const handleAction = () => {
+    setXpEarned(true);
+    setTimeout(() => {
+      setXpEarned(false);
+      if (currentCard < cards.length - 1) {
+        setCurrentCard(currentCard + 1);
+        setSearchValue('');
+      }
+    }, 1500);
+  };
+
+  const card = cards[currentCard];
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #0a0a0f 0%, #12121a 50%, #0a0a0f 100%)',
+      padding: '40px 20px',
+      fontFamily: "'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '40px'
+    }}>
+      
+      {/* Header */}
+      <div style={{ textAlign: 'center' }}>
+        <h1 style={{
+          fontSize: '28px',
+          fontWeight: '700',
+          color: '#ffffff',
+          margin: '0 0 8px 0',
+          letterSpacing: '-0.5px'
+        }}>
+          Walkthrough Card Templates
+        </h1>
+        <p style={{
+          fontSize: '14px',
+          color: 'rgba(255,255,255,0.5)',
+          margin: 0
+        }}>
+          FL4SH Interactive Onboarding Design
+        </p>
+      </div>
+
+      {/* Phone Frame */}
+      <div style={{
+        width: '320px',
+        background: '#1a1a24',
+        borderRadius: '40px',
+        padding: '12px',
+        boxShadow: '0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)'
+      }}>
+        {/* Screen */}
+        <div style={{
+          background: 'linear-gradient(180deg, #12121a 0%, #0a0a0f 100%)',
+          borderRadius: '32px',
+          minHeight: '580px',
+          padding: '20px',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          
+          {/* Notch */}
+          <div style={{
+            width: '120px',
+            height: '28px',
+            background: '#000',
+            borderRadius: '20px',
+            position: 'absolute',
+            top: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)'
+          }} />
+
+          {/* Content Area */}
+          <div style={{ marginTop: '50px' }}>
+            
+            {/* Walkthrough Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '24px'
+            }}>
+              <div>
+                <h2 style={{
+                  fontSize: '22px',
+                  fontWeight: '700',
+                  fontStyle: 'italic',
+                  color: '#ffffff',
+                  margin: '0 0 4px 0'
+                }}>
+                  Interactive walkthrough
+                </h2>
+                <p style={{
+                  fontSize: '12px',
+                  color: 'rgba(255,255,255,0.5)',
+                  margin: 0
+                }}>
+                  This is a safe demo. It won't change your real cards or progress.
+                </p>
+              </div>
+              <button style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                color: 'rgba(255,255,255,0.6)',
+                fontSize: '16px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Card Container */}
+            <div style={{
+              background: 'rgba(0, 210, 211, 0.08)',
+              border: '1.5px solid rgba(0, 210, 211, 0.4)',
+              borderRadius: '16px',
+              padding: '20px',
+              position: 'relative',
+              boxShadow: '0 0 30px rgba(0, 210, 211, 0.1), inset 0 1px 0 rgba(255,255,255,0.05)'
+            }}>
+              
+              {/* Glowing corner accent */}
+              <div style={{
+                position: 'absolute',
+                top: '-1px',
+                left: '20px',
+                width: '60px',
+                height: '3px',
+                background: 'linear-gradient(90deg, transparent, #00d2d3, transparent)',
+                borderRadius: '2px'
+              }} />
+
+              {/* Card Title */}
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '700',
+                color: '#ffffff',
+                margin: '0 0 12px 0'
+              }}>
+                {card.title}
+              </h3>
+
+              {/* Card Body */}
+              <p style={{
+                fontSize: '14px',
+                lineHeight: '1.5',
+                color: 'rgba(255,255,255,0.75)',
+                margin: '0 0 20px 0'
+              }}>
+                {card.body}
+              </p>
+
+              {/* Interactive Element */}
+              {card.type === 'search-input' && (
+                <div style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '16px' }}>🔍</span>
+                  <input
+                    type="text"
+                    placeholder="photosynthesis"
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchValue.toLowerCase().includes('photo') && handleAction()}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: '#ffffff',
+                      fontSize: '15px',
+                      flex: 1,
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                  {searchValue && (
+                    <button 
+                      onClick={() => searchValue.toLowerCase().includes('photo') && handleAction()}
+                      style={{
+                        background: '#ff4757',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Go
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {card.type === 'action-button' && (
+                <button
+                  onClick={handleAction}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    background: 'linear-gradient(135deg, #00d2d3 0%, #00b894 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: '#0a0a0f',
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 20px rgba(0, 210, 211, 0.3)',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                >
+                  {card.buttonText}
+                </button>
+              )}
+
+              {card.type === 'icon-tap' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <button
+                    onClick={handleAction}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '2px solid #00d2d3',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 0 20px rgba(0, 210, 211, 0.2)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ width: '18px', height: '2px', background: '#00d2d3', borderRadius: '1px' }} />
+                      <div style={{ width: '18px', height: '2px', background: '#00d2d3', borderRadius: '1px' }} />
+                      <div style={{ width: '18px', height: '2px', background: '#00d2d3', borderRadius: '1px' }} />
+                    </div>
+                  </button>
+                  <span style={{
+                    fontSize: '13px',
+                    color: 'rgba(255,255,255,0.5)'
+                  }}>
+                    ← Tap the menu
+                  </span>
+                </div>
+              )}
+
+              {/* XP Earned Popup */}
+              {xpEarned && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-60px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(135deg, #00d2d3 0%, #00b894 100%)',
+                  borderRadius: '12px',
+                  padding: '12px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 8px 30px rgba(0, 210, 211, 0.4)',
+                  animation: 'popIn 0.3s ease-out'
+                }}>
+                  <span style={{
+                    fontSize: '16px',
+                    fontWeight: '800',
+                    color: '#0a0a0f'
+                  }}>
+                    +{card.xp} XP
+                  </span>
+                  <span style={{
+                    fontSize: '14px',
+                    color: '#0a0a0f',
+                    fontWeight: '500'
+                  }}>
+                    {card.xpMessage}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Progress Dots */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '8px',
+              marginTop: '24px'
+            }}>
+              {cards.map((_, index) => (
+                <div
+                  key={index}
+                  style={{
+                    width: index === currentCard ? '24px' : '8px',
+                    height: '8px',
+                    borderRadius: '4px',
+                    background: index === currentCard 
+                      ? 'linear-gradient(90deg, #00d2d3, #00b894)'
+                      : index < currentCard 
+                        ? '#00d2d3'
+                        : 'rgba(255,255,255,0.2)',
+                    transition: 'all 0.3s ease'
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Card Counter */}
+            <p style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: 'rgba(255,255,255,0.4)',
+              marginTop: '12px'
+            }}>
+              Card {currentCard + 1} of {cards.length}
+            </p>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Design Specs Panel */}
+      <div style={{
+        maxWidth: '600px',
+        width: '100%',
+        background: 'rgba(255,255,255,0.03)',
+        borderRadius: '16px',
+        padding: '24px',
+        border: '1px solid rgba(255,255,255,0.08)'
+      }}>
+        <h3 style={{
+          fontSize: '16px',
+          fontWeight: '700',
+          color: '#00d2d3',
+          margin: '0 0 16px 0',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}>
+          Design Specifications
+        </h3>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '16px'
+        }}>
+          <SpecItem label="Background" value="#0a0a0f → #12121a" />
+          <SpecItem label="Card Border" value="rgba(0, 210, 211, 0.4)" />
+          <SpecItem label="Card Background" value="rgba(0, 210, 211, 0.08)" />
+          <SpecItem label="Primary Accent" value="#00d2d3 (Cyan)" />
+          <SpecItem label="Secondary Accent" value="#00b894 (Teal)" />
+          <SpecItem label="CTA Button" value="#ff4757 (Coral Red)" />
+          <SpecItem label="Text Primary" value="#ffffff" />
+          <SpecItem label="Text Secondary" value="rgba(255,255,255,0.75)" />
+          <SpecItem label="Text Muted" value="rgba(255,255,255,0.5)" />
+          <SpecItem label="Border Radius (Card)" value="16px" />
+          <SpecItem label="Border Radius (Button)" value="12px" />
+          <SpecItem label="XP Popup" value="Gradient cyan with shadow" />
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button
+          onClick={() => setCurrentCard(Math.max(0, currentCard - 1))}
+          disabled={currentCard === 0}
+          style={{
+            padding: '12px 24px',
+            background: currentCard === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '10px',
+            color: currentCard === 0 ? 'rgba(255,255,255,0.3)' : '#fff',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: currentCard === 0 ? 'not-allowed' : 'pointer'
+          }}
+        >
+          ← Previous
+        </button>
+        <button
+          onClick={() => setCurrentCard(Math.min(cards.length - 1, currentCard + 1))}
+          disabled={currentCard === cards.length - 1}
+          style={{
+            padding: '12px 24px',
+            background: currentCard === cards.length - 1 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #00d2d3 0%, #00b894 100%)',
+            border: 'none',
+            borderRadius: '10px',
+            color: currentCard === cards.length - 1 ? 'rgba(255,255,255,0.3)' : '#0a0a0f',
+            fontSize: '14px',
+            fontWeight: '700',
+            cursor: currentCard === cards.length - 1 ? 'not-allowed' : 'pointer'
+          }}
+        >
+          Next →
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes popIn {
+          0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+          100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const SpecItem = ({ label, value }) => (
+  <div style={{
+    padding: '12px',
+    background: 'rgba(0,0,0,0.3)',
+    borderRadius: '8px'
+  }}>
+    <div style={{
+      fontSize: '11px',
+      color: 'rgba(255,255,255,0.4)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      marginBottom: '4px'
+    }}>
+      {label}
+    </div>
+    <div style={{
+      fontSize: '13px',
+      color: '#ffffff',
+      fontFamily: 'monospace'
+    }}>
+      {value}
+    </div>
+  </div>
+);
+
+export default WalkthroughCardTemplate;

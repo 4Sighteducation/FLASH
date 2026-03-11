@@ -19,6 +19,7 @@ import QualityTierInfo from '../../components/QualityTierInfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 
 interface UserSubject {
@@ -51,6 +52,8 @@ const adjustColor = (color: string, amount: number): string => {
 export default function PastPapersLibraryScreen({ navigation }: any) {
   const { user } = useAuth();
   const { tier } = useSubscription();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [subjects, setSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -316,7 +319,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00F5FF" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading past papers...</Text>
         </View>
       </SafeAreaView>
@@ -328,7 +331,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <LinearGradient
-          colors={['#1a1a2e', '#0f0f1e']}
+          colors={[colors.backgroundAlt || colors.surface, colors.background]}
           style={styles.header}
         >
           <View style={styles.headerContent}>
@@ -342,7 +345,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
               style={styles.helpButton}
               onPress={() => setShowTutorial(true)}
             >
-              <Icon name="help-circle" size={28} color="#6366F1" />
+              <Icon name="help-circle" size={28} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -352,14 +355,14 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           style={styles.infoCard}
           onPress={() => setShowQualityInfo(true)}
         >
-          <Icon name="information-circle" size={20} color="#00F5FF" />
+          <Icon name="information-circle" size={20} color={colors.primary} />
           <View style={styles.infoText}>
             <Text style={styles.infoTitle}>Quality Tiers</Text>
             <Text style={styles.infoDescription}>
               ✅ Verified • ⭐ Official • 🤖 AI-Assisted
             </Text>
           </View>
-          <Icon name="chevron-forward" size={20} color="#00F5FF" />
+          <Icon name="chevron-forward" size={20} color={colors.primary} />
         </TouchableOpacity>
 
         {/* Subjects with Papers */}
@@ -438,7 +441,7 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Icon name="document-outline" size={64} color="#666" />
+            <Icon name="document-outline" size={64} color={colors.textMuted} />
             <Text style={styles.emptyText}>No past papers available</Text>
             <Text style={styles.emptySubtext}>
               Add subjects that have past papers available
@@ -462,10 +465,10 @@ export default function PastPapersLibraryScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: 20,
@@ -476,7 +479,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 16,
     fontSize: 16,
   },
@@ -496,18 +499,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#94A3B8',
+    color: colors.textSecondary,
   },
   infoCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 20,
@@ -521,17 +524,17 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00F5FF',
+    color: colors.primary,
     marginBottom: 4,
   },
   infoDescription: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textSecondary,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 16,
     paddingHorizontal: 20,
   },
@@ -614,13 +617,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 20,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     paddingHorizontal: 40,
   },

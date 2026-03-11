@@ -228,6 +228,16 @@ export default function SubjectSelectionScreen() {
       });
       if (ensureError) {
         console.warn('[Onboarding] ensure_user_profile failed:', ensureError);
+        if (String((ensureError as any).code) === '23505') {
+          const { error: retryError } = await supabase.rpc('ensure_user_profile', {
+            p_user_id: user.id,
+            p_email: user.email,
+            p_username: null,
+          });
+          if (retryError) {
+            console.warn('[Onboarding] ensure_user_profile retry failed:', retryError);
+          }
+        }
       }
 
       // Update user's exam type
@@ -238,18 +248,46 @@ export default function SubjectSelectionScreen() {
 
       if (userError) throw userError;
 
-      // Save selected subjects
-      const subjectsToInsert = selectedSubjects.map(s => ({
+      // Save selected subjects (safe for environments missing the unique constraint)
+      const subjectsToInsert = selectedSubjects.map((s) => ({
         user_id: user?.id,
         subject_id: s.subjectId,
         exam_board: s.examBoard,
       }));
 
-      const { error: subjectsError } = await supabase
-        .from('user_subjects')
-        .insert(subjectsToInsert);
+      let existingSubjectIds = new Set<string>();
+      if (subjectsToInsert.length > 0) {
+        const { data: existingRows, error: existingError } = await supabase
+          .from('user_subjects')
+          .select('subject_id')
+          .eq('user_id', user?.id)
+          .in(
+            'subject_id',
+            subjectsToInsert.map((s) => s.subject_id)
+          );
 
-      if (subjectsError) throw subjectsError;
+        if (existingError) {
+          throw existingError;
+        }
+
+        existingSubjectIds = new Set(
+          (existingRows || []).map((row: any) => String(row.subject_id))
+        );
+      }
+
+      const missingSubjects = subjectsToInsert.filter(
+        (s) => !existingSubjectIds.has(String(s.subject_id))
+      );
+
+      if (missingSubjects.length > 0) {
+        const { error: insertError } = await supabase
+          .from('user_subjects')
+          .insert(missingSubjects);
+
+        if (insertError && insertError.status !== 409 && insertError.code !== '23505') {
+          throw insertError;
+        }
+      }
 
       // If adding subjects after onboarding, skip topic curation
       if (isAddingSubjects) {
@@ -508,6 +546,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 180, // Space for sticky footer
     paddingTop: 16,
+    ...(Platform.OS === 'web'
+      ? {
+          width: '100%',
+          maxWidth: 1200,
+          alignSelf: 'center',
+          paddingHorizontal: 40,
+        }
+      : null),
   },
   backButton: {
     marginBottom: 24,

@@ -56,7 +56,8 @@ interface StudyCard {
 
 export default function StudyScreen({ route, navigation }: any) {
   const { user } = useAuth();
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [loading, setLoading] = useState(true);
   const [boxStats, setBoxStats] = useState<BoxStats>({
     box1: 0,
@@ -319,30 +320,30 @@ export default function StudyScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6366F1" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, theme === 'cyber' && { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={theme === 'cyber' ? colors.gradient : ['#1a1f3a', '#2d3561']}
+        colors={colors.gradient}
         style={styles.gradientBackground}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header - Simplified */}
           <View style={styles.header}>
             <View style={styles.headerTitleContainer}>
-              <Icon name="school" size={28} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+              <Icon name="school" size={28} color={colors.primary} />
               <Text style={styles.headerTitle}>Study Hub</Text>
             </View>
             <TouchableOpacity 
               style={styles.helpButton}
               onPress={() => setShowWizard(true)}
             >
-              <Icon name="help-circle-outline" size={24} color="#00D4FF" />
+              <Icon name="help-circle-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
 
@@ -439,13 +440,13 @@ export default function StudyScreen({ route, navigation }: any) {
               onPress={() => setShowAccordion(!showAccordion)}
             >
               <View style={styles.optionsHeaderLeft}>
-                <Icon name="list" size={24} color={theme === 'cyber' ? colors.primary : "#00D4FF"} />
+                <Icon name="list" size={24} color={colors.primary} />
                 <Text style={styles.optionsTitle}>Study by Subject or Topic</Text>
               </View>
               <Icon 
                 name={showAccordion ? "chevron-up" : "chevron-down"} 
                 size={24} 
-                color={theme === 'cyber' ? colors.textSecondary : "#999"} 
+                color={colors.textSecondary}
               />
             </TouchableOpacity>
             
@@ -563,10 +564,10 @@ export default function StudyScreen({ route, navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1f3a',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -578,9 +579,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: colors.border,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -590,12 +591,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   helpButton: {
     padding: 8,
-    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    backgroundColor: colors.surface,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   
   // HERO SECTION - Daily Review CTA
@@ -607,7 +610,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -641,7 +644,7 @@ const styles = StyleSheet.create({
   heroButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 30,
@@ -655,34 +658,34 @@ const styles = StyleSheet.create({
   heroButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FF6B6B',
+    color: colors.primary,
     letterSpacing: 1,
   },
   
   // All Caught Up State
   heroDoneCard: {
-    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(76, 175, 80, 0.3)',
+    borderColor: colors.border,
   },
   heroDoneTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
+    color: colors.success,
     marginTop: 16,
   },
   heroDoneText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
   },
   heroDoneHint: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textMuted,
     marginTop: 12,
   },
   
@@ -691,11 +694,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 20,
     marginBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'space-around',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   quickStatItem: {
     alignItems: 'center',
@@ -703,20 +708,20 @@ const styles = StyleSheet.create({
   quickStatValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#00D4FF',
+    color: colors.primary,
   },
   quickStatLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   quickStatDivider: {
     width: 1,
     height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.borderSubtle,
   },
   dueStatValue: {
-    color: '#FF6B6B',
+    color: colors.error,
   },
   
   // Learning Journey
@@ -727,12 +732,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 16,
   },
   journeyBar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 12,
     justifyContent: 'space-between',
@@ -745,7 +750,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   journeyStepActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surfaceElevated,
     opacity: 1,
   },
   journeyEmoji: {
@@ -755,17 +760,17 @@ const styles = StyleSheet.create({
   journeyCount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 4,
   },
   journeyLabel: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   journeyHint: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textMuted,
     textAlign: 'center',
     marginTop: 12,
   },
@@ -774,9 +779,11 @@ const styles = StyleSheet.create({
   optionsSection: {
     margin: 20,
     marginBottom: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   optionsHeader: {
     flexDirection: 'row',
@@ -792,7 +799,7 @@ const styles = StyleSheet.create({
   optionsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   
   // Box List - Compact
@@ -803,10 +810,12 @@ const styles = StyleSheet.create({
   boxListCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     marginBottom: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   boxListIndicator: {
     width: 4,
@@ -828,22 +837,22 @@ const styles = StyleSheet.create({
   boxListName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   boxListCount: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#00D4FF',
+    color: colors.primary,
   },
   boxListInterval: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textSecondary,
   },
   
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -851,9 +860,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: colors.border,
   },
   modalCloseButton: {
     padding: 4,
@@ -861,10 +870,10 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   
   gradientBackground: {
     flex: 1,
   },
-}); 
+});

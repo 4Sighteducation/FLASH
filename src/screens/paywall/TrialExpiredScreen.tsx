@@ -35,6 +35,18 @@ export default function TrialExpiredScreen({ navigation }: any) {
     navigateToPaywall(undefined, { source: 'trial_expired_modal' });
   };
 
+  const onAskSomeoneElse = () => {
+    // Close this modal, then open the "ask someone else to pay" flow.
+    dismiss();
+    setTimeout(() => {
+      try {
+        rootNavigate('Profile' as never, { screen: 'ProfileMain', params: { openParentInvite: true } } as never);
+      } catch {
+        // ignore
+      }
+    }, 80);
+  };
+
   const onContinueFree = () => {
     Alert.alert(
       'Switch to Free (and reset)?',
@@ -54,7 +66,7 @@ export default function TrialExpiredScreen({ navigation }: any) {
               if (!token) throw new Error('Missing session');
 
               const { data, error } = await supabase.functions.invoke('process-trial-expiry', {
-                body: {},
+                body: { force: true },
                 headers: { Authorization: `Bearer ${token}` },
               } as any);
               if (error) throw error;
@@ -87,6 +99,11 @@ export default function TrialExpiredScreen({ navigation }: any) {
         <TouchableOpacity style={styles.primaryBtn} onPress={onKeepPro} disabled={busy}>
           <Text style={styles.primaryBtnText}>Keep Pro</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryBtn} onPress={onAskSomeoneElse} disabled={busy}>
+          <Text style={styles.secondaryBtnText}>Ask someone else to pay*</Text>
+        </TouchableOpacity>
+        <Text style={styles.note}>*Use this to send to a parent, guardian, or generous friend. If your free month has ended, you’ll get a 7-day grace window for them to pay.</Text>
 
         <TouchableOpacity style={styles.secondaryBtn} onPress={onContinueFree} disabled={busy}>
           {busy ? <ActivityIndicator color={colors.text} /> : <Text style={styles.secondaryBtnText}>Continue on Free</Text>}
@@ -140,5 +157,6 @@ const createStyles = (colors: any) =>
       borderColor: 'rgba(255,255,255,0.12)',
     },
     secondaryBtnText: { color: colors.text, fontWeight: '900' },
+    note: { marginTop: 8, color: colors.textSecondary, fontSize: 11, lineHeight: 15, fontWeight: '700' },
   });
 

@@ -18,10 +18,13 @@ import { supabase } from '../../services/supabase';
 import Icon from '../../components/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TOPIC_PRIORITY_LEVELS } from '../../constants/topicPriorities';
+import { navigate } from '../../navigation/RootNavigation';
 
 // Priority levels are shared across the app:
 // 1 = highest priority, 4 = lowest priority.
 const PRIORITY_LEVELS = TOPIC_PRIORITY_LEVELS;
+// Enabled by default in production; can be disabled explicitly with EXPO_PUBLIC_ENABLE_PRINT_CARDS=false.
+const PRINT_CARDS_ENABLED = process.env.EXPO_PUBLIC_ENABLE_PRINT_CARDS !== 'false';
 
 interface TopicNode {
   id: string;
@@ -47,7 +50,8 @@ interface SubjectData {
 export default function ManageAllCardsScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { colors, theme } = useTheme();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const [loading, setLoading] = useState(true);
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
@@ -307,6 +311,23 @@ export default function ManageAllCardsScreen() {
     } as never);
   };
 
+  const collectTopicIdsWithCards = (node: TopicNode, out: string[] = []) => {
+    if (node.cardCount > 0) out.push(node.id);
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((c) => collectTopicIdsWithCards(c, out));
+    }
+    return out;
+  };
+
+  const openPrintModal = (title: string, topicIds: string[]) => {
+    if (!PRINT_CARDS_ENABLED) return;
+    if (!topicIds || topicIds.length === 0) {
+      Alert.alert('No cards found', 'There are no cards in this selection yet.');
+      return;
+    }
+    navigate('PrintCardsModal' as never, { title, topicIds } as never);
+  };
+
   const renderTopicNode = (node: TopicNode, subject: SubjectData, depth: number = 0): React.ReactNode => {
     const isExpanded = expandedNodes.has(node.id);
     const hasChildren = node.children.length > 0;
@@ -379,6 +400,19 @@ export default function ManageAllCardsScreen() {
               </Text>
             </TouchableOpacity>
 
+            {PRINT_CARDS_ENABLED && node.hasCards ? (
+              <TouchableOpacity
+                style={styles.printButton}
+                onPress={() => {
+                  const topicIds = collectTopicIdsWithCards(node, []);
+                  const title = `${subject.subjectName} • ${node.name}`;
+                  openPrintModal(title, topicIds);
+                }}
+              >
+                <Icon name="print-outline" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ) : null}
+
             {/* Card count or Add button */}
             {node.cardCount > 0 ? (
               <TouchableOpacity
@@ -395,7 +429,7 @@ export default function ManageAllCardsScreen() {
                 }}
               >
                 <Text style={styles.cardBadgeText}>{node.cardCount}</Text>
-                <Icon name="chevron-forward" size={16} color="#FFFFFF" />
+                <Icon name="chevron-forward" size={16} color={colors.textOnPrimary} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -448,7 +482,7 @@ export default function ManageAllCardsScreen() {
             style={[styles.createButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('CardSubjectSelector' as never)}
           >
-            <Icon name="add-circle" size={20} color="#FFFFFF" />
+            <Icon name="add-circle" size={20} color={colors.textOnPrimary} />
             <Text style={styles.createButtonText}>Create Cards</Text>
           </TouchableOpacity>
         </View>
@@ -535,8 +569,22 @@ export default function ManageAllCardsScreen() {
                       <Text style={styles.subjectMeta}>{subject.examBoard}</Text>
                     </View>
                   </View>
-                  <View style={styles.subjectBadge}>
-                    <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
+                  <View style={styles.subjectHeaderRight}>
+                    {PRINT_CARDS_ENABLED && subject.totalCards > 0 ? (
+                      <TouchableOpacity
+                        style={styles.subjectPrintButton}
+                        onPress={() => {
+                          const topicIds: string[] = [];
+                          subject.rootTopics.forEach((rt) => collectTopicIdsWithCards(rt, topicIds));
+                          openPrintModal(subject.subjectName, topicIds);
+                        }}
+                      >
+                        <Icon name="print-outline" size={18} color={colors.textOnPrimary} />
+                      </TouchableOpacity>
+                    ) : null}
+                    <View style={styles.subjectBadge}>
+                      <Text style={styles.subjectBadgeText}>{subject.totalCards} cards</Text>
+                    </View>
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
@@ -559,7 +607,7 @@ export default function ManageAllCardsScreen() {
             style={[styles.homeButton, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('HomeMain' as never)}
           >
-            <Icon name="home" size={20} color="#FFFFFF" />
+            <Icon name="home" size={20} color={colors.textOnPrimary} />
             <Text style={styles.homeButtonText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
@@ -577,9 +625,10 @@ const adjustColor = (color: string, amount: number): string => {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -589,6 +638,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+    color: colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -596,7 +646,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 2,
-    borderBottomColor: 'rgba(0, 245, 255, 0.2)',
+    borderBottomColor: colors.border,
   },
   backButton: {
     marginRight: 12,
@@ -607,10 +657,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
+    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 14,
     marginTop: 2,
+    color: colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -623,12 +675,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 12,
     borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     gap: 12,
   },
   infoBannerText: {
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
+    color: colors.textSecondary,
   },
   subjectSection: {
     marginBottom: 16,
@@ -663,27 +718,42 @@ const styles = StyleSheet.create({
   },
   chevronLarge: {
     fontSize: 20,
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '700',
   },
   subjectName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   subjectMeta: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   subjectBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
+  subjectHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  subjectPrintButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
   subjectBadgeText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -693,11 +763,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: colors.border,
   },
   topicNodeContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    borderBottomColor: colors.borderSubtle,
   },
   topicRow: {
     flexDirection: 'row',
@@ -741,7 +811,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 6,
     width: 16,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   chevronBright: {
@@ -759,11 +829,11 @@ const styles = StyleSheet.create({
   },
   topicName: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   topicNameWithCards: {
-    color: '#111827',
+    color: colors.text,
     fontWeight: '700',
   },
   topicNameL0: {
@@ -773,7 +843,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   levelBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -785,7 +855,7 @@ const styles = StyleSheet.create({
   },
   levelBadgeText: {
     fontSize: 10,
-    color: '#6366F1',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   topicRight: {
@@ -793,36 +863,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  printButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   priorityPickerButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 2,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: colors.border,
   },
   priorityNumber: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: colors.textSecondary,
   },
   priorityNumberActive: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
   },
   priorityNumberCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
   priorityOptionNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
   },
   cardBadge: {
     flexDirection: 'row',
@@ -847,7 +927,7 @@ const styles = StyleSheet.create({
     }),
   },
   cardBadgeText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -857,7 +937,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: colors.surfaceElevated,
   },
   footer: {
     alignItems: 'center',
@@ -886,7 +966,7 @@ const styles = StyleSheet.create({
     }),
   },
   homeButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -904,11 +984,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 8,
+    color: colors.text,
   },
   emptySubtext: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 24,
+    color: colors.textSecondary,
   },
   createButton: {
     flexDirection: 'row',
@@ -919,7 +1001,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   createButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -930,19 +1012,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   priorityModal: {
-    backgroundColor: '#1E1E2E',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     width: '90%',
     maxWidth: 400,
     borderWidth: 2,
-    borderColor: 'rgba(0, 212, 255, 0.3)',
+    borderColor: colors.border,
   },
   priorityModalTitle: {
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 20,
     textAlign: 'center',
+    color: colors.text,
   },
   priorityOptions: {
     gap: 12,
@@ -958,7 +1041,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   priorityOptionText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
@@ -966,13 +1049,13 @@ const styles = StyleSheet.create({
   priorityOptionClear: {
     padding: 16,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: colors.border,
   },
   priorityOptionClearText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
   },

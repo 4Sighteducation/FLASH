@@ -60,11 +60,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // If missing, best-effort create via RPC (used in onboarding, but SSO users may not have reached it yet).
     try {
-      await supabase.rpc('ensure_user_profile', {
+      const { error } = await supabase.rpc('ensure_user_profile', {
         p_user_id: u.id,
         p_email: email,
         p_username: (u.user_metadata as any)?.username ?? null,
       });
+      if (error && String((error as any).code) === '23505') {
+        // Username conflict: retry without forcing the username so DB can choose a safe default.
+        await supabase.rpc('ensure_user_profile', {
+          p_user_id: u.id,
+          p_email: email,
+          p_username: null,
+        });
+      }
     } catch {
       // non-fatal
     }
@@ -405,16 +413,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initialize session
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+        let sessionResult = await supabase.auth.getSession();
+
+        // Web: if we were redirected back with a code and no session was created, exchange it manually.
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const code = params.get('code');
+
+          if (!sessionResult.data.session && code) {
+            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (exchangeError) {
+              console.warn('[Auth] exchangeCodeForSession failed:', exchangeError);
+            } else {
+              // Clean URL to avoid re-processing the code on refresh.
+              const nextUrl = `${window.location.pathname}${window.location.hash}`;
+              window.history.replaceState({}, document.title, nextUrl);
+            }
+
+            sessionResult = await supabase.auth.getSession();
+          }
+        }
+
         if (mounted) {
-          if (error) {
-            console.error('Error getting session:', error);
+          if (sessionResult.error) {
+            console.error('Error getting session:', sessionResult.error);
             setLoading(false);
             return;
           }
-          
-          await handleSession(session);
+
+          await handleSession(sessionResult.data.session);
           setLoading(false);
         }
       } catch (error) {

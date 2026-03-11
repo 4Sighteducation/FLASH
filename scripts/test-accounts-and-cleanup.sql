@@ -1,6 +1,23 @@
 -- Test accounts + cleanup helpers (Supabase)
 -- Use in Supabase SQL Editor. Review results before running deletes.
 
+-- A) Protect test/internal accounts so they NEVER expire/downgrade
+-- (Requires migration: 20260223_protected_test_accounts.sql)
+--
+-- Add rules (email/domain/user_id) then backfill protection onto existing users:
+/*
+insert into public.protected_access_rules (match_type, match_value, tier, note)
+values
+  ('domain', 'vespa.academy', 'pro', 'test_domain'),
+  ('email', 'admin@4sighteducation.com', 'pro', 'internal_test')
+on conflict (match_type, match_value) do nothing;
+
+-- Re-apply Pro immediately to matching existing accounts
+select public.apply_protection_for_user(u.id, 'manual_protect')
+from auth.users u
+where public.is_protected_user(u.id, u.email) = true;
+*/
+
 -- 0) Find vespa.academy test users (Auth)
 -- NOTE: Deleting auth users is usually done via Auth dashboard or Admin API.
 select id, email, created_at

@@ -98,6 +98,8 @@ const emojiMap: Record<string, string> = {
   'volume-high': '🔊',
   'refresh-outline': '🔄',
   'sync': '🔄',
+  'print': '🖨️',
+  'print-outline': '🖨️',
   
   // Organization  
   'list-outline': '📋',

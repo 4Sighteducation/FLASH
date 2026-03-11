@@ -12,13 +12,14 @@ import {
   Linking,
   Modal,
   TextInput,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Icon from '../../components/Icon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, ThemeMode, ColorScheme } from '../../contexts/ThemeContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAdminAccess } from '../../hooks/useAdminAccess';
 import { gamificationConfig, getRankForXp } from '../../services/gamificationService';
@@ -33,13 +34,382 @@ import { showUpgradePrompt } from '../../utils/upgradePrompt';
 import { navigate } from '../../navigation/RootNavigation';
 import { captureFeedbackScreenshot } from '../../utils/feedbackScreenshot';
 
+type FaqItem = {
+  id: string;
+  question: string;
+  answer: string[];
+  bullets?: string[];
+  note?: string;
+};
+
+type FaqCategory = {
+  title: string;
+  items: FaqItem[];
+};
+
+const FAQS: FaqCategory[] = [
+  {
+    title: 'Getting Started',
+    items: [
+      {
+        id: 'getting-what-is',
+        question: 'What is FL4SH?',
+        answer: [
+          'FL4SH is an AI-powered flashcard app designed specifically for UK students studying GCSEs and A-Levels. Unlike generic flashcard apps, every card is generated directly from your exam board’s official specification — so you only revise what can actually come up in your exam.',
+        ],
+      },
+      {
+        id: 'getting-exam-boards',
+        question: 'Which exam boards and subjects do you cover?',
+        answer: [
+          'We cover all major UK exam boards including AQA, Edexcel, OCR, WJEC, and more across a wide range of GCSE and A-Level subjects. When you search for a subject, we’ll show you all available exam board options so you can pick the exact spec you’re studying.',
+        ],
+      },
+      {
+        id: 'getting-unknown-board',
+        question: "I don't know which exam board I'm on. Can I still use FL4SH?",
+        answer: [
+          'Yes! When you search for a subject, we show you all available options. If you’re not sure which one is yours, check with your teacher or look at the front of your textbook — it usually says. You can also select multiple specs if you want to compare.',
+        ],
+      },
+      {
+        id: 'getting-free',
+        question: 'Is FL4SH free?',
+        answer: [
+          'FL4SH Pro is completely free for your first month — no card required, no catches. After that, you can choose to continue with a monthly or annual subscription, or drop back to the limited free version.',
+          'The free version still lets you revise, but Pro unlocks unlimited card generation, all card types, voice feedback, and more. Most students find the Pro features worth it once they’ve tried them.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Finding Topics',
+    items: [
+      {
+        id: 'topics-find',
+        question: 'How do I find topics to study?',
+        answer: ['You have two options:'],
+        bullets: [
+          'Use the search bar to type any topic — our smart search understands what you mean, not just what you type (so “plant energy” will find photosynthesis).',
+          'Tap the menu icon to browse every topic for your subject and exam board, organised by component and section.',
+        ],
+      },
+      {
+        id: 'topics-smart-search',
+        question: 'What do you mean by “smart search”?',
+        answer: [
+          'FL4SH uses something called vector search, which matches your query by meaning rather than just keywords. So if you can’t remember the exact name of a topic, just describe it in your own words and we’ll find the right content.',
+        ],
+        note: "It's like having a study buddy who actually gets what you’re looking for.",
+      },
+      {
+        id: 'topics-best-match',
+        question: 'What does “Best Match” mean in search results?',
+        answer: [
+          'When you search for a topic, we show you a match percentage. “Best Match” highlights the result most closely aligned with your search. The percentage shows how relevant each result is to what you typed.',
+        ],
+      },
+      {
+        id: 'topics-all',
+        question: 'Can I see all topics for my subject?',
+        answer: [
+          'Yes. Tap the hamburger menu icon on the Discover Topics screen to open the full topic list for your selected subject and exam board, organised by component and section.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Creating Flashcards',
+    items: [
+      {
+        id: 'cards-create',
+        question: 'How do I create flashcards?',
+        answer: ['FL4SH gives you three ways to create cards:'],
+        bullets: [
+          'AI Generated — find a topic and let AI create exam-specific flashcards directly from your curriculum.',
+          'Create Manually — write your own custom flashcards for any topic.',
+          'From Image — take a photo of notes or textbook pages and generate cards using AI.',
+        ],
+      },
+      {
+        id: 'cards-why-create',
+        question: 'Why should I create my own cards?',
+        answer: [
+          'Here’s a revision hack backed by science: creating flashcards is almost as valuable as studying them.',
+          'When you write your own questions and answers, you’re forcing your brain to process and reorganise information — which strengthens memory before you even start revising. It’s called the generation effect and it’s seriously underrated.',
+        ],
+      },
+      {
+        id: 'cards-when-use',
+        question: 'When should I use AI Generated vs Create Manually vs From Image?',
+        answer: [],
+        bullets: [
+          'Use AI Generated when you want quick, reliable cards that match your exam spec.',
+          'Use Create Manually when you want to reinforce learning by writing cards yourself.',
+          'Use From Image when you have notes or worksheets to turn into cards quickly.',
+        ],
+      },
+      {
+        id: 'cards-types',
+        question: 'What card types are available?',
+        answer: ['FL4SH offers four card types:'],
+        bullets: [
+          'Multiple Choice — quick-fire questions with automatic marking.',
+          'Short Answer — recall the answer, then mark yourself correct or incorrect.',
+          'Essay — focuses on structure and key points for longer answers.',
+          'Acronym — memory hooks and mnemonics to help tricky information stick.',
+        ],
+      },
+      {
+        id: 'cards-print',
+        question: 'Can I print my flashcards as 3×5 index cards?',
+        answer: [
+          'Yes. You can print your cards as true-to-size 3×5 inch index cards.',
+          'Go to Manage All Cards, then tap the printer icon on a subject or topic.',
+        ],
+        bullets: [
+          'Cut‑out (easy): prints multiple 3×5 cards per page so you can cut them out.',
+          'Direct 3×5 (advanced): prints one card per page for printers that support 3×5 index cards.',
+          'Tip: for true size, set Scale to 100% and disable “Fit to page”.',
+          'For double‑sided cards, print fronts first, then print backs after flipping your pages/stack.',
+        ],
+      },
+      {
+        id: 'cards-image',
+        question: 'What kind of images work best for “From Image”?',
+        answer: [
+          'Clear, well-lit photos work best. Handwritten notes, printed textbooks, worksheets, and revision guides all work. Avoid blurry images or photos taken at sharp angles.',
+        ],
+      },
+      {
+        id: 'cards-delete',
+        question: "Can I delete cards I don't want?",
+        answer: [
+          'Yes. After generating cards, you can test them, delete any you don’t like, and then save the ones you want to keep to your study deck.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Studying & Spaced Repetition',
+    items: [
+      {
+        id: 'study-how',
+        question: 'How does studying work in FL4SH?',
+        answer: [
+          'FL4SH uses the Leitner system — a proven spaced repetition method. Cards move through five boxes based on whether you answer correctly or incorrectly.',
+        ],
+      },
+      {
+        id: 'study-boxes',
+        question: 'What are the five boxes?',
+        answer: [],
+        bullets: [
+          'Box 1 — Everyday: all new cards start here.',
+          'Box 2 — Every Other Day: cards you’ve answered correctly once.',
+          'Box 3 — Every 3 Days: getting more familiar now.',
+          'Box 4 — Weekly: you know these pretty well.',
+          'Box 5 — Retired: mastered cards that pop up occasionally.',
+        ],
+      },
+      {
+        id: 'study-wrong',
+        question: 'What happens if I get a card wrong?',
+        answer: [
+          'It goes straight back to Box 1, no matter which box it was in. This is exactly what makes spaced repetition effective.',
+        ],
+      },
+      {
+        id: 'study-vs-practice',
+        question: "What’s the difference between Study and Practice mode?",
+        answer: [
+          'Study mode is the real deal — your answers affect which box cards move to, and it follows the spaced repetition schedule.',
+          'Practice mode lets you preview and rehearse cards before they’re officially due, with no consequences.',
+        ],
+      },
+      {
+        id: 'study-difficulty',
+        question: 'What are the difficulty modes?',
+        answer: ['FL4SH has five difficulty settings you can change in your profile:'],
+        bullets: [
+          'Safe Mode — no timer, no shuffle. XP x1.',
+          'Standard — shuffle on, timer off. XP x1.1.',
+          'Turbo — 30-second timer. XP x1.5.',
+          'Overdrive — 15-second timer. XP x2.',
+          'Beast Mode — 5 seconds. XP x3.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Voice Answers',
+    items: [
+      {
+        id: 'voice-what',
+        question: 'What is the voice answer feature?',
+        answer: [
+          'For Short Answer and Essay cards, you can tap the microphone button and speak your answer out loud. FL4SH will analyse what you said and give you feedback.',
+        ],
+      },
+      {
+        id: 'voice-why',
+        question: 'Why should I use voice answers?',
+        answer: [
+          'Speaking answers out loud is one of the most effective revision techniques — and one most students never use.',
+        ],
+        note:
+          'It forces active recall, helps identify gaps in your understanding, and mimics exam conditions where you need to explain things in your own words.',
+      },
+      {
+        id: 'voice-offline',
+        question: 'Does voice answer work offline?',
+        answer: ['Voice analysis requires an internet connection to process your answer and provide feedback.'],
+      },
+    ],
+  },
+  {
+    title: 'Managing Cards & Priorities',
+    items: [
+      {
+        id: 'manage-where',
+        question: 'Where do I manage my cards?',
+        answer: [
+          'The Manage section is your revision command centre. Get there by tapping any topic with cards on your homepage, or use the “Manage Cards” button in Quick Actions.',
+        ],
+      },
+      {
+        id: 'manage-priority',
+        question: 'What is the priority system?',
+        answer: [
+          'You can assign a priority (1-4) to each topic. This helps you focus on what matters most. Your homepage can be sorted by priority so urgent topics stay front and centre.',
+        ],
+      },
+      {
+        id: 'manage-use',
+        question: 'How should I use priorities?',
+        answer: ['Here’s a revision hack most students ignore:'],
+        note:
+          'Priority 1 should be your weakest topics — the ones you dislike or find hardest. Working on weak spots rather than staying comfortable is where the biggest gains happen.',
+      },
+      {
+        id: 'manage-change',
+        question: 'Should I change priorities over time?',
+        answer: [
+          'Absolutely. Every couple of weeks, revisit your priorities. Topics you’ve improved on? Move them down. New weak spots appearing? Bump them up.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'XP & Gamification',
+    items: [
+      {
+        id: 'xp-what',
+        question: 'What is XP?',
+        answer: [
+          'XP (experience points) is FL4SH’s way of rewarding your revision efforts. You earn XP by studying cards, completing the walkthrough, and hitting milestones.',
+        ],
+      },
+      {
+        id: 'xp-per-card',
+        question: 'How much XP do I earn per card?',
+        answer: ['It depends on your difficulty mode:'],
+        bullets: [
+          'Safe Mode: XP x1',
+          'Standard: XP x1.1',
+          'Turbo: XP x1.5',
+          'Overdrive: XP x2',
+          'Beast Mode: XP x3',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Account & Settings',
+    items: [
+      {
+        id: 'account-change',
+        question: 'How do I change my subjects or exam boards?',
+        answer: [
+          'Go to your profile settings to add, remove, or change your selected subjects and exam boards at any time.',
+        ],
+      },
+      {
+        id: 'account-devices',
+        question: 'Can I use FL4SH on multiple devices?',
+        answer: ['Yes. Sign in with the same account and your cards, progress, and settings will sync across devices.'],
+      },
+      {
+        id: 'account-reset',
+        question: 'How do I reset my progress?',
+        answer: ['Contact support if you need to reset your study progress. Be aware this will move all cards back to Box 1.'],
+      },
+    ],
+  },
+  {
+    title: 'Troubleshooting',
+    items: [
+      {
+        id: 'trouble-cards',
+        question: "My cards aren't generating. What's wrong?",
+        answer: [
+          'Check your internet connection — card generation requires online access. If you’re still having issues, try closing and reopening the app, or contact support.',
+        ],
+      },
+      {
+        id: 'trouble-subject',
+        question: "I can't find my subject or exam board.",
+        answer: [
+          'We’re constantly expanding our coverage. Use the “Not found the topic you need?” option to request your subject or exam board, and we’ll prioritise adding it.',
+        ],
+      },
+      {
+        id: 'trouble-voice',
+        question: "Voice answers aren't working.",
+        answer: [
+          'Make sure you’ve granted FL4SH microphone permissions in your device settings. You also need an internet connection for voice analysis.',
+        ],
+      },
+      {
+        id: 'trouble-mistake',
+        question: 'I found a mistake in a card. How do I report it?',
+        answer: [
+          'On any topic, you’ll see a “Not found the topic you need?” prompt. Use this to tell us what’s missing or incorrect and we’ll improve the curriculum. You can also report specific card errors through the app’s feedback option.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Contact & Support',
+    items: [
+      {
+        id: 'contact-support',
+        question: 'How do I contact support?',
+        answer: ['Use the help option in the app menu, or email us at support@fl4shcards.com. We aim to respond within 24 hours.'],
+      },
+      {
+        id: 'contact-feedback',
+        question: 'How do I give feedback or suggest features?',
+        answer: [
+          'We love hearing from students! Use the feedback option in the app or email us at support@fl4shcards.com. Many of our best features have come from user suggestions.',
+        ],
+      },
+      {
+        id: 'contact-social',
+        question: 'Where can I follow FL4SH for updates?',
+        answer: ['Follow us on TikTok and Instagram for revision tips, updates, and student content.'],
+      },
+    ],
+  },
+];
+
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const route = useRoute();
-  const { theme, colors, setTheme } = useTheme();
-  const styles = createStyles(colors);
-  const { tier, limits, restorePurchases } = useSubscription();
+  const { theme, themeMode, colorScheme, colors, setTheme, setThemeMode, setColorScheme, toggleColorScheme } = useTheme();
+  const styles = createStyles(colors, colorScheme);
+  const { tier, limits, restorePurchases, trial } = useSubscription();
   const { isAdmin } = useAdminAccess();
   const { profile } = useUserProfile();
   const [totalPoints, setTotalPoints] = useState(0);
@@ -59,6 +429,14 @@ export default function ProfileScreen() {
   const [parentInviteVisible, setParentInviteVisible] = useState(false);
   const [parentInviteEmail, setParentInviteEmail] = useState('');
   const [sendingParentInvite, setSendingParentInvite] = useState(false);
+  const [faqVisible, setFaqVisible] = useState(false);
+  const [expandedFaqIds, setExpandedFaqIds] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    profile: true,
+    subscription: false,
+    settings: false,
+    faqs: false,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -124,20 +502,22 @@ export default function ProfileScreen() {
   }, [user?.id]);
 
   const themeUnlocks = gamificationConfig.themeUnlocks;
+  const canUseCyber = true; // Always unlocked
   const canUsePulse = totalPoints >= themeUnlocks.pulse;
   const canUseAurora = totalPoints >= themeUnlocks.aurora;
   const canUseSingularity = totalPoints >= themeUnlocks.singularity;
 
   const themeOptions: Array<{
-    key: 'default' | 'pulse' | 'aurora' | 'singularity';
+    key: ThemeMode;
     name: string;
     requiredXp: number;
     unlocked: boolean;
+    tagline: string;
   }> = [
-    { key: 'default', name: 'Default', requiredXp: 0, unlocked: true },
-    { key: 'pulse', name: 'Pulse', requiredXp: themeUnlocks.pulse, unlocked: canUsePulse },
-    { key: 'aurora', name: 'Aurora', requiredXp: themeUnlocks.aurora, unlocked: canUseAurora },
-    { key: 'singularity', name: 'Singularity', requiredXp: themeUnlocks.singularity, unlocked: canUseSingularity },
+    { key: 'cyber', name: 'Cyber', requiredXp: 0, unlocked: true, tagline: 'System initialised. Welcome to the grid.' },
+    { key: 'pulse', name: 'Pulse', requiredXp: themeUnlocks.pulse, unlocked: canUsePulse, tagline: 'First heartbeat detected. System alive.' },
+    { key: 'aurora', name: 'Aurora', requiredXp: themeUnlocks.aurora, unlocked: canUseAurora, tagline: "You've transcended the grid." },
+    { key: 'singularity', name: 'Singularity', requiredXp: themeUnlocks.singularity, unlocked: canUseSingularity, tagline: 'You ARE the revision.' },
   ];
 
   const loadNotificationPreferences = async () => {
@@ -179,6 +559,14 @@ export default function ProfileScreen() {
     }
   }, [route, navigation]);
 
+  useEffect(() => {
+    const params: any = (route as any)?.params;
+    if (params?.openFaq === true) {
+      setFaqVisible(true);
+      navigation.setParams({ openFaq: undefined } as any);
+    }
+  }, [route, navigation]);
+
   const handleSendParentInvite = async () => {
     const email = parentInviteEmail.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -188,13 +576,26 @@ export default function ProfileScreen() {
 
     setSendingParentInvite(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        Alert.alert('Not signed in', 'Please sign in again, then try sending the invite.');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('invite-parent', {
         body: { parentEmail: email },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error) {
-        const msg = (error as any)?.message || 'Failed to send invite';
-        Alert.alert('Could not send invite', msg);
+        const anyErr: any = error as any;
+        const status = anyErr?.context?.status || anyErr?.status;
+        const body = anyErr?.context?.body;
+        const msg = anyErr?.message || 'Failed to send invite';
+        const detail = status ? `\n\nStatus: ${status}` : '';
+        const bodyText = body ? `\nBody: ${typeof body === 'string' ? body : JSON.stringify(body)}` : '';
+        Alert.alert('Could not send invite', `${msg}${detail}${bodyText}`.slice(0, 1000));
         return;
       }
 
@@ -285,14 +686,14 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleSelectTheme = async (next: 'default' | 'pulse' | 'aurora' | 'singularity') => {
+  const handleSelectTheme = async (next: ThemeMode) => {
     const option = themeOptions.find((t) => t.key === next);
     if (!option) return;
     if (!option.unlocked) {
       Alert.alert('Theme locked', `Unlock ${option.name} at ${option.requiredXp.toLocaleString()} XP.`);
       return;
     }
-    setTheme(next);
+    setThemeMode(next);
   };
 
   type DifficultyKey = 'safe' | 'standard' | 'turbo' | 'overdrive' | 'beast';
@@ -443,6 +844,9 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.faqFloatingButton} onPress={() => setFaqVisible(true)}>
+        <Text style={styles.faqFloatingButtonText}>?</Text>
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           {(() => {
@@ -462,8 +866,16 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Profile</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              style={styles.sectionHeaderLeft}
+              onPress={() => setExpandedSections((prev) => ({ ...prev, profile: !prev.profile }))}
+            >
+              <Text style={styles.sectionTitle}>Profile</Text>
+              <Text style={styles.sectionSummary}>
+                {userInfo?.username || 'Student'} • {examTracksLabel || 'No exam track'}
+              </Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
               <TouchableOpacity
                 style={styles.smallLinkButton}
                 onPress={() =>
@@ -477,90 +889,132 @@ export default function ProfileScreen() {
                 <Text style={styles.smallLinkButtonText}>Add exam track</Text>
                 <Icon name="chevron-forward" size={18} color={colors.primary} />
               </TouchableOpacity>
+              <Ionicons
+                name={expandedSections.profile ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
             </View>
           </View>
-          {profileItems.map((item, index) => (
-            <View key={index} style={styles.infoRow}>
-              <Icon name={item.icon} size={22} color={colors.textSecondary} />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>{item.label}</Text>
-                <Text style={styles.infoValue}>{item.value}</Text>
+          {expandedSections.profile &&
+            profileItems.map((item, index) => (
+              <View key={index} style={styles.infoRow}>
+                <Icon name={item.icon} size={22} color={colors.textSecondary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>{item.label}</Text>
+                  <Text style={styles.infoValue}>{item.value}</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
         </View>
 
         {/* Subscription Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subscription</Text>
-          <View style={styles.subscriptionStatus}>
-            <View style={styles.subscriptionInfo}>
-              <Text style={styles.subscriptionTier}>
-                {tier === 'free' ? 'Free' : 'Pro'}
+          <TouchableOpacity
+            style={styles.sectionHeaderToggle}
+            onPress={() => setExpandedSections((prev) => ({ ...prev, subscription: !prev.subscription }))}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>Subscription</Text>
+              <Text style={styles.sectionSummary}>
+                {trial.isActive && typeof trial.daysRemaining === 'number'
+                  ? `Free month • ${trial.daysRemaining} day${trial.daysRemaining === 1 ? '' : 's'} left`
+                  : tier === 'free'
+                    ? `Free • ${limits.maxSubjects} subjects`
+                    : 'Pro active'}
               </Text>
-              {tier === 'free' && (
-                <Text style={styles.subscriptionLimits}>
-                  • {limits.maxSubjects} Subject{'\n'}
-                  • {limits.maxTopicsPerSubject} Topic{'\n'}
-                  • {limits.maxCards} Cards Maximum
-                </Text>
-              )}
             </View>
-            <>
-              <TouchableOpacity
-                style={styles.upgradeButton}
-                onPress={() => navigateToPaywall()}
-              >
-                <Icon name="star" size={20} color="#fff" />
-                <Text style={styles.upgradeButtonText}>
-                  {tier === 'free' ? 'View plans' : 'Manage / View plans'}
+            <Ionicons
+              name={expandedSections.subscription ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {expandedSections.subscription && (
+            <View style={styles.subscriptionStatus}>
+              <View style={styles.subscriptionInfo}>
+                <Text style={styles.subscriptionTier}>
+                  {trial.isActive ? 'Pro (free month)' : tier === 'free' ? 'Free' : 'Pro'}
                 </Text>
-              </TouchableOpacity>
+                {tier === 'free' && (
+                  <Text style={styles.subscriptionLimits}>
+                    • {limits.maxSubjects} Subject{'\n'}
+                    • {limits.maxTopicsPerSubject} Topic{'\n'}
+                    • {limits.maxCards} Cards Maximum
+                  </Text>
+                )}
+              </View>
+              <>
+                <TouchableOpacity
+                  style={styles.upgradeButton}
+                  onPress={() => navigateToPaywall()}
+                >
+                  <Icon name="star" size={20} color="#fff" />
+                  <Text style={styles.upgradeButtonText}>
+                    {tier === 'free' ? 'Get Pro' : 'Manage Pro'}
+                  </Text>
+                </TouchableOpacity>
 
-              {tier === 'free' && (
+                {(tier === 'free' || trial.isActive) && (
+                  <TouchableOpacity
+                    style={styles.manageStoreButton}
+                    onPress={() => setParentInviteVisible(true)}
+                  >
+                    <Text style={styles.manageStoreButtonText}>Ask someone else to pay*</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity style={styles.restoreButton} onPress={restorePurchases}>
+                  <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={styles.manageStoreButton}
-                  onPress={() => setParentInviteVisible(true)}
+                  onPress={() => (navigation as any).navigate('RedeemCode', { code: '' })}
                 >
-                  <Text style={styles.manageStoreButtonText}>Invite parent / guardian</Text>
+                  <Text style={styles.manageStoreButtonText}>Redeem code</Text>
                 </TouchableOpacity>
-              )}
 
-              <TouchableOpacity style={styles.restoreButton} onPress={restorePurchases}>
-                <Text style={styles.restoreButtonText}>Restore Purchases</Text>
-              </TouchableOpacity>
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity
+                    style={styles.manageStoreButton}
+                    onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
+                  >
+                    <Text style={styles.manageStoreButtonText}>Manage in App Store</Text>
+                  </TouchableOpacity>
+                )}
 
-              <TouchableOpacity
-                style={styles.manageStoreButton}
-                onPress={() => (navigation as any).navigate('RedeemCode', { code: '' })}
-              >
-                <Text style={styles.manageStoreButtonText}>Redeem code</Text>
-              </TouchableOpacity>
-
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={styles.manageStoreButton}
-                  onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
-                >
-                  <Text style={styles.manageStoreButtonText}>Manage in App Store</Text>
-                </TouchableOpacity>
-              )}
-
-              {Platform.OS === 'android' && (
-                <TouchableOpacity
-                  style={styles.manageStoreButton}
-                  onPress={() => Linking.openURL('https://play.google.com/store/account/subscriptions')}
-                >
-                  <Text style={styles.manageStoreButtonText}>Manage in Google Play</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          </View>
+                {Platform.OS === 'android' && (
+                  <TouchableOpacity
+                    style={styles.manageStoreButton}
+                    onPress={() => Linking.openURL('https://play.google.com/store/account/subscriptions')}
+                  >
+                    <Text style={styles.manageStoreButtonText}>Manage in Google Play</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings</Text>
+          <TouchableOpacity
+            style={styles.sectionHeaderToggle}
+            onPress={() => setExpandedSections((prev) => ({ ...prev, settings: !prev.settings }))}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>Settings</Text>
+              <Text style={styles.sectionSummary}>Notifications • Themes • Difficulty</Text>
+            </View>
+            <Ionicons
+              name={expandedSections.settings ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
           
+          {expandedSections.settings && (
+            <>
           {/* Difficulty Mode */}
           {canUseDifficultyMode ? (
             <TouchableOpacity style={styles.settingRow} onPress={() => setDifficultyVisible(true)}>
@@ -589,14 +1043,57 @@ export default function ProfileScreen() {
           <View style={styles.themesBlock}>
             <View style={styles.themesHeaderRow}>
               <Icon name="color-palette-outline" size={22} color={colors.textSecondary} />
-              <Text style={styles.themesTitle}>Themes</Text>
+              <Text style={styles.themesTitle}>Themes & Color Mode</Text>
             </View>
-            <Text style={styles.themesHint}>
+            
+            {/* Color Scheme Toggle */}
+            <View style={styles.colorSchemeSection}>
+              <Text style={[styles.themesHint, { marginBottom: 8 }]}>
+                Color Mode
+              </Text>
+              <View style={styles.colorSchemeToggleContainer}>
+                <View style={[
+                  styles.colorSchemeToggle,
+                  { backgroundColor: colors.surface, borderColor: colors.border }
+                ]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.colorSchemeOption,
+                      colorScheme === 'dark' && { backgroundColor: colors.primary }
+                    ]}
+                    onPress={() => setColorScheme('dark')}
+                  >
+                    <Text style={[
+                      styles.colorSchemeOptionText,
+                      { color: colorScheme === 'dark' ? colors.textOnPrimary : colors.textSecondary }
+                    ]}>
+                      🌙 Dark
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.colorSchemeOption,
+                      colorScheme === 'light' && { backgroundColor: colors.primary }
+                    ]}
+                    onPress={() => setColorScheme('light')}
+                  >
+                    <Text style={[
+                      styles.colorSchemeOptionText,
+                      { color: colorScheme === 'light' ? colors.textOnPrimary : colors.textSecondary }
+                    ]}>
+                      ☀️ Light
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            <Text style={[styles.themesHint, { marginTop: 16 }]}>
               Unlock themes at {themeUnlocks.pulse.toLocaleString()} XP, {themeUnlocks.aurora.toLocaleString()} XP, and {themeUnlocks.singularity.toLocaleString()} XP.
             </Text>
             <View style={styles.themesList}>
               {themeOptions.map((opt) => {
-                const isSelected = theme === opt.key;
+                const isSelected = themeMode === opt.key;
                 const label = opt.unlocked ? opt.name : `${opt.name} (locked)`;
                 return (
                   <TouchableOpacity
@@ -612,6 +1109,11 @@ export default function ProfileScreen() {
                       <Text style={[styles.themeOptionTitle, isSelected && styles.themeOptionTitleSelected]}>
                         {label}
                       </Text>
+                      {opt.unlocked && (
+                        <Text style={styles.themeOptionSubtitle}>
+                          {opt.tagline}
+                        </Text>
+                      )}
                       {!opt.unlocked && (
                         <Text style={styles.themeOptionSubtitle}>
                           Unlock at {opt.requiredXp.toLocaleString()} XP
@@ -683,6 +1185,15 @@ export default function ProfileScreen() {
 
           <TouchableOpacity
             style={styles.settingRow}
+            onPress={() => navigation.navigate('Walkthrough' as never)}
+          >
+            <Icon name="rocket-outline" size={22} color={colors.textSecondary} />
+            <Text style={styles.settingText}>Interactive walkthrough</Text>
+            <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
             onPress={() => Linking.openURL('https://www.fl4shcards.com/privacy/')}
           >
             <Icon name="document-text-outline" size={22} color={colors.textSecondary} />
@@ -727,6 +1238,32 @@ export default function ProfileScreen() {
             <Text style={styles.settingText}>Statistics Dashboard</Text>
             <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.sectionHeaderToggle}
+            onPress={() => setExpandedSections((prev) => ({ ...prev, faqs: !prev.faqs }))}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Text style={styles.sectionTitle}>FAQs</Text>
+              <Text style={styles.sectionSummary}>Help centre • common questions</Text>
+            </View>
+            <Ionicons
+              name={expandedSections.faqs ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {expandedSections.faqs && (
+            <TouchableOpacity style={styles.settingRow} onPress={() => setFaqVisible(true)}>
+              <Icon name="help-circle-outline" size={22} color={colors.textSecondary} />
+              <Text style={styles.settingText}>Frequently asked questions</Text>
+              <Icon name="chevron-forward" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Difficulty Mode Modal */}
@@ -798,7 +1335,7 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
-        {/* Parent Invite Modal (Free plan) */}
+        {/* "Ask someone else to pay" Modal (Free plan) */}
         <Modal
           visible={parentInviteVisible}
           transparent
@@ -807,20 +1344,26 @@ export default function ProfileScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Invite a parent/guardian</Text>
-              <Text style={styles.modalLabel}>Parent / guardian email</Text>
+              <Text style={styles.modalTitle}>Ask someone else to pay</Text>
+              <Text style={styles.modalLabel}>Their email</Text>
               <TextInput
                 style={styles.modalInput}
                 value={parentInviteEmail}
                 onChangeText={setParentInviteEmail}
-                placeholder="parent@example.com"
+                placeholder="someone@example.com"
                 placeholderTextColor={colors.textSecondary}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!sendingParentInvite}
               />
               <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
-                We’ll email them a link to the parent page. If they purchase, you’ll receive a code to redeem in the app.
+                *Use this to send to a parent, guardian, or generous friend.
+              </Text>
+              <Text style={[styles.themeOptionSubtitle, { marginTop: 8 }]}>
+                We’ll email them a link to the payment page. If they purchase, you’ll receive a code to redeem in the app.
+              </Text>
+              <Text style={[styles.themeOptionSubtitle, { marginTop: 6 }]}>
+                If your free month has ended, you’ll get a 7-day grace window for them to pay before your cards/progress are deleted.
               </Text>
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -844,6 +1387,72 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
+        <Modal visible={faqVisible} transparent animationType="fade" onRequestClose={() => setFaqVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={styles.faqBackdrop} onPress={() => setFaqVisible(false)} />
+            <View style={styles.faqModalCard}>
+              <View style={styles.faqModalHeader}>
+                <Text style={styles.modalTitle}>FAQs</Text>
+                <TouchableOpacity onPress={() => setFaqVisible(false)} style={styles.faqClose}>
+                  <Ionicons name="close" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={styles.faqContent}>
+                {FAQS.map((cat) => (
+                  <View key={cat.title} style={styles.faqCategory}>
+                    <Text style={styles.faqCategoryTitle}>{cat.title}</Text>
+                    {cat.items.map((item) => {
+                      const open = expandedFaqIds.has(item.id);
+                      return (
+                        <View key={item.id} style={[styles.faqItem, open && styles.faqItemOpen]}>
+                          <TouchableOpacity
+                            style={styles.faqQuestionRow}
+                            onPress={() =>
+                              setExpandedFaqIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(item.id)) next.delete(item.id);
+                                else next.add(item.id);
+                                return next;
+                              })
+                            }
+                          >
+                            <Text style={styles.faqQuestionText}>{item.question}</Text>
+                            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                          {open && (
+                            <View style={styles.faqAnswer}>
+                              {item.answer.map((line, idx) => (
+                                <Text
+                                  key={`${item.id}-p-${idx}`}
+                                  style={styles.faqAnswerText}
+                                  onPress={() => {
+                                    if (line.includes('support@fl4shcards.com')) {
+                                      Linking.openURL('mailto:support@fl4shcards.com');
+                                    }
+                                  }}
+                                >
+                                  {line}
+                                </Text>
+                              ))}
+                              {item.bullets?.map((bullet, idx) => (
+                                <View key={`${item.id}-b-${idx}`} style={styles.faqBulletRow}>
+                                  <Text style={styles.faqBulletDot}>•</Text>
+                                  <Text style={styles.faqBulletText}>{bullet}</Text>
+                                </View>
+                              ))}
+                              {item.note ? <Text style={styles.faqNote}>{item.note}</Text> : null}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Icon name="log-out-outline" size={24} color="#FF3B30" />
           <Text style={styles.logoutText}>Logout</Text>
@@ -853,7 +1462,7 @@ export default function ProfileScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: any, colorScheme: ColorScheme) =>
   StyleSheet.create({
   container: {
     flex: 1,
@@ -866,6 +1475,26 @@ const createStyles = (colors: any) =>
   header: {
     alignItems: 'center',
     marginBottom: 18,
+  },
+  faqFloatingButton: {
+    position: 'absolute',
+    right: 16,
+    top: 56,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.55)',
+    zIndex: 8,
+  },
+  faqFloatingButtonText: {
+    color: '#00F5FF',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: -1,
   },
   avatar: {
     width: 120,
@@ -926,10 +1555,26 @@ const createStyles = (colors: any) =>
     gap: 12,
     marginBottom: 12,
   },
+  sectionHeaderToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+  },
+  sectionHeaderLeft: {
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: colors.text,
+  },
+  sectionSummary: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
   smallLinkButton: {
     flexDirection: 'row',
@@ -1002,6 +1647,28 @@ const createStyles = (colors: any) =>
     fontSize: 16,
     fontWeight: '900',
     color: colors.text,
+  },
+  colorSchemeSection: {
+    marginTop: 12,
+  },
+  colorSchemeToggleContainer: {
+    alignItems: 'center',
+  },
+  colorSchemeToggle: {
+    flexDirection: 'row',
+    borderRadius: 999,
+    padding: 3,
+    borderWidth: 1,
+    alignSelf: 'center',
+  },
+  colorSchemeOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+  },
+  colorSchemeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   themesHint: {
     marginTop: 6,
@@ -1111,6 +1778,124 @@ const createStyles = (colors: any) =>
     flexDirection: 'row',
     gap: 10,
     marginTop: 14,
+  },
+  faqModalCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    maxHeight: '90%',
+  },
+  faqBackdrop: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  faqModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  faqClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colorScheme === 'light' ? colors.backgroundAlt : 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  faqOverlayClose: {
+    position: 'absolute',
+    right: 18,
+    top: 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    zIndex: 3,
+  },
+  faqContent: {
+    paddingBottom: 24,
+  },
+  faqCategory: {
+    marginBottom: 16,
+  },
+  faqCategoryTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.primary,
+    marginBottom: 8,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  faqItem: {
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  faqItemOpen: {
+    borderColor: colors.primaryMuted,
+  },
+  faqQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  faqQuestionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  faqAnswer: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  faqAnswerText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  faqBulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 6,
+  },
+  faqBulletDot: {
+    color: colors.primary,
+    fontSize: 14,
+    marginTop: 1,
+  },
+  faqBulletText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  faqNote: {
+    marginTop: 6,
+    fontSize: 13,
+    color: colors.text,
+    fontWeight: '700',
   },
   modalButtonSecondary: {
     flex: 1,

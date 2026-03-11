@@ -11,6 +11,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '../../components/Icon';
+import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { gamificationService } from '../../services/gamificationService';
@@ -28,6 +29,8 @@ export default function PaperCompletionScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { paperId, paperName, totalQuestions, subjectName, subjectColor } = route.params as any;
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [totalScore, setTotalScore] = useState(0);
@@ -147,7 +150,7 @@ export default function PaperCompletionScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => (navigation as any).popToTop()}>
-            <Icon name="close" size={24} color="#00F5FF" />
+            <Icon name="close" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Paper Complete!</Text>
           <View style={{ width: 24 }} />
@@ -176,21 +179,21 @@ export default function PaperCompletionScreen() {
         <View style={styles.statsGrid}>
           {/* Questions Attempted */}
           <View style={styles.statCard}>
-            <Icon name="document-text" size={24} color="#00F5FF" />
+            <Icon name="document-text" size={24} color={colors.primary} />
             <Text style={styles.statValue}>{results.filter(r => r.attempted).length}/{results.length}</Text>
             <Text style={styles.statLabel}>Attempted</Text>
           </View>
 
           {/* Total Time */}
           <View style={styles.statCard}>
-            <Icon name="time" size={24} color="#00F5FF" />
+            <Icon name="time" size={24} color={colors.primary} />
             <Text style={styles.statValue}>{formatTime(totalTime)}</Text>
             <Text style={styles.statLabel}>Total Time</Text>
           </View>
 
           {/* Avg Time per Mark */}
           <View style={styles.statCard}>
-            <Icon name="speedometer" size={24} color="#00F5FF" />
+            <Icon name="speedometer" size={24} color={colors.primary} />
             <Text style={styles.statValue}>{avgTimePerMark.toFixed(1)}s</Text>
             <Text style={styles.statLabel}>Per Mark</Text>
           </View>
@@ -262,7 +265,7 @@ export default function PaperCompletionScreen() {
               }
             }}
           >
-            <Icon name="refresh" size={20} color="#6366F1" />
+            <Icon name="refresh" size={20} color={colors.primary} />
             <Text style={[styles.actionButtonText, styles.retryButtonText]}>
               Try Again
             </Text>
@@ -281,10 +284,10 @@ export default function PaperCompletionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -292,7 +295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#94A3B8',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   header: {
@@ -301,12 +304,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: colors.border,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   scoreSection: {
     padding: 20,
@@ -332,7 +335,7 @@ const styles = StyleSheet.create({
   congratsText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 20,
   },
   scoreDisplay: {
@@ -343,27 +346,27 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 64,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     fontVariant: ['tabular-nums'],
   },
   scoreDivider: {
     fontSize: 48,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: colors.textSecondary,
     marginHorizontal: 8,
   },
   scoreMax: {
     fontSize: 48,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },
   percentageText: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 16,
   },
   gradeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surface,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -371,7 +374,7 @@ const styles = StyleSheet.create({
   gradeText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -381,23 +384,23 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
+    borderColor: colors.border,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#00F5FF',
+    color: colors.primary,
     marginTop: 8,
     fontVariant: ['tabular-nums'],
   },
   statLabel: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   breakdownSection: {
@@ -407,19 +410,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 16,
   },
   questionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   questionInfo: {
     flexDirection: 'row',
@@ -429,7 +432,7 @@ const styles = StyleSheet.create({
   questionNumber: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00F5FF',
+    color: colors.primary,
   },
   skippedBadge: {
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -448,7 +451,7 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#E2E8F0',
+    color: colors.text,
     fontVariant: ['tabular-nums'],
   },
   perfectScore: {
@@ -459,7 +462,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 4,
     fontVariant: ['tabular-nums'],
   },
@@ -474,35 +477,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 245, 255, 0.15)',
+    backgroundColor: colors.surface,
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
+    borderColor: colors.border,
   },
   actionButtonText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontSize: 15,
     fontWeight: '600',
   },
   retryButton: {
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   retryButtonText: {
-    color: '#6366F1',
+    color: colors.primary,
   },
   doneButton: {
     marginHorizontal: 20,
     marginBottom: 30,
-    backgroundColor: '#6366F1',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   doneButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },

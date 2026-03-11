@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { supabase } from '../../services/supabase';
 
 function normalizeCode(code: string): string {
@@ -9,6 +10,7 @@ function normalizeCode(code: string): string {
 
 export default function RedeemCodeScreen({ route, navigation }: any) {
   const { colors } = useTheme();
+  const { refreshSubscription } = useSubscription();
   const initial = route?.params?.code ? String(route.params.code) : '';
 
   const [code, setCode] = useState(initial);
@@ -55,7 +57,15 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
       Alert.alert(
         'Success',
         `FL4SH ${nextTier} unlocked.\n\nExpiry: ${data?.expiresAt || '—'}\n\nIf your account doesn’t update immediately, close and reopen the app.`,
-        [{ text: 'Done', onPress: () => navigation.goBack() }],
+        [
+          {
+            text: 'Done',
+            onPress: () => {
+              void refreshSubscription();
+              navigation.goBack();
+            },
+          },
+        ],
       );
     } catch (e: any) {
       Alert.alert('Redeem failed', e?.message || 'Please try again.');
@@ -65,32 +75,36 @@ export default function RedeemCodeScreen({ route, navigation }: any) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}> 
-      <Text style={[styles.title, { color: colors.text }]}>Redeem code</Text>
-      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Paste a code to unlock Pro. (Works even if you used Sign in with Apple.)
-      </Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}> 
+        <Text style={[styles.title, { color: colors.text }]}>Redeem code</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Paste a code to unlock Pro. (Works even if you used Sign in with Apple.)
+        </Text>
 
-      <TextInput
-        value={code}
-        onChangeText={setCode}
-        placeholder="ABCD-EFGH-IJKL-MNOP"
-        placeholderTextColor={colors.textSecondary}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-      />
+        <TextInput
+          value={code}
+          onChangeText={setCode}
+          placeholder="ABCD-EFGH-IJKL-MNOP"
+          placeholderTextColor={colors.textSecondary}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          returnKeyType="done"
+          onSubmitEditing={onRedeem}
+          style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+        />
 
-      <Text style={[styles.hint, { color: colors.textSecondary }]}>{normalized ? `Code: ${normalized}` : ''}</Text>
+        <Text style={[styles.hint, { color: colors.textSecondary }]}>{normalized ? `Code: ${normalized}` : ''}</Text>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
-        onPress={onRedeem}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Redeeming…' : 'Redeem'}</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary, opacity: loading ? 0.7 : 1 }]}
+          onPress={onRedeem}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>{loading ? 'Redeeming…' : 'Redeem'}</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

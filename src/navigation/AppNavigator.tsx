@@ -19,8 +19,11 @@ import { navigationRef } from './RootNavigation';
 import FeedbackModalScreen from '../screens/support/FeedbackModalScreen';
 import TesterFeedbackScreen from '../screens/support/TesterFeedbackScreen';
 import CelebrationModalScreen from '../screens/modals/CelebrationModalScreen';
+import ReviewPromptModalScreen from '../screens/modals/ReviewPromptModalScreen';
+import PrintCardsModalScreen from '../screens/modals/PrintCardsModalScreen';
 import TrialExpiredScreen from '../screens/paywall/TrialExpiredScreen';
 import TrialExpiryNudgeScreen from '../screens/paywall/TrialExpiryNudgeScreen';
+import RedeemCodeScreen from '../screens/paywall/RedeemCodeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,7 +52,13 @@ export default function AppNavigator() {
   const linking = useMemo(
     () =>
       ({
-        prefixes: [Linking.createURL('/'), 'https://www.fl4sh.cards', 'https://fl4sh.cards'],
+        prefixes: [
+          Linking.createURL('/'),
+          'https://www.fl4sh.cards',
+          'https://fl4sh.cards',
+          'https://www.fl4shcards.com',
+          'https://fl4shcards.com',
+        ] as string[],
         config: {
           screens: {
             TesterFeedback: 'tester-feedback',
@@ -62,6 +71,8 @@ export default function AppNavigator() {
 
   useEffect(() => {
     console.log('AppNavigator useEffect - user:', user?.id, 'authLoading:', authLoading);
+    setLoading(true);
+    setIsOnboarded(null);
     if (user) {
       checkOnboardingStatus();
     } else {
@@ -83,23 +94,22 @@ export default function AppNavigator() {
       }
 
       const { data, error } = (await withTimeout(
-        supabase.from('users').select('is_onboarded').eq('id', user.id).single() as any,
+        supabase.from('users').select('is_onboarded').eq('id', user.id).maybeSingle() as any,
         12000,
         'checkOnboardingStatus'
       )) as any;
 
       if (error) {
         console.error('Supabase error checking onboarding:', error);
-        // If user record doesn't exist, assume not onboarded
-        if (error.code === 'PGRST116') {
-          console.log('User record not found, assuming not onboarded');
-          setIsOnboarded(false);
-        } else {
-          throw error;
-        }
+        throw error;
+      }
+
+      if (!data) {
+        console.log('User record not found, assuming not onboarded');
+        setIsOnboarded(false);
       } else {
         console.log('Onboarding status:', data?.is_onboarded);
-        setIsOnboarded(data?.is_onboarded || false);
+        setIsOnboarded(!!data?.is_onboarded);
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);
@@ -121,7 +131,7 @@ export default function AppNavigator() {
     isOnboarded
   );
 
-  if (authLoading || loading) {
+  if (authLoading || loading || (user && isOnboarded === null)) {
     return <SplashScreen />;
   }
 
@@ -158,6 +168,13 @@ export default function AppNavigator() {
             options={{ headerShown: false, presentation: 'modal' }}
           />
 
+          {/* Global redeem-code modal (so it can appear above any tab/stack without hijacking tab params) */}
+          <Stack.Screen
+            name="RedeemCodeModal"
+            component={RedeemCodeScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+
           {/* Global Trial Expiry Nudge Modal (shown on push tap / foreground warning) */}
           <Stack.Screen
             name="TrialExpiryNudgeModal"
@@ -176,6 +193,20 @@ export default function AppNavigator() {
           <Stack.Screen
             name="CelebrationModal"
             component={CelebrationModalScreen}
+            options={{ headerShown: false, presentation: 'transparentModal' }}
+          />
+
+          {/* Global app-store review prompt modal */}
+          <Stack.Screen
+            name="ReviewPromptModal"
+            component={ReviewPromptModalScreen}
+            options={{ headerShown: false, presentation: 'transparentModal' }}
+          />
+
+          {/* Global print cards modal */}
+          <Stack.Screen
+            name="PrintCardsModal"
+            component={PrintCardsModalScreen}
             options={{ headerShown: false, presentation: 'transparentModal' }}
           />
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import SystemStatusRankIcon from '../../components/SystemStatusRankIcon';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { showUpgradePrompt } from '../../utils/upgradePrompt';
 import { navigate as rootNavigate } from '../../navigation/RootNavigation';
+import { captureFeedbackScreenshot } from '../../utils/feedbackScreenshot';
 import { pushNotificationService } from '../../services/pushNotificationService';
 
 interface UserSubject {
@@ -57,9 +58,11 @@ interface UserData {
 
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
-  const { tier, limits } = useSubscription();
-  const { colors, theme } = useTheme();
-  const styles = createStyles(colors, theme);
+  const { tier, limits, trial } = useSubscription();
+  const { colors, themeMode } = useTheme();
+  const styles = createStyles(colors, themeMode);
+  const [pendingParentCode, setPendingParentCode] = useState<string | null>(null);
+  const [checkingPendingParentCode, setCheckingPendingParentCode] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -275,6 +278,10 @@ export default function HomeScreen({ navigation }: any) {
     return types[examType] || examType;
   };
 
+  const getSubjectTrackLabel = (subject: UserSubject) => {
+    return getExamTypeDisplay(subject.subject?.qualification_types?.code || userData?.exam_type || '');
+  };
+
   const handleSubjectPress = (subject: UserSubject) => {
     navigation.navigate('SubjectProgress', { 
       subjectId: subject.subject_id,
@@ -323,6 +330,50 @@ export default function HomeScreen({ navigation }: any) {
     setDeleteModal({ visible: true, subject });
   };
 
+  const openFaqs = () => {
+    const parent = navigation.getParent?.();
+    if (parent?.navigate) {
+      parent.navigate('Profile', { screen: 'ProfileMain', params: { openFaq: true } });
+      return;
+    }
+    rootNavigate('Profile', { screen: 'ProfileMain', params: { openFaq: true } } as never);
+  };
+
+  const refreshPendingParentClaim = useCallback(async () => {
+    if (!user?.id) return;
+    if (!(tier === 'free' || trial.isActive)) return;
+    if (checkingPendingParentCode) return;
+    setCheckingPendingParentCode(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) return;
+
+      const { data, error } = await supabase.functions.invoke('pending-parent-claim', {
+        body: {},
+        headers: { Authorization: `Bearer ${token}` },
+      } as any);
+
+      if (error) return;
+      if (!data?.ok) return;
+      if (data?.hasClaim && typeof data?.code === 'string' && data.code.length > 0) {
+        setPendingParentCode(String(data.code));
+      } else {
+        setPendingParentCode(null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCheckingPendingParentCode(false);
+    }
+  }, [user?.id, tier, trial.isActive, checkingPendingParentCode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPendingParentClaim();
+    }, [refreshPendingParentClaim])
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -336,8 +387,66 @@ export default function HomeScreen({ navigation }: any) {
   const totalPoints = userStats?.total_points ?? 0;
   const rank = getRankForXp(totalPoints);
 
+  const openProOptions = () => {
+    const isTrial = !!trial.isActive;
+    Alert.alert(
+      isTrial ? 'Keep Pro' : 'Get Pro',
+      isTrial ? 'Choose how you want to keep Pro.' : 'Choose how you want to unlock Pro.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Ask someone else to pay',
+          onPress: () => {
+            openAskSomeoneElse();
+          },
+        },
+        {
+          text: isTrial ? 'Pay myself' : 'Buy Pro',
+          onPress: () => {
+            try {
+              rootNavigate('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: trial.isActive ? 'trial_banner' : 'home' });
+            } catch {
+              // fallback: nested navigation
+              try {
+                navigation.getParent?.()?.navigate?.('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: 'home' });
+              } catch {
+                // ignore
+              }
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const openAskSomeoneElse = () => {
+    try {
+      rootNavigate('Profile' as never, { screen: 'ProfileMain', params: { openParentInvite: true } } as never);
+    } catch {
+      try {
+        navigation.getParent?.()?.navigate?.('Profile', { screen: 'ProfileMain', params: { openParentInvite: true } });
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const openRedeemCode = (codeOverride?: string) => {
+    try {
+      const code = typeof codeOverride === 'string' && codeOverride.length > 0 ? codeOverride : pendingParentCode || '';
+      // Use the global modal so we don't "stick" the Profile tab into RedeemCode.
+      rootNavigate('RedeemCodeModal' as never, { code } as never);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity style={styles.faqFloatingButton} onPress={openFaqs}>
+        <Text style={styles.faqFloatingButtonText}>?</Text>
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <LinearGradient
           colors={colors.gradient}
@@ -346,8 +455,8 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <View style={styles.headerTopLeft}>
-                <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
-                <SystemStatusRankIcon rankKey={rank.current.key} size={40} withContainerGlow={false} />
+              <View style={[styles.headerAvatar, { borderColor: rank.current.color }]}>
+                <SystemStatusRankIcon rankKey={rank.current.key} size={67} withContainerGlow={false} />
                 </View>
                 <View>
                   <Text style={styles.greeting}>Welcome back!</Text>
@@ -442,8 +551,44 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </LinearGradient>
 
-        {/* Free -> Pro CTA banner */}
-        {tier === 'free' ? (
+        {/* Trial countdown banner (persistent reminder) */}
+        {trial.isActive ? (
+          <View style={styles.trialCard}>
+            <View style={styles.launchOfferTop}>
+              <Text style={styles.launchOfferTitle}>Free Pro month</Text>
+              <View style={styles.launchOfferPill}>
+                <Text style={styles.launchOfferPillText}>PRO</Text>
+              </View>
+            </View>
+            <Text style={styles.trialText}>
+              {typeof trial.daysRemaining === 'number'
+                ? `${trial.daysRemaining} day${trial.daysRemaining === 1 ? '' : 's'} left`
+                : 'Trial active'}
+            </Text>
+            <View style={styles.trialProgressTrack}>
+              <View style={[styles.trialProgressFill, { width: `${Math.round(((trial.progress ?? 0) as number) * 100)}%` }]} />
+            </View>
+            <TouchableOpacity style={styles.launchOfferCta} onPress={openProOptions}>
+              <Text style={styles.launchOfferCtaText}>Get Pro for a year</Text>
+              <Ionicons name="arrow-forward" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.redeemCodeCta, pendingParentCode ? styles.redeemCodeCtaActive : null]} onPress={() => openRedeemCode()}>
+              <Text style={styles.redeemCodeCtaText}>{pendingParentCode ? 'Activate Pro' : 'Redeem a code'}</Text>
+              <Ionicons name="key-outline" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            {pendingParentCode ? (
+              <Text style={styles.pendingClaimHint}>Pro access is ready — tap “Activate Pro” to auto-fill your code.</Text>
+            ) : null}
+            <View style={styles.offerSecondaryRow}>
+              <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
+              <TouchableOpacity onPress={openAskSomeoneElse}>
+                <Text style={styles.offerSecondaryLink}>Ask someone else</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.trialFootnote}>Parent, guardian, or generous friend.</Text>
+          </View>
+        ) : tier === 'free' ? (
+          /* Free -> Pro CTA banner */
           <View style={styles.launchOfferCard}>
             <View style={styles.launchOfferTop}>
               <Text style={styles.launchOfferTitle}>Study like a Pro</Text>
@@ -451,25 +596,24 @@ export default function HomeScreen({ navigation }: any) {
                 <Text style={styles.launchOfferPillText}>PRO</Text>
               </View>
             </View>
-            <Text style={styles.launchOfferText}>
-              Unlock Past Papers and advanced features.
-            </Text>
-            <TouchableOpacity
-              style={styles.launchOfferCta}
-              onPress={() => {
-                // Open the global paywall modal with Annual preselected.
-                navigation.getParent?.()?.navigate?.('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: 'home' });
-                // Fallback: nested navigation
-                try {
-                  navigation.navigate('Profile' as never, { screen: 'Paywall', params: { initialBilling: 'annual', highlightOffer: true, source: 'home' } } as never);
-                } catch {
-                  // ignore
-                }
-              }}
-            >
-              <Text style={styles.launchOfferCtaText}>View plans</Text>
+            <Text style={styles.launchOfferText}>Unlock Past Papers and advanced features.</Text>
+            <TouchableOpacity style={styles.launchOfferCta} onPress={openProOptions}>
+              <Text style={styles.launchOfferCtaText}>Get Pro</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.redeemCodeCta, pendingParentCode ? styles.redeemCodeCtaActive : null]} onPress={() => openRedeemCode()}>
+              <Text style={styles.redeemCodeCtaText}>{pendingParentCode ? 'Activate Pro' : 'Redeem a code'}</Text>
+              <Ionicons name="key-outline" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            {pendingParentCode ? (
+              <Text style={styles.pendingClaimHint}>Pro access is ready — tap “Activate Pro” to auto-fill your code.</Text>
+            ) : null}
+            <View style={styles.offerSecondaryRow}>
+              <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
+              <TouchableOpacity onPress={openAskSomeoneElse}>
+                <Text style={styles.offerSecondaryLink}>Ask someone else</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : null}
 
@@ -479,16 +623,82 @@ export default function HomeScreen({ navigation }: any) {
           totalPoints={totalPoints}
         />
 
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>Quick Actions</Text>
+          <TouchableOpacity
+            style={styles.feedbackPill}
+            onPress={async () => {
+              let uri: string | undefined;
+              try {
+                uri = await captureFeedbackScreenshot();
+              } catch {
+                // non-fatal
+              }
+              rootNavigate('FeedbackModal', {
+                mode: 'feedback',
+                contextTitle: 'App feedback & support',
+                contextHint: 'Tell us what you need help with or what to improve.',
+                sourceRouteName: 'Home',
+                sourceRouteParams: null,
+                defaultCategory: 'bug',
+                initialScreenshotUri: uri,
+              });
+            }}
+          >
+            <Text style={styles.feedbackPillText}>Feedback/Support</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CardSubjectSelector')}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="add-circle" size={24} color="#34C759" />
+            </View>
+            <Text style={styles.actionText}>Create Card</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CardSubjectSelector', { 
+              mode: 'image' 
+            })}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="camera" size={24} color="#007AFF" />
+            </View>
+            <Text style={styles.actionText}>Scan Image</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.actionCard,
+              userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0 && styles.actionCardDisabled
+            ]}
+            onPress={() => {
+              const totalCards = userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
+              if (totalCards > 0) {
+                navigation.navigate('ManageAllCards');
+              }
+            }}
+            disabled={userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0}
+          >
+            <View style={styles.actionIconContainer}>
+              <Icon name="settings-outline" size={24} color="#FF9500" />
+            </View>
+            <Text style={styles.actionText}>Manage Cards</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Subjects</Text>
           <TouchableOpacity
             style={styles.viewToggle}
             onPress={() => setIsGridView(!isGridView)}
           >
-            <Ionicons 
-              name={isGridView ? "list" : "grid"} 
-              size={20} 
-              color="#6366F1" 
+            <Ionicons
+              name={isGridView ? "list" : "grid"}
+              size={20}
+              color="#6366F1"
             />
           </TouchableOpacity>
         </View>
@@ -563,7 +773,7 @@ export default function HomeScreen({ navigation }: any) {
                             <Text style={styles.metaText}>{subject.exam_board}</Text>
                           </View>
                           <View style={styles.metaBadge}>
-                            <Text style={styles.metaText}>{getExamTypeDisplay(userData?.exam_type || '')}</Text>
+                            <Text style={styles.metaText}>{getSubjectTrackLabel(subject)}</Text>
                           </View>
                         </View>
                       )}
@@ -664,48 +874,6 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
         )}
-
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('CardSubjectSelector')}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="add-circle" size={24} color="#34C759" />
-            </View>
-            <Text style={styles.actionText}>Create Card</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('CardSubjectSelector', { 
-              mode: 'image' 
-            })}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="camera" size={24} color="#007AFF" />
-            </View>
-            <Text style={styles.actionText}>Scan Image</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionCard,
-              userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0 && styles.actionCardDisabled
-            ]}
-            onPress={() => {
-              const totalCards = userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0);
-              if (totalCards > 0) {
-                navigation.navigate('ManageAllCards');
-              }
-            }}
-            disabled={userSubjects.reduce((sum, s) => sum + (s.flashcard_count || 0), 0) === 0}
-          >
-            <View style={styles.actionIconContainer}>
-              <Icon name="settings-outline" size={24} color="#FF9500" />
-            </View>
-            <Text style={styles.actionText}>Manage Cards</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
       
       <DeleteConfirmationModal
@@ -739,10 +907,30 @@ const adjustColor = (color: string, amount: number): string => {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
-const createStyles = (colors: any, theme: string) => StyleSheet.create({
+const createStyles = (colors: any, themeMode: string) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme === 'cyber' ? colors.background : '#f0f0f0',
+    backgroundColor: colors.background,
+  },
+  faqFloatingButton: {
+    position: 'absolute',
+    top: 56,
+    right: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,245,255,0.55)',
+    zIndex: 6,
+  },
+  faqFloatingButtonText: {
+    color: '#00F5FF',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: -1,
   },
   loadingContainer: {
     flex: 1,
@@ -770,14 +958,20 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     gap: 12,
   },
   headerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 245, 255, 0.18)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#0B1220',
     borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    shadowColor: '#14b8a6',
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
   },
   headerAvatarImage: {
     width: 38,
@@ -799,8 +993,9 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
+    borderColor: colors.border,
   },
   rankBadgeText: {
     fontSize: 12,
@@ -815,7 +1010,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   rankProgressBar: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.borderSubtle,
     overflow: 'hidden',
     marginBottom: 12,
   },
@@ -828,28 +1023,28 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.20)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: colors.border,
   },
   lockPillText: {
     fontSize: 12,
-    color: '#E2E8F0',
+    color: colors.text,
     fontWeight: '700',
   },
   lockPillTextLine1: {
     fontSize: 12,
-    color: '#E2E8F0',
+    color: colors.text,
     fontWeight: '900',
   },
   lockPillTextLine2: {
     marginTop: 2,
     fontSize: 11,
-    color: '#CBD5E1',
+    color: colors.textSecondary,
     fontWeight: '800',
   },
   lockPillTextDim: {
-    color: '#94A3B8',
+    color: colors.textMuted,
     fontWeight: '900',
   },
   greeting: {
@@ -865,15 +1060,17 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     textShadowRadius: 10,
   },
   examTypeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     alignSelf: 'flex-start',
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   examTypeText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -886,7 +1083,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
@@ -900,25 +1097,61 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   statNumber: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: colors.primary,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 5,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme === 'cyber' ? colors.text : '#333',
+    color: colors.text,
     marginBottom: 15,
     paddingHorizontal: 20,
     marginTop: 20,
-    ...(theme === 'cyber' && {
+    ...(themeMode === 'cyber' && {
       textShadowColor: colors.primary,
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 4,
     }),
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 10,
+  },
+  sectionTitleInline: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text,
+    ...(themeMode === 'cyber' && {
+      textShadowColor: colors.primary,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 4,
+    }),
+  },
+  feedbackPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  feedbackPillText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -930,10 +1163,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   viewToggle: {
     padding: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   subjectsGrid: {
     paddingHorizontal: 20,
@@ -1059,13 +1292,14 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 18,
     gap: 12,
   },
   actionCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    padding: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderRadius: 16,
     alignItems: 'center',
     minWidth: 90,
@@ -1089,40 +1323,40 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     opacity: 0.4,
   },
   actionText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: theme === 'cyber' ? colors.text : '#333',
+    marginTop: 6,
+    fontSize: 11,
+    color: colors.text,
     fontWeight: '600',
     textAlign: 'center',
   },
   emptyState: {
     alignItems: 'center',
     padding: 40,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     marginHorizontal: 20,
     marginBottom: 30,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 15,
   },
   addSubjectButton: {
     marginTop: 15,
-    backgroundColor: '#6366F1',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
   },
   addSubjectText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontWeight: '600',
   },
   addMoreButton: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 20,
@@ -1130,10 +1364,10 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
   },
   addMoreText: {
-    color: '#6366F1',
+    color: colors.primary,
     fontWeight: '600',
     marginLeft: 8,
   },
@@ -1205,6 +1439,112 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
   },
+  redeemCodeCta: {
+    marginTop: 10,
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    backgroundColor: '#39FF14', // neon green
+    borderWidth: 1,
+    borderColor: 'rgba(57,255,20,0.55)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Platform.select({
+      default: {
+        shadowColor: '#39FF14',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 2,
+      },
+    }),
+  },
+  redeemCodeCtaActive: {
+    backgroundColor: '#FF2BD6', // neon pink when a code is ready
+    borderColor: 'rgba(255,43,214,0.58)',
+    ...Platform.select({
+      default: {
+        shadowColor: '#FF2BD6',
+      },
+    }),
+  },
+  redeemCodeCtaText: {
+    color: '#0B1220',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  pendingClaimHint: {
+    marginTop: 6,
+    color: 'rgba(230,234,242,0.82)',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+  trialCard: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,110,0.26)',
+    backgroundColor: 'rgba(11,18,32,0.92)',
+    ...Platform.select({
+      default: {
+        shadowColor: '#FF006E',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.10,
+        shadowRadius: 14,
+        elevation: 3,
+      },
+    }),
+  },
+  trialText: {
+    marginTop: 10,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  trialProgressTrack: {
+    marginTop: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148,163,184,0.22)',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.18)',
+  },
+  trialProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#00F5FF',
+  },
+  trialFootnote: {
+    marginTop: 4,
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 13,
+  },
+  offerSecondaryRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  offerSecondaryHint: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  offerSecondaryLink: {
+    color: '#00F5FF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
   deleteButton: {
     padding: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.2)',
@@ -1229,13 +1569,15 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   headerStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 12,
     gap: 8,
     flexWrap: 'wrap',
     justifyContent: 'space-around',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerStatItem: {
     alignItems: 'center',
@@ -1245,18 +1587,18 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   headerStatNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
     marginTop: 2,
   },
   headerStatLabel: {
     fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   headerStatDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: colors.borderSubtle,
   },
   notificationBadgeContainer: {
     position: 'absolute',
@@ -1297,7 +1639,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 2,
@@ -1309,30 +1651,30 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   statProgressBar: {
     height: 12,
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.borderSubtle,
     borderRadius: 6,
     overflow: 'hidden',
     marginBottom: 2,
   },
   statProgressFill: {
     height: '100%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.success,
     borderRadius: 6,
   },
   percentageText: {
     position: 'absolute',
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 9,
     fontWeight: 'bold',
     top: 1,
   },
   actionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   gridActions: {
     position: 'absolute',
@@ -1341,7 +1683,7 @@ const createStyles = (colors: any, theme: string) => StyleSheet.create({
   },
   gridActionButton: {
     padding: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
   },
 }); 

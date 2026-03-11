@@ -24,6 +24,7 @@ import { supabase } from '../../services/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import Icon from '../../components/Icon';
+import { useTheme } from '../../contexts/ThemeContext';
 import ExamTimer from '../../components/ExamTimer';
 import PaperExtractionModal from '../../components/PaperExtractionModal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -77,6 +78,8 @@ export default function QuestionPracticeScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { paperId, paperName, subjectName, subjectColor } = route.params as any;
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -974,7 +977,7 @@ export default function QuestionPracticeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00F5FF" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading questions...</Text>
         </View>
       </SafeAreaView>
@@ -986,7 +989,7 @@ export default function QuestionPracticeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Icon name="document-outline" size={64} color="#666" />
+          <Icon name="document-outline" size={64} color={colors.textMuted} />
           <Text style={styles.emptyText}>No questions available</Text>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>Go Back</Text>
@@ -1057,7 +1060,7 @@ export default function QuestionPracticeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIconButton}>
-            <Icon name="close" size={22} color="#00F5FF" />
+            <Icon name="close" size={22} color={colors.primary} />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.paperName}>{paperName}</Text>
@@ -1086,7 +1089,7 @@ export default function QuestionPracticeScreen() {
             onPress={prevQuestion}
             disabled={currentIndex === 0}
           >
-            <Icon name="arrow-back-circle" size={18} color={currentIndex === 0 ? '#475569' : '#3B82F6'} />
+            <Icon name="arrow-back-circle" size={18} color={currentIndex === 0 ? colors.textMuted : colors.primary} />
             <Text style={[styles.actionButtonText, styles.navButtonText, currentIndex === 0 && styles.navButtonTextDisabled]}>
               Prev
             </Text>
@@ -1107,7 +1110,7 @@ export default function QuestionPracticeScreen() {
             <Icon
               name={(currentIndex < maxIndexReached || (previousAttempts?.length || 0) > 0 || !!userAnswer.trim() || !!markingResult) ? 'chevron-forward' : 'play-skip-forward'}
               size={18}
-              color="#F59E0B"
+              color={colors.warning}
             />
             <Text style={styles.actionButtonText}>
               {(currentIndex < maxIndexReached || (previousAttempts?.length || 0) > 0 || !!userAnswer.trim() || !!markingResult) ? 'Next' : 'Skip'}
@@ -1117,7 +1120,7 @@ export default function QuestionPracticeScreen() {
             style={[styles.actionButton, styles.pauseButton]}
             onPress={pausePaper}
           >
-            <Icon name="pause" size={18} color="#3B82F6" />
+            <Icon name="pause" size={18} color={colors.primary} />
             <Text style={[styles.actionButtonText, styles.pauseButtonText]}>Pause</Text>
           </TouchableOpacity>
         </View>
@@ -1136,7 +1139,7 @@ export default function QuestionPracticeScreen() {
           {/* Context */}
           {currentQuestion.context_text && (
             <View style={styles.contextBox}>
-              <Icon name="information-circle-outline" size={16} color="#00F5FF" />
+              <Icon name="information-circle-outline" size={16} color={colors.primary} />
               <Text style={styles.contextText}>{currentQuestion.context_text}</Text>
             </View>
           )}
@@ -1158,7 +1161,7 @@ export default function QuestionPracticeScreen() {
           {/* Image missing fallback */}
           {currentQuestion.has_image && !currentQuestion.image_url && (
             <View style={styles.missingImageBox}>
-              <Icon name="information-circle" size={16} color="#F59E0B" />
+              <Icon name="information-circle" size={16} color={colors.warning} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.missingImageTitle}>Diagram required</Text>
                 <Text style={styles.missingImageText}>
@@ -1183,7 +1186,7 @@ export default function QuestionPracticeScreen() {
           {/* Multiple choice fallback */}
           {isLikelyMultipleChoice && (
             <View style={styles.missingImageBox}>
-              <Icon name="information-circle" size={16} color="#F59E0B" />
+              <Icon name="information-circle" size={16} color={colors.warning} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.missingImageTitle}>Multiple choice</Text>
                 <Text style={styles.missingImageText}>
@@ -1250,7 +1253,7 @@ export default function QuestionPracticeScreen() {
                 <Icon 
                   name={showPreviousAnswer ? 'eye-off' : 'eye'} 
                   size={18} 
-                  color="#3B82F6" 
+                  color={colors.primary}
                 />
                 <Text style={styles.previousToggleText}>
                   {showPreviousAnswer ? 'Hide' : 'Show'} Previous Answer ({previousAttempts.length})
@@ -1288,7 +1291,7 @@ export default function QuestionPracticeScreen() {
                     style={styles.expandButton}
                     onPress={() => openQuestionPaperPdf(currentQuestion.image_page)}
                   >
-                    <Icon name="document-text" size={16} color="#00F5FF" />
+                    <Icon name="document-text" size={16} color={colors.primary} />
                     <Text style={styles.expandButtonText}>Open PDF</Text>
                   </TouchableOpacity>
                 )}
@@ -1296,7 +1299,7 @@ export default function QuestionPracticeScreen() {
                   style={styles.expandButton}
                   onPress={() => setShowAnswerEditor(true)}
                 >
-                  <Icon name="create-outline" size={16} color="#00F5FF" />
+                  <Icon name="create-outline" size={16} color={colors.primary} />
                   <Text style={styles.expandButtonText}>Expand</Text>
                 </TouchableOpacity>
               </View>
@@ -1309,7 +1312,7 @@ export default function QuestionPracticeScreen() {
               style={styles.answerInput}
               multiline
               placeholder={isLikelyMultipleChoice ? 'Type your selected letter/answer here...' : 'Type your answer here...'}
-              placeholderTextColor="#64748B"
+              placeholderTextColor={colors.textMuted}
               value={userAnswer}
               onChangeText={setUserAnswer}
               onFocus={handleAnswerFocus}
@@ -1321,10 +1324,10 @@ export default function QuestionPracticeScreen() {
               disabled={marking}
             >
               {marking ? (
-                <ActivityIndicator color="#0a0f1e" />
+                <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
                 <>
-                  <Icon name="checkmark-circle" size={20} color="#0a0f1e" />
+                  <Icon name="checkmark-circle" size={20} color={colors.textOnPrimary} />
                   <Text style={styles.submitButtonText}>Submit Answer</Text>
                 </>
               )}
@@ -1334,7 +1337,7 @@ export default function QuestionPracticeScreen() {
           <View style={styles.feedbackSection}>
             {/* Marks Awarded */}
             <LinearGradient
-              colors={['#10B981', '#059669']}
+              colors={[colors.success, colors.primary]}
               style={styles.marksCard}
             >
               <Text style={styles.marksAwarded}>
@@ -1377,7 +1380,7 @@ export default function QuestionPracticeScreen() {
                   style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <Text style={styles.feedbackTitle}>👩‍🏫 Examiner Insight</Text>
-                  <Icon name={showExaminerInsight ? 'chevron-up' : 'chevron-down'} size={18} color="#00F5FF" />
+                  <Icon name={showExaminerInsight ? 'chevron-up' : 'chevron-down'} size={18} color={colors.primary} />
                 </TouchableOpacity>
                 {showExaminerInsight && (
                   <View style={{ marginTop: 10 }}>
@@ -1446,7 +1449,7 @@ export default function QuestionPracticeScreen() {
                 multiline
                 autoFocus
                 placeholder="Type your answer here..."
-                placeholderTextColor="#64748B"
+                placeholderTextColor={colors.textMuted}
                 value={userAnswer}
                 onChangeText={setUserAnswer}
               />
@@ -1481,10 +1484,10 @@ export default function QuestionPracticeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -1493,7 +1496,7 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 16,
     fontSize: 14,
     textAlign: 'center',
@@ -1505,15 +1508,15 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: colors.border,
   },
   headerIconButton: {
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.22)',
+    borderColor: colors.border,
   },
   headerCenter: {
     flex: 1,
@@ -1522,20 +1525,20 @@ const styles = StyleSheet.create({
   paperName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 4,
   },
   progress: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textSecondary,
   },
   questionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     margin: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
+    borderColor: colors.border,
   },
   questionHeader: {
     flexDirection: 'row',
@@ -1546,22 +1549,22 @@ const styles = StyleSheet.create({
   questionNumber: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#00F5FF',
+    color: colors.primary,
   },
   marksBadge: {
-    backgroundColor: 'rgba(0, 245, 255, 0.2)',
+    backgroundColor: colors.surfaceElevated,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   marksText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   contextBox: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0, 245, 255, 0.08)',
+    backgroundColor: colors.surfaceElevated,
     padding: 12,
     borderRadius: 8,
     marginBottom: 16,
@@ -1569,7 +1572,7 @@ const styles = StyleSheet.create({
   },
   contextText: {
     flex: 1,
-    color: '#94A3B8',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -1577,7 +1580,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   questionImage: {
     width: '100%',
@@ -1585,14 +1588,14 @@ const styles = StyleSheet.create({
   },
   imageCaption: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textSecondary,
     fontStyle: 'italic',
     padding: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceElevated,
   },
   questionText: {
     fontSize: 16,
-    color: '#E2E8F0',
+    color: colors.text,
     lineHeight: 24,
   },
   answerSection: {
@@ -1608,7 +1611,7 @@ const styles = StyleSheet.create({
   answerLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   expandButton: {
     flexDirection: 'row',
@@ -1617,41 +1620,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
-    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.25)',
+    borderColor: colors.border,
   },
   expandButtonText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '700',
   },
   answerInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 15,
     minHeight: 120,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
     marginBottom: 16,
   },
   editorOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   editorSheet: {
-    backgroundColor: '#0f172a',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.18)',
+    borderColor: colors.border,
     maxHeight: Math.min(Dimensions.get('window').height * 0.70, 520),
   },
   editorHeader: {
@@ -1661,7 +1664,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   editorTitle: {
-    color: '#E2E8F0',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -1669,19 +1672,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.25)',
+    borderColor: colors.border,
   },
   editorDoneText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontWeight: '800',
   },
   editorInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 15,
     minHeight: 220,
     textAlignVertical: 'top',
@@ -1690,13 +1693,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   editorHintText: {
-    color: '#94A3B8',
+    color: colors.textSecondary,
     fontSize: 12,
     lineHeight: 16,
   },
   submitButton: {
     flexDirection: 'row',
-    backgroundColor: '#00F5FF',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -1705,10 +1708,10 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         borderWidth: 2,
-        borderColor: '#00D4E6',
+        borderColor: colors.primary,
       },
       default: {
-        shadowColor: '#00F5FF',
+        shadowColor: colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1720,7 +1723,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
-    color: '#0a0f1e',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1737,46 +1740,46 @@ const styles = StyleSheet.create({
   marksAwarded: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   marksLabel: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     marginTop: 4,
   },
   feedbackCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: colors.border,
   },
   feedbackTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#00F5FF',
+    color: colors.primary,
     marginBottom: 12,
   },
   feedbackText: {
     fontSize: 14,
-    color: '#E2E8F0',
+    color: colors.text,
     lineHeight: 20,
   },
   bulletPoint: {
     fontSize: 14,
-    color: '#E2E8F0',
+    color: colors.text,
     lineHeight: 20,
     marginBottom: 8,
   },
   nextButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   nextButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -1787,42 +1790,42 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textSecondary,
     marginTop: 20,
     marginBottom: 20,
   },
   backButton: {
-    backgroundColor: '#00F5FF',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   backButtonText: {
-    color: '#0a0f1e',
+    color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: 'bold',
   },
   previousToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: colors.surface,
     padding: 12,
     borderRadius: 8,
     gap: 8,
     marginBottom: 12,
   },
   previousToggleText: {
-    color: '#3B82F6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   previousAnswerCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: colors.border,
   },
   previousHeader: {
     flexDirection: 'row',
@@ -1833,21 +1836,21 @@ const styles = StyleSheet.create({
   previousLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: colors.primary,
   },
   previousDate: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   previousAnswerText: {
     fontSize: 14,
-    color: '#E2E8F0',
+    color: colors.text,
     lineHeight: 20,
     marginBottom: 8,
   },
   previousFeedback: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: colors.textSecondary,
     fontStyle: 'italic',
     lineHeight: 18,
   },
@@ -1862,74 +1865,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: colors.surfaceElevated,
     paddingVertical: 12,
     borderRadius: 10,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: colors.border,
   },
   actionButtonText: {
-    color: '#F59E0B',
+    color: colors.warning,
     fontSize: 14,
     fontWeight: '600',
   },
   navButton: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    borderColor: 'rgba(59, 130, 246, 0.28)',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   navButtonText: {
-    color: '#3B82F6',
+    color: colors.primary,
   },
   navButtonDisabled: {
-    backgroundColor: 'rgba(71, 85, 105, 0.10)',
-    borderColor: 'rgba(71, 85, 105, 0.22)',
+    backgroundColor: colors.surface,
+    borderColor: colors.borderSubtle,
   },
   navButtonTextDisabled: {
-    color: '#475569',
+    color: colors.textMuted,
   },
   skipOrNextButton: {
     // keep existing amber styling from actionButton
   },
   pauseButton: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
   },
   pauseButtonText: {
-    color: '#3B82F6',
+    color: colors.primary,
   },
   missingImageBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
+    borderColor: colors.warning,
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
   missingImageTitle: {
-    color: '#F59E0B',
+    color: colors.warning,
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 4,
   },
   missingImageText: {
-    color: '#E2E8F0',
+    color: colors.text,
     fontSize: 12,
     lineHeight: 16,
   },
   openPdfButton: {
-    backgroundColor: 'rgba(0, 245, 255, 0.15)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.35)',
+    borderColor: colors.border,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 10,
   },
   openPdfButtonText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1942,15 +1945,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.10)',
+    borderColor: colors.border,
     padding: 12,
     borderRadius: 12,
   },
   mcqOptionRowSelected: {
-    backgroundColor: 'rgba(245, 158, 11, 0.10)',
-    borderColor: 'rgba(245, 158, 11, 0.45)',
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.warning,
   },
   mcqOptionKey: {
     width: 28,
@@ -1958,29 +1961,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 245, 255, 0.10)',
+    backgroundColor: colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.25)',
+    borderColor: colors.border,
   },
   mcqOptionKeySelected: {
-    backgroundColor: 'rgba(245, 158, 11, 0.25)',
-    borderColor: 'rgba(245, 158, 11, 0.55)',
+    backgroundColor: colors.warning,
+    borderColor: colors.warning,
   },
   mcqOptionKeyText: {
-    color: '#00F5FF',
+    color: colors.primary,
     fontWeight: '800',
   },
   mcqOptionKeyTextSelected: {
-    color: '#F59E0B',
+    color: colors.textOnPrimary,
   },
   mcqOptionText: {
     flex: 1,
-    color: '#E2E8F0',
+    color: colors.text,
     fontSize: 13,
     lineHeight: 18,
   },
   mcqOptionTextSelected: {
-    color: '#FFFFFF',
+    color: colors.text,
   },
 });
 

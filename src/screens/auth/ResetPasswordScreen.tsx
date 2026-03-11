@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,23 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../contexts/ThemeContext';
 import { navigate } from '../../navigation/RootNavigation';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ResetPasswordScreen() {
   const { colors } = useTheme();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const confirmRef = useRef<TextInput>(null);
 
   const canSubmit = useMemo(() => {
     if (!password || !confirm) return false;
@@ -57,7 +63,8 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Reset password</Text>
         <Text style={styles.subtitle}>
@@ -70,20 +77,51 @@ export default function ResetPasswordScreen() {
           onChangeText={setPassword}
           placeholder="New password (min 8 characters)"
           placeholderTextColor="#94A3B8"
-          secureTextEntry
+          secureTextEntry={!showPassword}
           autoCapitalize="none"
           editable={!loading}
+          returnKeyType="next"
+          onSubmitEditing={() => confirmRef.current?.focus()}
         />
+        <TouchableOpacity
+          style={styles.passwordToggle}
+          onPress={() => setShowPassword((v) => !v)}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+        >
+          <Ionicons
+            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+            size={22}
+            color="#94A3B8"
+          />
+        </TouchableOpacity>
         <TextInput
+          ref={confirmRef}
           style={styles.input}
           value={confirm}
           onChangeText={setConfirm}
           placeholder="Confirm new password"
           placeholderTextColor="#94A3B8"
-          secureTextEntry
+          secureTextEntry={!showConfirm}
           autoCapitalize="none"
           editable={!loading}
+          returnKeyType="done"
+          onSubmitEditing={handleSubmit}
         />
+        <TouchableOpacity
+          style={styles.passwordToggle}
+          onPress={() => setShowConfirm((v) => !v)}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel={showConfirm ? 'Hide password confirmation' : 'Show password confirmation'}
+        >
+          <Ionicons
+            name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+            size={22}
+            color="#94A3B8"
+          />
+        </TouchableOpacity>
 
         {password.length > 0 && password.length < 8 ? (
           <Text style={styles.hint}>Password must be at least 8 characters.</Text>
@@ -111,7 +149,8 @@ export default function ResetPasswordScreen() {
           If you didn’t request this, you can close this screen.
         </Text>
       </View>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -153,6 +192,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.20)',
     marginBottom: 10,
+  },
+  passwordToggle: {
+    alignSelf: 'flex-end',
+    marginTop: -46,
+    marginBottom: 18,
+    padding: 10,
   },
   hint: {
     color: '#FF006E',

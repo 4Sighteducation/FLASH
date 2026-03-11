@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState } from 'react-native';
 // import * as InAppPurchases from 'expo-in-app-purchases';
 import { supabase } from '../services/supabase';
 import { useAuth } from './AuthContext';
@@ -20,6 +20,24 @@ import { navigate as rootNavigate } from '../navigation/RootNavigation';
 // v1 tiers: Free / Premium / Pro
 // NOTE: We keep backwards-compatibility with legacy values stored in DB/storage ('lite'/'full').
 export type SubscriptionTier = 'free' | 'premium' | 'pro';
+export type SubscriptionSource = 'trial' | 'revenuecat' | 'beta' | 'code' | 'free' | 'unknown' | null;
+
+export type SubscriptionMeta = {
+  source: SubscriptionSource;
+  startedAt: string | null;
+  expiresAt: string | null;
+  expiredProcessedAt: string | null;
+};
+
+export type TrialInfo = {
+  isTrial: boolean;
+  isActive: boolean;
+  totalDays: number;
+  daysRemaining: number | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  progress: number | null; // 0..1
+};
 
 interface SubscriptionLimits {
   maxSubjects: number;
@@ -33,10 +51,13 @@ interface SubscriptionLimits {
 
 interface SubscriptionContextType {
   tier: SubscriptionTier;
+  subscription: SubscriptionMeta;
+  trial: TrialInfo;
   limits: SubscriptionLimits;
   isLoading: boolean;
   purchasePlan: (plan: Plan, billing: BillingPeriod) => Promise<void>;
   restorePurchases: () => Promise<void>;
+  refreshSubscription: () => Promise<void>;
   checkLimits: (type: 'subject' | 'topic' | 'card', currentCount: number) => boolean;
 }
 
@@ -82,9 +103,16 @@ const SubscriptionContext = createContext<SubscriptionContextType | undefined>(u
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tier, setTier] = useState<SubscriptionTier>('free');
+  const [subscription, setSubscription] = useState<SubscriptionMeta>({
+    source: null,
+    startedAt: null,
+    expiresAt: null,
+    expiredProcessedAt: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const unsubscribeRef = React.useRef<null | (() => void)>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const tierStorageKey = (userId?: string | null) => `subscriptionTier:${userId || 'anon'}`;
   const launchOfferPendingKey = (userId?: string | null) => `launch_offer_pending_v1:${userId || 'anon'}`;
@@ -92,6 +120,61 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Pro-only model: treat any legacy Premium as Pro.
   const tierRank = (t: SubscriptionTier) => (t === 'pro' || t === 'premium' ? 2 : 0);
+
+  const TRIAL_TOTAL_DAYS = 30;
+  const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+  const computeTrialInfo = (meta: SubscriptionMeta): TrialInfo => {
+    const isTrial = String(meta.source || '') === 'trial' && !!meta.expiresAt;
+    const expiresAtMs = meta.expiresAt ? Date.parse(meta.expiresAt) : NaN;
+    const startedAtMs = meta.startedAt ? Date.parse(meta.startedAt) : NaN;
+    const now = nowMs;
+
+    const isActive = isTrial && Number.isFinite(expiresAtMs) && expiresAtMs > now;
+
+    const daysRemaining =
+      isTrial && Number.isFinite(expiresAtMs)
+        ? Math.max(0, Math.ceil((expiresAtMs - now) / (24 * 60 * 60 * 1000)))
+        : null;
+
+    const progress = (() => {
+      if (!isTrial) return null;
+      if (Number.isFinite(startedAtMs) && Number.isFinite(expiresAtMs) && expiresAtMs > startedAtMs) {
+        const p = (now - startedAtMs) / (TRIAL_TOTAL_DAYS * 24 * 60 * 60 * 1000);
+        return clamp01(p);
+      }
+      if (typeof daysRemaining === 'number') {
+        return clamp01((TRIAL_TOTAL_DAYS - daysRemaining) / TRIAL_TOTAL_DAYS);
+      }
+      return null;
+    })();
+
+    return {
+      isTrial,
+      isActive,
+      totalDays: TRIAL_TOTAL_DAYS,
+      daysRemaining,
+      startedAt: meta.startedAt,
+      expiresAt: meta.expiresAt,
+      progress,
+    };
+  };
+
+  // Ensure trial countdown updates even if subscription state is stable.
+  // Without this, `daysRemaining` can appear "stuck" until some unrelated state change causes a re-render.
+  useEffect(() => {
+    // Update on foregrounding
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNowMs(Date.now());
+    });
+
+    // Also tick periodically (cheap; keeps UI accurate during longer sessions).
+    const t = setInterval(() => setNowMs(Date.now()), 60 * 60 * 1000);
+
+    return () => {
+      sub.remove();
+      clearInterval(t);
+    };
+  }, []);
 
   const getBetaAccess = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
     try {
@@ -111,18 +194,29 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const getDbTier = async (): Promise<{ tier: SubscriptionTier; expiresAt: string | null } | null> => {
+  const getDbSubscription = async (): Promise<
+    | (SubscriptionMeta & {
+        tier: SubscriptionTier;
+      })
+    | null
+  > => {
     try {
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .select('tier, expires_at')
+        .select('tier, source, started_at, expires_at, expired_processed_at')
         .eq('user_id', user?.id)
         .maybeSingle();
 
       if (error || !data?.tier) return null;
       const isExpired = data.expires_at && new Date(data.expires_at) < new Date();
       const resolved = isExpired ? 'free' : normalizeTier(data.tier);
-      return { tier: resolved, expiresAt: data.expires_at ? new Date(data.expires_at).toISOString() : null };
+      return {
+        tier: resolved,
+        source: normalizeSource((data as any).source),
+        startedAt: (data as any).started_at ? new Date((data as any).started_at).toISOString() : null,
+        expiresAt: data.expires_at ? new Date(data.expires_at).toISOString() : null,
+        expiredProcessedAt: (data as any).expired_processed_at ? new Date((data as any).expired_processed_at).toISOString() : null,
+      };
     } catch {
       return null;
     }
@@ -132,18 +226,37 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Highest priority: beta access allowlist
     const beta = await getBetaAccess();
     if (beta && tierRank(beta.tier) > tierRank(rcTier)) {
-      await applyTier(beta.tier, beta.expiresAt);
+      await applyTier({
+        nextTier: beta.tier,
+        expiresAtIso: beta.expiresAt,
+        source: 'beta',
+        syncToDb: false,
+      });
       return;
     }
 
     // Fallback: DB tier if higher (useful for reviewer accounts and emergency overrides)
-    const db = await getDbTier();
+    const db = await getDbSubscription();
     if (db && tierRank(db.tier) > tierRank(rcTier)) {
-      await applyTier(db.tier, db.expiresAt);
+      // IMPORTANT: do not sync back to DB here. This path often represents server-side trial access
+      // (source='trial'), and syncing would incorrectly overwrite `source`.
+      await applyTier({
+        nextTier: db.tier,
+        expiresAtIso: db.expiresAt,
+        source: (db.source as any) || null,
+        startedAtIso: db.startedAt,
+        expiredProcessedAtIso: db.expiredProcessedAt,
+        syncToDb: false,
+      });
       return;
     }
 
-    await applyTier(rcTier, rcExpiresAt);
+    await applyTier({
+      nextTier: rcTier,
+      expiresAtIso: rcExpiresAt,
+      source: rcTier === 'free' ? 'free' : 'revenuecat',
+      syncToDb: true,
+    });
   };
 
   useEffect(() => {
@@ -193,13 +306,29 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return 'free';
   };
 
+  const normalizeSource = (raw: any): SubscriptionSource => {
+    const s = String(raw || '').trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'trial') return 'trial';
+    if (s === 'revenuecat') return 'revenuecat';
+    if (s === 'beta') return 'beta';
+    if (s === 'code' || s === 'access_code' || s === 'redeem' || s === 'redeemed') return 'code';
+    if (s === 'free') return 'free';
+    return 'unknown';
+  };
+
   const checkSubscriptionStatus = async () => {
     try {
       // NEW: Beta access override should apply even when RevenueCat isn't available.
       // This is critical for waitlist auto-Pro users on TestFlight/dev builds.
       const beta = await getBetaAccess();
       if (beta) {
-        await applyTier(beta.tier, beta.expiresAt);
+        await applyTier({
+          nextTier: beta.tier,
+          expiresAtIso: beta.expiresAt,
+          source: 'beta',
+          syncToDb: false,
+        });
         return;
       }
 
@@ -210,7 +339,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Then verify with backend
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .select('tier, expires_at')
+        .select('tier, source, started_at, expires_at, expired_processed_at')
         .eq('user_id', user?.id)
         .maybeSingle();
 
@@ -219,10 +348,17 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const resolved = isExpired ? 'free' : normalizeTier(data.tier);
         setTier(resolved);
         await AsyncStorage.setItem(tierStorageKey(user?.id), resolved);
+        setSubscription({
+          source: normalizeSource((data as any).source),
+          startedAt: (data as any).started_at ? new Date((data as any).started_at).toISOString() : null,
+          expiresAt: (data as any).expires_at ? new Date((data as any).expires_at).toISOString() : null,
+          expiredProcessedAt: (data as any).expired_processed_at ? new Date((data as any).expired_processed_at).toISOString() : null,
+        });
       } else {
         // IMPORTANT: if we can't verify entitlement, do NOT "upgrade" from local storage.
         // Default to Free unless the stored value is already Free.
         setTier(localTier === 'free' ? 'free' : 'free');
+        setSubscription({ source: null, startedAt: null, expiresAt: null, expiredProcessedAt: null });
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -231,15 +367,29 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const applyTier = async (next: SubscriptionTier, expiresAtIso: string | null) => {
+  const applyTier = async (params: {
+    nextTier: SubscriptionTier;
+    expiresAtIso: string | null;
+    source?: SubscriptionSource;
+    startedAtIso?: string | null;
+    expiredProcessedAtIso?: string | null;
+    syncToDb?: boolean;
+  }) => {
+    const { nextTier, expiresAtIso, source = null, startedAtIso, expiredProcessedAtIso, syncToDb = true } = params;
     const prev = tier;
-    setTier(next);
-    await AsyncStorage.setItem(tierStorageKey(user?.id), next);
+    setTier(nextTier);
+    await AsyncStorage.setItem(tierStorageKey(user?.id), nextTier);
+    setSubscription({
+      source,
+      startedAt: startedAtIso ?? subscription.startedAt,
+      expiresAt: expiresAtIso,
+      expiredProcessedAt: expiredProcessedAtIso ?? subscription.expiredProcessedAt,
+    });
 
     // Post-purchase celebration: if the user initiated the launch offer (Premium Annual) and later
     // becomes Pro (via RevenueCat webhook), mark a one-time celebration flag for the UI.
     try {
-      if (user?.id && prev !== 'pro' && next === 'pro') {
+      if (user?.id && prev !== 'pro' && nextTier === 'pro') {
         const pendingRaw = await AsyncStorage.getItem(launchOfferPendingKey(user.id));
         if (pendingRaw) {
           await AsyncStorage.removeItem(launchOfferPendingKey(user.id));
@@ -265,18 +415,19 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Best-effort sync to backend (RevenueCat remains the source of truth for paid access).
     // We also store a lightweight `source` hint so server-side jobs can distinguish trial vs paid.
     try {
-      if (user?.id) {
-        const source =
-          next === 'free'
+      if (syncToDb && user?.id) {
+        const src: string =
+          (source as any) ||
+          (nextTier === 'free'
             ? 'free'
             : // If we have an expiry from RevenueCat, assume it's store-driven access.
               expiresAtIso
               ? 'revenuecat'
-              : 'unknown';
+              : 'unknown');
         await supabase.from('user_subscriptions').upsert({
           user_id: user.id,
-          tier: next,
-          source,
+          tier: nextTier,
+          source: src,
           platform: Platform.OS,
           expires_at: expiresAtIso,
           updated_at: new Date().toISOString(),
@@ -373,7 +524,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const info = await purchaseFromOffering({ offeringId: 'default', plan, billing });
       const next = resolveTierFromCustomerInfo(info);
       const exp = getExpirationIso(info);
-      await applyTier(next, exp);
+      await applyTier({ nextTier: next, expiresAtIso: exp, source: 'revenuecat', syncToDb: true });
 
       // Celebration for any successful purchase.
       // We show a one-time modal immediately after purchase completes.
@@ -403,7 +554,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       if (info) {
         const next = resolveTierFromCustomerInfo(info);
         const exp = getExpirationIso(info);
-        await applyTier(next, exp);
+        await applyTier({ nextTier: next, expiresAtIso: exp, source: 'revenuecat', syncToDb: true });
         Alert.alert('Success', 'Purchases restored.');
       } else {
         Alert.alert('Info', 'Purchase restoration requires a store build.');
@@ -411,6 +562,41 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('Restore error:', error);
       Alert.alert('Error', 'Failed to restore purchases.');
+    }
+  };
+
+  const refreshSubscription = async () => {
+    try {
+      if (!user?.id) return;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
+
+      if (!apiKey || Platform.OS === 'web') {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      const ok = await configureRevenueCat({ apiKey, appUserId: user.id });
+      if (!ok) {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      const info = await getCustomerInfo();
+      if (info) {
+        const next = resolveTierFromCustomerInfo(info);
+        const exp = getExpirationIso(info);
+        await applyTierWithOverrides(next, exp);
+        return;
+      }
+
+      await checkSubscriptionStatus();
+    } catch {
+      // ignore
     }
   };
 
@@ -433,10 +619,13 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     <SubscriptionContext.Provider 
       value={{ 
         tier, 
+        subscription,
+        trial: computeTrialInfo(subscription),
         limits: subscriptionLimits[tier], 
         isLoading,
         purchasePlan,
         restorePurchases,
+        refreshSubscription,
         checkLimits
       }}
     >

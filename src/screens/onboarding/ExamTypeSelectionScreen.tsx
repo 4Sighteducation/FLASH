@@ -35,23 +35,23 @@ export default function ExamTypeSelectionScreen() {
   const accentFor = (id: ExamTrackId) => {
     switch (id) {
       case 'GCSE':
-        return { border: 'rgba(0, 245, 255, 0.35)', fill: 'rgba(0, 245, 255, 0.06)' };
+        return { border: 'rgba(0, 245, 255, 0.55)', fill: 'rgba(0, 245, 255, 0.14)' };
       case 'A_LEVEL':
-        return { border: 'rgba(0, 245, 255, 0.35)', fill: 'rgba(0, 245, 255, 0.06)' };
+        return { border: 'rgba(0, 245, 255, 0.55)', fill: 'rgba(0, 245, 255, 0.14)' };
       case 'VOCATIONAL_L2':
-        return { border: 'rgba(34, 197, 94, 0.35)', fill: 'rgba(34, 197, 94, 0.06)' };
+        return { border: 'rgba(34, 197, 94, 0.55)', fill: 'rgba(34, 197, 94, 0.14)' };
       case 'VOCATIONAL_L3':
-        return { border: 'rgba(34, 197, 94, 0.35)', fill: 'rgba(34, 197, 94, 0.06)' };
+        return { border: 'rgba(34, 197, 94, 0.55)', fill: 'rgba(34, 197, 94, 0.14)' };
       case 'SQA_NATIONAL_5':
-        return { border: 'rgba(168, 85, 247, 0.35)', fill: 'rgba(168, 85, 247, 0.06)' };
+        return { border: 'rgba(168, 85, 247, 0.55)', fill: 'rgba(168, 85, 247, 0.14)' };
       case 'SQA_HIGHER':
-        return { border: 'rgba(168, 85, 247, 0.35)', fill: 'rgba(168, 85, 247, 0.06)' };
+        return { border: 'rgba(168, 85, 247, 0.55)', fill: 'rgba(168, 85, 247, 0.14)' };
       case 'INTERNATIONAL_GCSE':
-        return { border: 'rgba(59, 130, 246, 0.35)', fill: 'rgba(59, 130, 246, 0.06)' };
+        return { border: 'rgba(59, 130, 246, 0.55)', fill: 'rgba(59, 130, 246, 0.14)' };
       case 'INTERNATIONAL_A_LEVEL':
-        return { border: 'rgba(59, 130, 246, 0.35)', fill: 'rgba(59, 130, 246, 0.06)' };
+        return { border: 'rgba(59, 130, 246, 0.55)', fill: 'rgba(59, 130, 246, 0.14)' };
       case 'IB':
-        return { border: 'rgba(255, 0, 110, 0.35)', fill: 'rgba(255, 0, 110, 0.06)' };
+        return { border: 'rgba(255, 0, 110, 0.6)', fill: 'rgba(255, 0, 110, 0.16)' };
       default:
         return { border: 'rgba(255,255,255,0.12)', fill: 'rgba(255,255,255,0.03)' };
     }

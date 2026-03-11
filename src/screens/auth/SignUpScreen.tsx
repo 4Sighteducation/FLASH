@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Image,
   Linking,
   Dimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,10 +24,13 @@ const { width } = Dimensions.get('window');
 export default function SignUpScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { signUp } = useAuth();
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const handleSignUp = async () => {
     if (!email || !password || !username) {
@@ -59,12 +64,13 @@ export default function SignUpScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={styles.content}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.content}>
           {/* Logo Section */}
           <View style={styles.logoContainer}>
             <View style={styles.logoGlow}>
@@ -90,11 +96,14 @@ export default function SignUpScreen({ navigation }: any) {
                 onChangeText={setUsername}
                 autoCapitalize="none"
                 editable={!loading}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
               />
             </View>
 
             <View style={styles.inputContainer}>
               <TextInput
+                ref={emailRef}
                 style={styles.input}
                 placeholder="Email"
                 placeholderTextColor="#94A3B8"
@@ -103,19 +112,39 @@ export default function SignUpScreen({ navigation }: any) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 editable={!loading}
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
               />
             </View>
 
             <View style={styles.inputContainer}>
+              <View style={styles.passwordRow}>
               <TextInput
-                style={styles.input}
+                  ref={passwordRef}
+                  style={[styles.input, styles.passwordInput]}
                 placeholder="Password (min 6 characters)"
                 placeholderTextColor="#94A3B8"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                  secureTextEntry={!showPassword}
                 editable={!loading}
+                returnKeyType="done"
+                onSubmitEditing={handleSignUp}
               />
+                <TouchableOpacity
+                  style={styles.passwordToggle}
+                  onPress={() => setShowPassword((v) => !v)}
+                  disabled={loading}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color="#94A3B8"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Terms & Privacy Agreement */}
@@ -180,9 +209,10 @@ export default function SignUpScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -255,6 +285,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 245, 255, 0.05)',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 245, 255, 0.25)',
+  },
+  passwordInput: {
+    flex: 1,
+    borderWidth: 0,
+  },
+  passwordToggle: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   button: {
     borderRadius: 12,

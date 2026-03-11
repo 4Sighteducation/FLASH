@@ -1,5 +1,44 @@
 const OpenAI = require('openai');
 
+const LEGACY_MODEL_BY_TYPE = {
+  essay: 'gpt-4-turbo',
+  multiple_choice: 'gpt-3.5-turbo',
+  short_answer: 'gpt-3.5-turbo',
+  acronym: 'gpt-3.5-turbo',
+};
+
+const MODEL_ENV_BY_TYPE = {
+  essay: 'OPENAI_MODEL_ESSAY',
+  multiple_choice: 'OPENAI_MODEL_MULTIPLE_CHOICE',
+  short_answer: 'OPENAI_MODEL_SHORT_ANSWER',
+  acronym: 'OPENAI_MODEL_ACRONYM',
+};
+
+function readEnv(name) {
+  const value = process.env[name];
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveModelForQuestionType(questionType) {
+  const typeEnvName = MODEL_ENV_BY_TYPE[questionType];
+  const perTypeModel = typeEnvName ? readEnv(typeEnvName) : null;
+  if (perTypeModel) {
+    return { model: perTypeModel, source: typeEnvName };
+  }
+
+  const defaultModel = readEnv('OPENAI_MODEL_DEFAULT');
+  if (defaultModel) {
+    return { model: defaultModel, source: 'OPENAI_MODEL_DEFAULT' };
+  }
+
+  return {
+    model: LEGACY_MODEL_BY_TYPE[questionType] || LEGACY_MODEL_BY_TYPE.multiple_choice,
+    source: 'legacy_fallback',
+  };
+}
+
 // Main handler function
 module.exports = async function handler(req, res) {
   // Set CORS headers
@@ -31,7 +70,7 @@ module.exports = async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance, isOverview, childrenTopics } = req.body;
+    const { subject, topic, examType, examBoard, questionType, numCards, contentGuidance, avoidQuestions, isOverview, childrenTopics } = req.body;
 
     // Validate required fields
     if (!subject || !topic || !examType || !examBoard || !questionType || !numCards) {
@@ -107,7 +146,7 @@ CONTENT GUIDANCE:
 - Create challenging yet fair multiple choice questions
 - Provide exactly 4 COMPLETE options (NOT just single letters!)
 - Each option must be a full phrase or sentence (e.g., "Deontology", not just "D")
-- Label options as a), b), c), d)
+- Return options as plain text only (do NOT prefix with a)/b)/c)/d) or A./B./C./D.)
 - Distribute the correct answer randomly among the four positions
 - All four options should be plausible and related to ${topic}
 - DO NOT include placeholder options like "E" or single letters
@@ -143,7 +182,24 @@ CONTENT GUIDANCE:
     }
 
     if (contentGuidance) {
-      prompt += `\n\nADDITIONAL GUIDANCE: ${contentGuidance}`;
+      prompt += `\n\nADDITIONAL GUIDANCE (treat this as a priority across the FULL set, not just one card): ${contentGuidance}`;
+      prompt += `\n- Every card should clearly reflect this guidance unless doing so would make the set repetitive or inaccurate.`;
+      prompt += `\n- Do not limit the guidance to only the first card.`;
+    }
+
+    if (Array.isArray(avoidQuestions) && avoidQuestions.length > 0) {
+      const trimmedAvoid = avoidQuestions
+        .map((q) => String(q || '').trim())
+        .filter(Boolean)
+        .slice(0, 20);
+
+      if (trimmedAvoid.length > 0) {
+        prompt += `\n\nAVOID REPEATING THESE EXISTING OR PREVIOUSLY GENERATED QUESTIONS:`;
+        trimmedAvoid.forEach((question, index) => {
+          prompt += `\n${index + 1}. ${question}`;
+        });
+        prompt += `\nGenerate fresh questions that cover different angles of the topic.`;
+      }
     }
 
     // Define the function schema based on question type
@@ -210,11 +266,19 @@ CONTENT GUIDANCE:
         break;
     }
 
+    const { model: selectedModel, source: modelSource } = resolveModelForQuestionType(questionType);
+
+    console.log('[generate-cards] model selection', {
+      questionType,
+      selectedModel,
+      modelSource,
+    });
+
     // Call OpenAI API - REVERT TO ORIGINAL WORKING METHOD
     const systemMessage = `You are an expert ${examType} ${subject} educator. Create precise, high-quality flashcards that match ${examBoard} standards.`;
     
     const completion = await openai.chat.completions.create({
-      model: questionType === 'essay' ? 'gpt-4-turbo' : 'gpt-3.5-turbo',
+      model: selectedModel,
       messages: [
         { role: 'system', content: systemMessage },
         { role: 'user', content: prompt }
@@ -234,7 +298,7 @@ CONTENT GUIDANCE:
         }
       }],
       function_call: { name: 'generateFlashcards' },
-      temperature: 0.7,
+      temperature: questionType === 'essay' ? 0.9 : questionType === 'short_answer' ? 0.85 : 0.75,
       max_tokens: questionType === 'essay' ? 4000 : Math.min(3000, numCards * 250)
     });
 
@@ -249,6 +313,19 @@ CONTENT GUIDANCE:
       }
 
       if (functionArgs && functionArgs.cards && Array.isArray(functionArgs.cards)) {
+        const stripMcqLabel = (raw) => {
+          let s = typeof raw === 'string' ? raw : String(raw ?? '');
+          // Remove one or more leading labels like "a) ", "A. ", "B - ", "c: "
+          // Apply repeatedly to handle accidental double-labels.
+          for (let i = 0; i < 3; i++) {
+            const next = s.replace(/^\s*[A-Da-d]\s*[\)\.\:\-]\s*/u, '');
+            if (next === s) break;
+            s = next;
+          }
+          return s.trim();
+        };
+        const norm = (x) => String(x ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+
         // Process and return the cards
         const processedCards = functionArgs.cards.map(card => {
           const processedCard = {
@@ -279,14 +356,47 @@ CONTENT GUIDANCE:
                 .filter(Boolean)
                 .filter((s) => s !== '[object Object]');
 
-              processedCard.options = normalizedOptions.filter((s) => {
-                // Keep options that are:
-                // - More than 2 characters (exclude "E", "a)", etc.)
-                // - OR start with a letter followed by ) (like "a) Something")
-                return s.length > 2 || /^[a-d]\)/.test(s.toLowerCase());
+              // Strip any letter labels (sometimes duplicated) so UI can render its own A/B/C/D consistently.
+              let cleanedOptions = normalizedOptions
+                .map(stripMcqLabel)
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .filter((s) => s.length > 1 && s.toLowerCase() !== 'e' && s.toLowerCase() !== 'option');
+
+              // De-dupe while preserving order (by normalized text)
+              const seen = new Set();
+              cleanedOptions = cleanedOptions.filter((s) => {
+                const k = norm(s);
+                if (!k) return false;
+                if (seen.has(k)) return false;
+                seen.add(k);
+                return true;
               });
-              
-              processedCard.correctAnswer = typeof card.correctAnswer === 'string' ? card.correctAnswer : String(card.correctAnswer || '');
+
+              let cleanedCorrect = typeof card.correctAnswer === 'string' ? card.correctAnswer : String(card.correctAnswer || '');
+              cleanedCorrect = stripMcqLabel(cleanedCorrect);
+
+              // Ensure correct answer matches one of the options as closely as possible.
+              const correctNorm = norm(cleanedCorrect);
+              if (correctNorm) {
+                const idx = cleanedOptions.findIndex((o) => norm(o) === correctNorm);
+                if (idx >= 0) {
+                  cleanedCorrect = cleanedOptions[idx];
+                }
+              }
+
+              // Ensure exactly 4 options while trying to keep the correct answer included.
+              if (cleanedOptions.length > 4) {
+                const idx = correctNorm ? cleanedOptions.findIndex((o) => norm(o) === correctNorm) : -1;
+                if (idx >= 0 && idx >= 4) {
+                  cleanedOptions = [...cleanedOptions.slice(0, 3), cleanedOptions[idx]];
+                } else {
+                  cleanedOptions = cleanedOptions.slice(0, 4);
+                }
+              }
+
+              processedCard.options = cleanedOptions;
+              processedCard.correctAnswer = cleanedCorrect;
               processedCard.detailedAnswer = typeof card.detailedAnswer === 'string' ? card.detailedAnswer : String(card.detailedAnswer || '');
               
               // Ensure we have exactly 4 options
@@ -310,9 +420,21 @@ CONTENT GUIDANCE:
           return processedCard;
         });
 
+        const seenQuestions = new Set();
+        const uniqueCards = processedCards.filter((card) => {
+          const key = String(card.question || '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .replace(/[^\w\s]/g, '');
+          if (!key || seenQuestions.has(key)) return false;
+          seenQuestions.add(key);
+          return true;
+        });
+
         return res.status(200).json({ 
           success: true,
-          cards: processedCards 
+          cards: uniqueCards 
         });
       }
     }

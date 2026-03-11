@@ -59,6 +59,17 @@ export default function TrialExpiryNudgeScreen({ navigation, route }: any) {
     }, 80);
   };
 
+  const onAskParent = () => {
+    try {
+      navigation.goBack();
+    } catch {
+      // ignore
+    }
+    setTimeout(() => {
+      navigate('Profile', { screen: 'ProfileMain', params: { openParentInvite: true } });
+    }, 80);
+  };
+
   const onClose = () => {
     if (isLastDay) return; // last-day version should not be dismissible
     navigation.goBack();
@@ -145,13 +156,24 @@ export default function TrialExpiryNudgeScreen({ navigation, route }: any) {
             </TouchableOpacity>
 
             {isLastDay ? (
-              <TouchableOpacity style={styles.secondaryBtn} onPress={onContinueFreeReset} disabled={busy}>
-                {busy ? (
-                  <ActivityIndicator color={colors.text} />
-                ) : (
-                  <Text style={styles.secondaryBtnText}>Continue on Free (reset)</Text>
-                )}
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={styles.tertiaryBtn} onPress={onAskParent}>
+                  <Text style={styles.tertiaryBtnText}>Ask someone else to pay*</Text>
+                </TouchableOpacity>
+                <Text style={styles.graceNote}>
+                  *Use this to send to a parent, guardian, or generous friend.
+                </Text>
+                <Text style={styles.graceNote}>
+                  If payment isn’t received within 7 days, your account reverts to Free and all cards/progress are deleted.
+                </Text>
+                <TouchableOpacity style={styles.secondaryBtn} onPress={onContinueFreeReset} disabled={busy}>
+                  {busy ? (
+                    <ActivityIndicator color={colors.text} />
+                  ) : (
+                    <Text style={styles.secondaryBtnText}>Continue on Free (reset)</Text>
+                  )}
+                </TouchableOpacity>
+              </>
             ) : (
               <TouchableOpacity style={styles.secondaryBtn} onPress={onClose}>
                 <Text style={styles.secondaryBtnText}>Not now</Text>
@@ -234,6 +256,23 @@ function createStyles(colors: any) {
       backgroundColor: 'rgba(148,163,184,0.08)',
     },
     secondaryBtnText: { color: colors.text, fontWeight: '800', fontSize: 14 },
+    tertiaryBtn: {
+      marginTop: 10,
+      borderRadius: 14,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(0,245,255,0.22)',
+      backgroundColor: 'rgba(0,245,255,0.08)',
+    },
+    tertiaryBtnText: { color: colors.text, fontWeight: '800', fontSize: 14 },
+    graceNote: {
+      marginTop: 8,
+      color: colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 16,
+      textAlign: 'center',
+    },
   });
 }
 
