@@ -57,6 +57,7 @@ interface SubscriptionContextType {
   isLoading: boolean;
   purchasePlan: (plan: Plan, billing: BillingPeriod) => Promise<void>;
   restorePurchases: () => Promise<void>;
+  refreshSubscription: () => Promise<void>;
   checkLimits: (type: 'subject' | 'topic' | 'card', currentCount: number) => boolean;
 }
 
@@ -564,6 +565,41 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const refreshSubscription = async () => {
+    try {
+      if (!user?.id) return;
+      const apiKey =
+        Platform.OS === 'ios'
+          ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY
+          : Platform.OS === 'android'
+            ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
+            : undefined;
+
+      if (!apiKey || Platform.OS === 'web') {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      const ok = await configureRevenueCat({ apiKey, appUserId: user.id });
+      if (!ok) {
+        await checkSubscriptionStatus();
+        return;
+      }
+
+      const info = await getCustomerInfo();
+      if (info) {
+        const next = resolveTierFromCustomerInfo(info);
+        const exp = getExpirationIso(info);
+        await applyTierWithOverrides(next, exp);
+        return;
+      }
+
+      await checkSubscriptionStatus();
+    } catch {
+      // ignore
+    }
+  };
+
   const checkLimits = (type: 'subject' | 'topic' | 'card', currentCount: number): boolean => {
     const limits = subscriptionLimits[tier];
     
@@ -589,6 +625,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         isLoading,
         purchasePlan,
         restorePurchases,
+        refreshSubscription,
         checkLimits
       }}
     >

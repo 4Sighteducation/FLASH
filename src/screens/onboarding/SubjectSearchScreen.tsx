@@ -510,6 +510,8 @@ export default function SubjectSearchScreen() {
           // Ensure content isn't hidden behind the fixed bottom bar / home indicator
           { paddingBottom: (selectedSubjects.length > 0 ? 140 : 20) + insets.bottom },
         ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -553,6 +555,9 @@ export default function SubjectSearchScreen() {
               onChangeText={handleSearch}
               autoCapitalize="words"
               autoCorrect={false}
+              returnKeyType="search"
+              blurOnSubmit={true}
+              onSubmitEditing={() => void performSearch(searchQuery)}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => handleSearch('')}>

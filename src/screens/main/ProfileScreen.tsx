@@ -576,13 +576,26 @@ export default function ProfileScreen() {
 
     setSendingParentInvite(true);
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        Alert.alert('Not signed in', 'Please sign in again, then try sending the invite.');
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('invite-parent', {
         body: { parentEmail: email },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (error) {
-        const msg = (error as any)?.message || 'Failed to send invite';
-        Alert.alert('Could not send invite', msg);
+        const anyErr: any = error as any;
+        const status = anyErr?.context?.status || anyErr?.status;
+        const body = anyErr?.context?.body;
+        const msg = anyErr?.message || 'Failed to send invite';
+        const detail = status ? `\n\nStatus: ${status}` : '';
+        const bodyText = body ? `\nBody: ${typeof body === 'string' ? body : JSON.stringify(body)}` : '';
+        Alert.alert('Could not send invite', `${msg}${detail}${bodyText}`.slice(0, 1000));
         return;
       }
 
@@ -938,7 +951,7 @@ export default function ProfileScreen() {
                 >
                   <Icon name="star" size={20} color="#fff" />
                   <Text style={styles.upgradeButtonText}>
-                    {tier === 'free' ? 'View plans' : 'Manage / View plans'}
+                    {tier === 'free' ? 'Get Pro' : 'Manage Pro'}
                   </Text>
                 </TouchableOpacity>
 

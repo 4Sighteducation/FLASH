@@ -23,6 +23,7 @@ import ReviewPromptModalScreen from '../screens/modals/ReviewPromptModalScreen';
 import PrintCardsModalScreen from '../screens/modals/PrintCardsModalScreen';
 import TrialExpiredScreen from '../screens/paywall/TrialExpiredScreen';
 import TrialExpiryNudgeScreen from '../screens/paywall/TrialExpiryNudgeScreen';
+import RedeemCodeScreen from '../screens/paywall/RedeemCodeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -164,6 +165,13 @@ export default function AppNavigator() {
           <Stack.Screen
             name="PaywallModal"
             component={PaywallScreen}
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+
+          {/* Global redeem-code modal (so it can appear above any tab/stack without hijacking tab params) */}
+          <Stack.Screen
+            name="RedeemCodeModal"
+            component={RedeemCodeScreen}
             options={{ headerShown: false, presentation: 'modal' }}
           />
 

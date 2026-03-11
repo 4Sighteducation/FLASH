@@ -19,6 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../services/supabase';
 import { getTopicLabel, sanitizeTopicLabel } from '../../utils/topicNameUtils';
 import FeedbackPill from '../../components/support/FeedbackPill';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOPIC_SEARCH_ENDPOINTS = [
   process.env.EXPO_PUBLIC_TOPIC_SEARCH_URL,
@@ -58,6 +59,9 @@ const normalizeForMatch = (s: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+type SearchKind = 'exact' | 'smart';
+const SEARCH_KIND_STORAGE_KEY = 'topicSearchKind_v1';
+
 /**
  * Small lexical boost so obvious title/path matches rise to top.
  * Returned value is subtracted from "similarity" (lower is better).
@@ -89,13 +93,16 @@ export default function SmartTopicDiscoveryScreen() {
   const route = useRoute();
   const { user } = useAuth();
   
-  const { subjectId, subjectName, examBoard, examType } = route.params as any;
+  // This is the exam_board_subjects.id for the currently selected subject (not a topic id).
+  const { subjectId: examBoardSubjectId, subjectName, examBoard, examType } = route.params as any;
   
   const [mode, setMode] = useState<'search' | 'browse'>('search');
+  const [searchKind, setSearchKind] = useState<SearchKind>('exact');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TopicSearchResult[]>([]);
   const [recentTopics, setRecentTopics] = useState<RecentTopic[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchInfoVisible, setSearchInfoVisible] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<TopicSearchResult | null>(null);
   const [detailsTopic, setDetailsTopic] = useState<TopicSearchResult | null>(null);
   const [showAllResults, setShowAllResults] = useState(false);
@@ -123,6 +130,19 @@ export default function SmartTopicDiscoveryScreen() {
     fetchSmartSuggestions();
   }, []);
 
+  useEffect(() => {
+    // Persisted preference (default to exact, because students often know the spec wording).
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SEARCH_KIND_STORAGE_KEY);
+        const next = raw === 'smart' ? 'smart' : raw === 'exact' ? 'exact' : 'exact';
+        setSearchKind(next);
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
   const fetchRecentTopics = async () => {
     try {
       const { data, error } = await supabase
@@ -134,7 +154,7 @@ export default function SmartTopicDiscoveryScreen() {
           topic:curriculum_topics(topic_name, display_name)
         `)
         .eq('user_id', user?.id)
-        .eq('subject_id', subjectId)
+        .eq('subject_id', examBoardSubjectId)
         .order('discovered_at', { ascending: false })
         .limit(5);
 
@@ -174,11 +194,11 @@ export default function SmartTopicDiscoveryScreen() {
       // fall back to sensible curriculum-based suggestions instead of generic placeholders.
       const getCurriculumFallback = async (): Promise<string[]> => {
         try {
-          if (!subjectId) return [];
+          if (!examBoardSubjectId) return [];
           const { data: topics, error: topicsError } = await supabase
             .from('curriculum_topics')
             .select('topic_name, topic_level, sort_order')
-            .eq('exam_board_subject_id', subjectId)
+            .eq('exam_board_subject_id', examBoardSubjectId)
             .gte('topic_level', 2)
             .lte('topic_level', 4)
             .order('sort_order', { ascending: true })
@@ -265,7 +285,7 @@ export default function SmartTopicDiscoveryScreen() {
         const { data: topics } = await supabase
           .from('curriculum_topics')
           .select('topic_name, topic_level, sort_order')
-          .eq('exam_board_subject_id', subjectId)
+          .eq('exam_board_subject_id', examBoardSubjectId)
           .gte('topic_level', 2)
           .lte('topic_level', 4)
           .order('sort_order', { ascending: true })
@@ -325,6 +345,60 @@ export default function SmartTopicDiscoveryScreen() {
     setIsSearching(true);
 
     try {
+      if (searchKind === 'exact') {
+        // Fast keyword match inside this subject (predictable for students who know the spec wording).
+        const q = query.trim();
+        const qNorm = normalizeForMatch(q);
+        const { data: rows, error } = await supabase
+          .from('curriculum_topics')
+          .select('id, topic_name, display_name, topic_level')
+          .eq('exam_board_subject_id', examBoardSubjectId)
+          .or(`topic_name.ilike.%${q}%,display_name.ilike.%${q}%`)
+          .limit(40);
+
+        if (error) throw error;
+
+        const mapped: TopicSearchResult[] = (rows || []).map((r: any) => {
+          const name = String(r?.display_name || r?.topic_name || '').trim();
+          const nameNorm = normalizeForMatch(name);
+          let sim = 0.7;
+          if (nameNorm === qNorm) sim = 0.04;
+          else if (nameNorm.startsWith(qNorm)) sim = 0.1;
+          else if (nameNorm.includes(qNorm)) sim = 0.18;
+          else {
+            const tokens = qNorm.split(' ').filter((t) => t.length >= 3);
+            const matched = tokens.reduce((acc, t) => (nameNorm.includes(t) ? acc + 1 : acc), 0);
+            sim = Math.max(0.22, 0.55 - matched * 0.08);
+          }
+
+          const level = Number(r?.topic_level || 0);
+          sim = Math.max(0, Math.min(1, sim - Math.min(0.12, level * 0.02)));
+
+          return {
+            topic_id: String(r?.id),
+            topic_name: name || 'Unknown Topic',
+            plain_english_summary: '',
+            difficulty_band: '',
+            exam_importance: 0,
+            full_path: [name || 'Unknown Topic'],
+            similarity: sim,
+            subject_name: subjectName || '',
+            exam_board: examBoard || '',
+            qualification_level: examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE',
+            topic_level: level,
+          };
+        });
+
+        // Prefer closer matches + more specific topics.
+        const ranked = mapped.sort((a, b) => {
+          if (a.similarity !== b.similarity) return a.similarity - b.similarity;
+          return (b.topic_level || 0) - (a.topic_level || 0);
+        });
+
+        setSearchResults(ranked);
+        return;
+      }
+
       const qualificationLevel = examTypeToCode[examType?.toLowerCase()] || examType?.toUpperCase() || 'GCSE';
       
       const searchParams = {
@@ -518,14 +592,14 @@ export default function SmartTopicDiscoveryScreen() {
       // Pass discovery metadata
       discoveryMethod: 'search',
       searchQuery: searchQuery,
-      subjectId: subjectId,
+      subjectId: examBoardSubjectId,
     });
   };
 
   const handleBrowseAll = () => {
     // Navigate to full hierarchy browser
     (navigation.navigate as any)('CardTopicSelector', {
-      subjectId,
+      subjectId: examBoardSubjectId,
       subjectName,
       examBoard,
       examType,
@@ -542,7 +616,7 @@ export default function SmartTopicDiscoveryScreen() {
       examBoard,
       examType,
       discoveryMethod: 'recent',
-      subjectId: subjectId,
+      subjectId: examBoardSubjectId,
     });
   };
 
@@ -608,7 +682,11 @@ export default function SmartTopicDiscoveryScreen() {
       </View>
 
       {mode === 'search' ? (
-        <ScrollView style={styles.content}>
+        <ScrollView
+          style={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           {/* Search Bar */}
           <View style={styles.searchContainer}>
             {Platform.OS === 'web' ? (
@@ -624,6 +702,9 @@ export default function SmartTopicDiscoveryScreen() {
               onChangeText={handleSearch}
               autoFocus
               autoCapitalize="none"
+              returnKeyType="search"
+              blurOnSubmit={true}
+              onSubmitEditing={() => void performSearch(searchQuery)}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => handleSearch('')}>
@@ -636,6 +717,52 @@ export default function SmartTopicDiscoveryScreen() {
             )}
           </View>
 
+          {/* Search Kind Toggle (Exact vs Smart) */}
+          <View style={styles.searchKindRow}>
+            <TouchableOpacity
+              style={[styles.searchKindPill, searchKind === 'exact' && styles.searchKindPillActive]}
+              onPress={async () => {
+                setSearchKind('exact');
+                try {
+                  await AsyncStorage.setItem(SEARCH_KIND_STORAGE_KEY, 'exact');
+                } catch {
+                  // ignore
+                }
+                if (searchQuery.trim().length >= 2) void performSearch(searchQuery);
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.searchKindText, searchKind === 'exact' && styles.searchKindTextActive]}>Exact</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.searchKindPill, searchKind === 'smart' && styles.searchKindPillActive]}
+              onPress={async () => {
+                setSearchKind('smart');
+                try {
+                  await AsyncStorage.setItem(SEARCH_KIND_STORAGE_KEY, 'smart');
+                } catch {
+                  // ignore
+                }
+                if (searchQuery.trim().length >= 2) void performSearch(searchQuery);
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.searchKindText, searchKind === 'smart' && styles.searchKindTextActive]}>Smart</Text>
+            </TouchableOpacity>
+            <Text style={styles.searchKindHint}>
+              {searchKind === 'exact' ? 'Keyword match (predictable)' : 'Meaning match (helpful if unsure)'}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSearchInfoVisible(true)}
+              style={styles.searchInfoButton}
+              accessibilityRole="button"
+              accessibilityLabel="About search modes"
+              activeOpacity={0.85}
+            >
+              <Ionicons name="help-circle-outline" size={18} color="rgba(230,234,242,0.9)" />
+            </TouchableOpacity>
+          </View>
+
           <View style={{ paddingHorizontal: 20, marginTop: 10 }}>
             <FeedbackPill
               label="Not found the topic you need?"
@@ -643,7 +770,7 @@ export default function SmartTopicDiscoveryScreen() {
               category="topics"
               contextTitle="Topics feedback"
               contextHint="Topics not found / incorrect / irrelevant"
-              subjectId={subjectId}
+              subjectId={examBoardSubjectId}
               extraParams={{
                 subjectName,
                 examBoard,
@@ -711,7 +838,9 @@ export default function SmartTopicDiscoveryScreen() {
           {isSearching ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#FF006E" />
-              <Text style={styles.loadingText}>AI is finding relevant topics...</Text>
+              <Text style={styles.loadingText}>
+                {searchKind === 'smart' ? 'AI is finding relevant topics...' : 'Searching topics...'}
+              </Text>
             </View>
           ) : searchResults.length > 0 ? (
             <View style={styles.resultsSection}>
@@ -986,6 +1115,63 @@ export default function SmartTopicDiscoveryScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Search-mode info modal */}
+      <Modal
+        visible={searchInfoVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setSearchInfoVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalSheet, styles.infoModalSheet]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Search modes</Text>
+                <Text style={styles.modalSubtitle}>Choose what fits your query</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSearchInfoVisible(false)} style={styles.modalCloseButton}>
+                <Ionicons name="close" size={22} color="#E2E8F0" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Exact (recommended when you know the wording)</Text>
+                <Text style={styles.infoText}>
+                  Searches for the words you type inside this subject’s curriculum. Great for exact spec terms like “momentum” or
+                  “acute injuries”.
+                </Text>
+              </View>
+
+              <View style={styles.infoCard}>
+                <Text style={styles.infoTitle}>Smart (recommended when you’re not sure)</Text>
+                <Text style={styles.infoText}>
+                  Searches by meaning, so you can describe what you remember and we’ll try to find the closest topic. It can
+                  sometimes return unexpected results — if that happens, switch back to Exact.
+                </Text>
+              </View>
+
+              <Text style={[styles.infoText, { opacity: 0.8 }]}>
+                Tip: You can change this anytime — we’ll remember your choice on this device.
+              </Text>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.modalAddButton} onPress={() => setSearchInfoVisible(false)} activeOpacity={0.9}>
+                <LinearGradient
+                  colors={['#00F5FF', '#FF006E']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalAddButtonInner}
+                >
+                  <Text style={styles.modalAddButtonText}>Got it</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1055,6 +1241,49 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#FFF',
+  },
+  searchKindRow: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  searchKindPill: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  searchKindPillActive: {
+    borderColor: 'rgba(0,245,255,0.55)',
+    backgroundColor: 'rgba(0,245,255,0.10)',
+  },
+  searchKindText: {
+    color: 'rgba(230,234,242,0.78)',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  searchKindTextActive: {
+    color: '#E6EAF2',
+  },
+  searchKindHint: {
+    marginLeft: 4,
+    color: 'rgba(148,163,184,0.92)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  searchInfoButton: {
+    marginLeft: 2,
+    padding: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   examplesContainer: {
     paddingHorizontal: 20,
@@ -1233,6 +1462,9 @@ const styles = StyleSheet.create({
     maxHeight: '82%',
     overflow: 'hidden',
   },
+  infoModalSheet: {
+    maxHeight: '70%',
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1261,6 +1493,26 @@ const styles = StyleSheet.create({
   modalBodyContent: {
     paddingTop: 14,
     paddingBottom: 16,
+  },
+  infoCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  infoTitle: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  infoText: {
+    color: 'rgba(230,234,242,0.86)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
   },
   modalTopicTitle: {
     color: '#FFF',

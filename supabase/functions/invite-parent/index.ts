@@ -82,7 +82,7 @@ function buildParentInviteHtml(params: {
                     <img src="https://www.fl4shcards.com/flash_assets/flash-logo-transparent.png" width="72" height="72" alt="FL4SH" style="display:block;margin:0 auto 10px auto;" />
                     <div style="font-size:22px;font-weight:800;letter-spacing:0.2px;">Help ${params.childUsername ? params.childUsername : 'your student'} keep FL4SH Pro</div>
                     <div style="margin-top:6px;font-size:14px;opacity:0.88;line-height:1.45;">
-                      <strong>${childLabel}</strong> is using FL4SH for revision. They get Pro free for their first 30 days — and they’ve asked someone else (parent, guardian, or generous friend) to help pay to keep Pro afterwards.
+                      <strong>${childLabel}</strong> is using FL4SH for revision and has asked a parent/guardian (or generous friend) to help pay for FL4SH Pro.
                     </div>
                   </td>
                 </tr>
@@ -99,13 +99,34 @@ function buildParentInviteHtml(params: {
                     <ol style="margin:0 0 0 18px;padding:0;">
                       <li>Open the payment page below (the student email is pre-filled).</li>
                       <li>Complete the checkout on your device.</li>
-                      <li>The student receives a code and redeems it in the app to keep Pro.</li>
+                      <li>The student receives a code and redeems it in the app to unlock Pro.</li>
                     </ol>
 
                     <div style="margin-top:16px;text-align:center;">
-                      <a href="${purchaseLink}" style="display:inline-block;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#00E5FF,#FF4FD8);color:#0B1020;font-weight:800;text-decoration:none;">
-                        Open payment page
-                      </a>
+                      <!-- Bulletproof button (works in dark mode + picky email clients) -->
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+                        <tr>
+                          <td align="center" bgcolor="#FF2BD6" style="border-radius:14px;">
+                            <a
+                              href="${purchaseLink}"
+                              style="
+                                display:inline-block;
+                                padding:13px 18px;
+                                border-radius:14px;
+                                background:#FF2BD6;
+                                border:1px solid rgba(255,43,214,0.65);
+                                color:#0B1020 !important;
+                                font-weight:900;
+                                text-decoration:none;
+                                letter-spacing:0.2px;
+                                -webkit-text-size-adjust:100%;
+                              "
+                            >
+                              Open payment page
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
 
                     <div style="margin-top:14px;font-size:12px;opacity:0.85;line-height:1.5;text-align:center;">
@@ -134,19 +155,24 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    console.log('[invite-parent] request', {
+      method: req.method,
+      hasAuthHeader: !!req.headers.get('Authorization'),
+    });
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 405,
+        status: 200,
       });
     }
 
     const { parentEmail } = (await req.json()) as Payload;
     const parentEmailNorm = sanitizeEmail(parentEmail || '');
     if (!parentEmailNorm || !isValidEmail(parentEmailNorm)) {
+      // Return 200 so the client can display the message (Supabase treats non-2xx as a generic invoke error).
       return new Response(JSON.stringify({ ok: false, error: 'Please enter a valid email address.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 200,
       });
     }
 
@@ -156,16 +182,17 @@ serve(async (req) => {
     if (!supabaseUrl || !anonKey || !serviceKey) {
       return new Response(JSON.stringify({ ok: false, error: 'Supabase env not configured.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: 200,
       });
     }
 
     const authHeader = req.headers.get('Authorization') || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : null;
     if (!token) {
+      // Return 200 so the client can display the message (verify_jwt may also block before this).
       return new Response(JSON.stringify({ ok: false, error: 'Missing Authorization bearer token.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
+        status: 200,
       });
     }
 
@@ -176,7 +203,7 @@ serve(async (req) => {
     if (userErr || !userData?.user?.id) {
       return new Response(JSON.stringify({ ok: false, error: 'Invalid token.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
+        status: 200,
       });
     }
 
@@ -185,7 +212,7 @@ serve(async (req) => {
     if (!childEmail) {
       return new Response(JSON.stringify({ ok: false, error: 'Missing child email.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 200,
       });
     }
 
@@ -200,9 +227,10 @@ serve(async (req) => {
       .gte('created_at', sinceIso);
 
     if ((count || 0) >= 3) {
+      // Return 200 so the client can display the message (Supabase treats non-2xx as a generic invoke error).
       return new Response(JSON.stringify({ ok: false, error: 'Invite limit reached. Please try again tomorrow.' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 429,
+        status: 200,
       });
     }
 
@@ -264,9 +292,10 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error('[invite-parent] fatal:', e);
+    // Return 200 so the client can display the message.
     return new Response(JSON.stringify({ ok: false, error: String(e?.message || e) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+      status: 200,
     });
   }
 });

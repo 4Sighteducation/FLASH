@@ -7,9 +7,11 @@ import {
   FlatList,
   Dimensions,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Animated,
@@ -95,8 +97,54 @@ export default function AIGeneratorScreen() {
   const [aiService] = useState(() => new AIService());
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationStatus, setGenerationStatus] = useState('');
+  const [previousQuestionPool, setPreviousQuestionPool] = useState<string[]>([]);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setPreviousQuestionPool([]);
+  }, [subject, topic, examBoard, examType, selectedType]);
+
+  const getGenerationStatuses = (type: CardType | null) => {
+    if (type === 'essay') {
+      return [
+        { progress: 8, message: 'Connecting to AI...' },
+        { progress: 18, message: 'Reading the topic closely...' },
+        { progress: 32, message: 'Planning essay-style questions...' },
+        { progress: 48, message: 'Building essay structures...' },
+        { progress: 63, message: 'Writing richer explanations...' },
+        { progress: 76, message: 'Checking quality and exam fit...' },
+        { progress: 86, message: 'Essay cards take longer, still working...' },
+      ];
+    }
+
+    if (type === 'short_answer') {
+      return [
+        { progress: 10, message: 'Connecting to AI...' },
+        { progress: 24, message: 'Analyzing topic...' },
+        { progress: 38, message: 'Generating short-answer questions...' },
+        { progress: 54, message: 'Building mark-point answers...' },
+        { progress: 70, message: 'Adding detailed explanations...' },
+        { progress: 84, message: 'Almost there...' },
+      ];
+    }
+
+    return [
+      { progress: 12, message: 'Connecting to AI...' },
+      { progress: 28, message: 'Analyzing topic...' },
+      { progress: 45, message: 'Generating questions...' },
+      { progress: 63, message: 'Crafting answers...' },
+      { progress: 79, message: 'Adding detailed explanations...' },
+      { progress: 92, message: 'Almost done...' },
+    ];
+  };
+
+  const generationSlowHint =
+    selectedType === 'essay'
+      ? 'Essay-style cards usually take longer because each one needs structure, analysis, and fuller explanations.'
+      : selectedType === 'short_answer'
+        ? 'Short-answer cards can take a little longer because we build examiner-style mark points and fuller explanations.'
+        : 'Generating your flashcards now.';
 
   // Simulate progress during generation
   useEffect(() => {
@@ -120,17 +168,7 @@ export default function AIGeneratorScreen() {
         ])
       ).start();
 
-      const statusMessages = [
-        { progress: 10, message: 'Connecting to AI...' },
-        { progress: 25, message: 'Analyzing topic...' },
-        { progress: 40, message: 'Generating questions...' },
-        { progress: 60, message: 'Crafting answers...' },
-        { progress: 75, message: 'Adding detailed explanations...' },
-        { progress: 85, message: 'Validating content...' },
-        { progress: 95, message: 'Almost done...' },
-      ];
-
-      statusMessages.forEach((status, index) => {
+      const timeoutIds = getGenerationStatuses(selectedType).map((status, index) =>
         setTimeout(() => {
           if (isGenerating) {
             setGenerationProgress(status.progress);
@@ -141,17 +179,22 @@ export default function AIGeneratorScreen() {
               useNativeDriver: false,
             }).start();
           }
-        }, index * 2000);
-      });
+        }, index * (selectedType === 'essay' ? 2600 : 1800))
+      );
+
+      return () => {
+        timeoutIds.forEach(clearTimeout);
+      };
     } else {
       glowAnim.stopAnimation();
       setGenerationProgress(0);
     }
-  }, [isGenerating]);
+  }, [isGenerating, progressAnim, glowAnim, selectedType]);
 
   const handleGenerateCards = async () => {
     if (!selectedType || selectedType === 'notes') return;
 
+    Keyboard.dismiss();
     setIsGenerating(true);
     try {
       const params: CardGenerationParams = {
@@ -162,6 +205,7 @@ export default function AIGeneratorScreen() {
         questionType: selectedType as 'multiple_choice' | 'short_answer' | 'essay' | 'acronym',
         numCards: parseInt(numCards, 10),
         contentGuidance: additionalGuidance,
+        avoidQuestions: previousQuestionPool,
         isOverview: isOverviewCard || false, // Pass overview flag
         childrenTopics: childrenTopics || [], // Pass children topics for overview cards
       };
@@ -216,7 +260,19 @@ export default function AIGeneratorScreen() {
       
       // Small delay to show completion
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+      setPreviousQuestionPool((current) => {
+        const seen = new Set(current.map((question) => question.trim().toLowerCase()));
+        const next = [...current];
+        validCards.forEach((card) => {
+          const question = String(card.question || '').trim();
+          const key = question.toLowerCase();
+          if (question && !seen.has(key)) {
+            seen.add(key);
+            next.push(question);
+          }
+        });
+        return next;
+      });
       setGeneratedCards(validCards);
       setCurrentStep('preview');
     } catch (error: any) {
@@ -372,34 +428,54 @@ export default function AIGeneratorScreen() {
   );
 
   const renderOptions = () => (
-    <View style={styles.optionsContainer}>
-      <Text style={styles.sectionTitle}>Generation Options</Text>
-      
-      <View style={styles.optionGroup}>
-        <Text style={styles.optionLabel}>Number of Cards</Text>
-        <TextInput
-          style={styles.numberInput}
-          value={numCards}
-          onChangeText={setNumCards}
-          keyboardType="number-pad"
-          maxLength={2}
-          returnKeyType="done"
-          blurOnSubmit={true}
-        />
-      </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <ScrollView
+        style={styles.optionsContainer}
+        contentContainerStyle={styles.optionsScrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <Text style={styles.sectionTitle}>Generation Options</Text>
+        
+        <View style={styles.optionGroup}>
+          <Text style={styles.optionLabel}>Number of Cards</Text>
+          <TextInput
+            style={styles.numberInput}
+            value={numCards}
+            onChangeText={setNumCards}
+            keyboardType="number-pad"
+            maxLength={2}
+            returnKeyType="done"
+            blurOnSubmit={true}
+            onSubmitEditing={Keyboard.dismiss}
+          />
+        </View>
 
-      <View style={styles.optionGroup}>
-        <Text style={styles.optionLabel}>Additional Guidance (Optional)</Text>
-        <TextInput
-          style={styles.textArea}
-          value={additionalGuidance}
-          onChangeText={setAdditionalGuidance}
-          placeholder="e.g., Focus on key dates, Include practical examples..."
-          multiline
-          numberOfLines={3}
-        />
-      </View>
-    </View>
+        <View style={styles.optionGroup}>
+          <View style={styles.optionLabelRow}>
+            <Text style={styles.optionLabel}>Additional Guidance (Optional)</Text>
+            <TouchableOpacity onPress={Keyboard.dismiss} style={styles.dismissKeyboardButton}>
+              <Text style={styles.dismissKeyboardText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.textArea}
+            value={additionalGuidance}
+            onChangeText={setAdditionalGuidance}
+            placeholder="e.g., Focus on main themes, key dates, or practical examples..."
+            multiline
+            numberOfLines={3}
+            returnKeyType="done"
+            blurOnSubmit={true}
+            onSubmitEditing={Keyboard.dismiss}
+            textAlignVertical="top"
+          />
+          <Text style={styles.guidanceHint}>
+            We treat this as a priority across the whole card set, not just the first card.
+          </Text>
+        </View>
+      </ScrollView>
+    </TouchableWithoutFeedback>
   );
 
   const handleDeletePreviewCard = (index: number) => {
@@ -568,6 +644,7 @@ export default function AIGeneratorScreen() {
                 {/* Status Text */}
                 <Text style={styles.loadingTitle}>AI Generation In Progress</Text>
                 <Text style={styles.loadingStatus}>{generationStatus}</Text>
+                <Text style={styles.loadingHint}>{generationSlowHint}</Text>
 
                 {/* Progress Bar Container */}
                 <View style={styles.progressBarContainer}>
@@ -787,14 +864,34 @@ const styles = StyleSheet.create({
   optionsContainer: {
     flex: 1,
   },
+  optionsScrollContent: {
+    paddingBottom: 24,
+  },
   optionGroup: {
     marginBottom: 24,
+  },
+  optionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   optionLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  dismissKeyboardButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+  },
+  dismissKeyboardText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
   },
   numberInput: {
     backgroundColor: 'white',
@@ -814,6 +911,12 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  guidanceHint: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#6B7280',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -883,6 +986,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
     fontWeight: '500',
+  },
+  loadingHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#94A3B8',
+    marginTop: -16,
+    marginBottom: 24,
+    textAlign: 'center',
   },
   progressBarContainer: {
     width: '100%',

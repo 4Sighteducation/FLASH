@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   ScrollView,
   FlatList,
   Dimensions,
@@ -12,6 +13,7 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -83,6 +85,7 @@ export default function ImageCardGeneratorScreen() {
   const [selectedCardType, setSelectedCardType] = useState<CardType | null>(null);
   const [numCards, setNumCards] = useState('5');
   const [additionalGuidance, setAdditionalGuidance] = useState('');
+  const [previousQuestionPool, setPreviousQuestionPool] = useState<string[]>([]);
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const previewListRef = React.useRef<FlatList<GeneratedCard>>(null);
@@ -184,6 +187,7 @@ export default function ImageCardGeneratorScreen() {
       return;
     }
 
+    Keyboard.dismiss();
     setLoading(true);
 
     try {
@@ -202,8 +206,22 @@ export default function ImageCardGeneratorScreen() {
         questionType: selectedCardType,
         numCards: parseInt(numCards, 10),
         contentGuidance: fullGuidance,
+        avoidQuestions: previousQuestionPool,
       });
       
+      setPreviousQuestionPool((current) => {
+        const seen = new Set(current.map((question) => question.trim().toLowerCase()));
+        const next = [...current];
+        cards.forEach((card) => {
+          const question = String(card.question || '').trim();
+          const key = question.toLowerCase();
+          if (question && !seen.has(key)) {
+            seen.add(key);
+            next.push(question);
+          }
+        });
+        return next;
+      });
       setGeneratedCards(cards);
       setStep('preview');
     } catch (error: any) {
@@ -362,7 +380,12 @@ export default function ImageCardGeneratorScreen() {
   );
 
   const renderOptions = () => (
-    <ScrollView style={styles.optionsContainer}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <ScrollView
+        style={styles.optionsContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       <Text style={styles.sectionTitle}>Generation Options</Text>
       
       {renderCardTypeSelection()}
@@ -375,11 +398,19 @@ export default function ImageCardGeneratorScreen() {
           onChangeText={setNumCards}
           keyboardType="number-pad"
           maxLength={2}
+          returnKeyType="done"
+          blurOnSubmit={true}
+          onSubmitEditing={Keyboard.dismiss}
         />
       </View>
 
       <View style={styles.optionGroup}>
-        <Text style={styles.optionLabel}>Additional Guidance (Optional)</Text>
+        <View style={styles.optionLabelRow}>
+          <Text style={styles.optionLabel}>Additional Guidance (Optional)</Text>
+          <TouchableOpacity onPress={Keyboard.dismiss} style={styles.dismissKeyboardButton}>
+            <Text style={styles.dismissKeyboardText}>Done</Text>
+          </TouchableOpacity>
+        </View>
         <TextInput
           style={styles.textArea}
           value={additionalGuidance}
@@ -387,7 +418,14 @@ export default function ImageCardGeneratorScreen() {
           placeholder="e.g., Focus on key dates, Include practical examples..."
           multiline
           numberOfLines={3}
+          returnKeyType="done"
+          blurOnSubmit={true}
+          onSubmitEditing={Keyboard.dismiss}
+          textAlignVertical="top"
         />
+        <Text style={styles.guidanceHint}>
+          We use this guidance across the whole generated set, not just one card.
+        </Text>
       </View>
 
       <View style={styles.extractedTextPreview}>
@@ -396,7 +434,8 @@ export default function ImageCardGeneratorScreen() {
           {extractedText.substring(0, 200)}...
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </TouchableWithoutFeedback>
   );
 
   const renderPreview = () => (
@@ -733,11 +772,28 @@ const styles = StyleSheet.create({
   optionGroup: {
     marginBottom: 24,
   },
+  optionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
   optionLabel: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
+  },
+  dismissKeyboardButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+  },
+  dismissKeyboardText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
   },
   numberInput: {
     backgroundColor: 'white',
@@ -757,6 +813,12 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  guidanceHint: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#6B7280',
   },
   extractedTextPreview: {
     backgroundColor: '#f5f5f5',

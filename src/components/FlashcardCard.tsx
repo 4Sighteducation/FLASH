@@ -727,22 +727,25 @@ export default function FlashcardCard({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.backHeader}>
-              <Text style={[styles.answerLabel, { color }]}>Answer</Text>
-              {(card.detailed_answer || (card.card_type === 'short_answer' && card.key_points && card.answer)) && (
-                <TouchableOpacity
-                  style={styles.infoButton}
-                  onPress={(e: any) => {
-                    e.stopPropagation();
-                    setShowDetailedModal(true);
-                  }}
-                >
-                  <Ionicons 
-                    name="information-circle-outline"
-                    size={24} 
-                    color={color} 
-                  />
-                </TouchableOpacity>
-              )}
+              <View style={styles.answerHeaderLeft}>
+                <Text style={[styles.answerLabel, { color }]}>Answer</Text>
+                {(card.detailed_answer || (card.card_type === 'short_answer' && card.key_points && card.answer)) && (
+                  <TouchableOpacity
+                    style={styles.infoButton}
+                    onPress={(e: any) => {
+                      e.stopPropagation();
+                      setShowDetailedModal(true);
+                    }}
+                  >
+                    <Ionicons 
+                      name="information-circle"
+                      size={20} 
+                      color="#0B1220" 
+                    />
+                    <Text style={styles.infoButtonText}>Explain</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             <View style={styles.answerContent}>
@@ -1172,13 +1175,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  answerHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   answerLabel: {
     fontSize: 14,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   infoButton: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#39FF14',
+  },
+  infoButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0B1220',
+    textTransform: 'uppercase',
   },
   answerContainer: {
     marginBottom: 16,

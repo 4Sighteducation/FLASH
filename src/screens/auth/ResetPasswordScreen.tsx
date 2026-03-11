@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../services/supabase';
@@ -22,6 +24,7 @@ export default function ResetPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const confirmRef = useRef<TextInput>(null);
 
   const canSubmit = useMemo(() => {
     if (!password || !confirm) return false;
@@ -60,7 +63,8 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Reset password</Text>
         <Text style={styles.subtitle}>
@@ -76,6 +80,8 @@ export default function ResetPasswordScreen() {
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           editable={!loading}
+          returnKeyType="next"
+          onSubmitEditing={() => confirmRef.current?.focus()}
         />
         <TouchableOpacity
           style={styles.passwordToggle}
@@ -91,6 +97,7 @@ export default function ResetPasswordScreen() {
           />
         </TouchableOpacity>
         <TextInput
+          ref={confirmRef}
           style={styles.input}
           value={confirm}
           onChangeText={setConfirm}
@@ -99,6 +106,8 @@ export default function ResetPasswordScreen() {
           secureTextEntry={!showConfirm}
           autoCapitalize="none"
           editable={!loading}
+          returnKeyType="done"
+          onSubmitEditing={handleSubmit}
         />
         <TouchableOpacity
           style={styles.passwordToggle}
@@ -140,7 +149,8 @@ export default function ResetPasswordScreen() {
           If you didn’t request this, you can close this screen.
         </Text>
       </View>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

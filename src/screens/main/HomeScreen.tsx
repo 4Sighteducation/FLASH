@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,8 @@ export default function HomeScreen({ navigation }: any) {
   const { tier, limits, trial } = useSubscription();
   const { colors, themeMode } = useTheme();
   const styles = createStyles(colors, themeMode);
+  const [pendingParentCode, setPendingParentCode] = useState<string | null>(null);
+  const [checkingPendingParentCode, setCheckingPendingParentCode] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userSubjects, setUserSubjects] = useState<UserSubject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -276,6 +278,10 @@ export default function HomeScreen({ navigation }: any) {
     return types[examType] || examType;
   };
 
+  const getSubjectTrackLabel = (subject: UserSubject) => {
+    return getExamTypeDisplay(subject.subject?.qualification_types?.code || userData?.exam_type || '');
+  };
+
   const handleSubjectPress = (subject: UserSubject) => {
     navigation.navigate('SubjectProgress', { 
       subjectId: subject.subject_id,
@@ -333,6 +339,41 @@ export default function HomeScreen({ navigation }: any) {
     rootNavigate('Profile', { screen: 'ProfileMain', params: { openFaq: true } } as never);
   };
 
+  const refreshPendingParentClaim = useCallback(async () => {
+    if (!user?.id) return;
+    if (!(tier === 'free' || trial.isActive)) return;
+    if (checkingPendingParentCode) return;
+    setCheckingPendingParentCode(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) return;
+
+      const { data, error } = await supabase.functions.invoke('pending-parent-claim', {
+        body: {},
+        headers: { Authorization: `Bearer ${token}` },
+      } as any);
+
+      if (error) return;
+      if (!data?.ok) return;
+      if (data?.hasClaim && typeof data?.code === 'string' && data.code.length > 0) {
+        setPendingParentCode(String(data.code));
+      } else {
+        setPendingParentCode(null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setCheckingPendingParentCode(false);
+    }
+  }, [user?.id, tier, trial.isActive, checkingPendingParentCode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPendingParentClaim();
+    }, [refreshPendingParentClaim])
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -347,13 +388,20 @@ export default function HomeScreen({ navigation }: any) {
   const rank = getRankForXp(totalPoints);
 
   const openProOptions = () => {
+    const isTrial = !!trial.isActive;
     Alert.alert(
-      'Keep Pro',
-      'Choose how you want to unlock Pro.',
+      isTrial ? 'Keep Pro' : 'Get Pro',
+      isTrial ? 'Choose how you want to keep Pro.' : 'Choose how you want to unlock Pro.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Pay myself',
+          text: 'Ask someone else to pay',
+          onPress: () => {
+            openAskSomeoneElse();
+          },
+        },
+        {
+          text: isTrial ? 'Pay myself' : 'Buy Pro',
           onPress: () => {
             try {
               rootNavigate('PaywallModal', { initialBilling: 'annual', highlightOffer: true, source: trial.isActive ? 'trial_banner' : 'home' });
@@ -381,6 +429,16 @@ export default function HomeScreen({ navigation }: any) {
       } catch {
         // ignore
       }
+    }
+  };
+
+  const openRedeemCode = (codeOverride?: string) => {
+    try {
+      const code = typeof codeOverride === 'string' && codeOverride.length > 0 ? codeOverride : pendingParentCode || '';
+      // Use the global modal so we don't "stick" the Profile tab into RedeemCode.
+      rootNavigate('RedeemCodeModal' as never, { code } as never);
+    } catch {
+      // ignore
     }
   };
 
@@ -514,6 +572,13 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={styles.launchOfferCtaText}>Get Pro for a year</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.redeemCodeCta, pendingParentCode ? styles.redeemCodeCtaActive : null]} onPress={() => openRedeemCode()}>
+              <Text style={styles.redeemCodeCtaText}>{pendingParentCode ? 'Activate Pro' : 'Redeem a code'}</Text>
+              <Ionicons name="key-outline" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            {pendingParentCode ? (
+              <Text style={styles.pendingClaimHint}>Pro access is ready — tap “Activate Pro” to auto-fill your code.</Text>
+            ) : null}
             <View style={styles.offerSecondaryRow}>
               <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
               <TouchableOpacity onPress={openAskSomeoneElse}>
@@ -533,9 +598,16 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <Text style={styles.launchOfferText}>Unlock Past Papers and advanced features.</Text>
             <TouchableOpacity style={styles.launchOfferCta} onPress={openProOptions}>
-              <Text style={styles.launchOfferCtaText}>View plans</Text>
+              <Text style={styles.launchOfferCtaText}>Get Pro</Text>
               <Ionicons name="arrow-forward" size={18} color="#0B1220" />
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.redeemCodeCta, pendingParentCode ? styles.redeemCodeCtaActive : null]} onPress={() => openRedeemCode()}>
+              <Text style={styles.redeemCodeCtaText}>{pendingParentCode ? 'Activate Pro' : 'Redeem a code'}</Text>
+              <Ionicons name="key-outline" size={18} color="#0B1220" />
+            </TouchableOpacity>
+            {pendingParentCode ? (
+              <Text style={styles.pendingClaimHint}>Pro access is ready — tap “Activate Pro” to auto-fill your code.</Text>
+            ) : null}
             <View style={styles.offerSecondaryRow}>
               <Text style={styles.offerSecondaryHint}>Need someone else to pay?</Text>
               <TouchableOpacity onPress={openAskSomeoneElse}>
@@ -701,7 +773,7 @@ export default function HomeScreen({ navigation }: any) {
                             <Text style={styles.metaText}>{subject.exam_board}</Text>
                           </View>
                           <View style={styles.metaBadge}>
-                            <Text style={styles.metaText}>{getExamTypeDisplay(userData?.exam_type || '')}</Text>
+                            <Text style={styles.metaText}>{getSubjectTrackLabel(subject)}</Text>
                           </View>
                         </View>
                       )}
@@ -1366,6 +1438,48 @@ const createStyles = (colors: any, themeMode: string) => StyleSheet.create({
     color: '#0B1220',
     fontSize: 14,
     fontWeight: '900',
+  },
+  redeemCodeCta: {
+    marginTop: 10,
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    backgroundColor: '#39FF14', // neon green
+    borderWidth: 1,
+    borderColor: 'rgba(57,255,20,0.55)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Platform.select({
+      default: {
+        shadowColor: '#39FF14',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 2,
+      },
+    }),
+  },
+  redeemCodeCtaActive: {
+    backgroundColor: '#FF2BD6', // neon pink when a code is ready
+    borderColor: 'rgba(255,43,214,0.58)',
+    ...Platform.select({
+      default: {
+        shadowColor: '#FF2BD6',
+      },
+    }),
+  },
+  redeemCodeCtaText: {
+    color: '#0B1220',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  pendingClaimHint: {
+    marginTop: 6,
+    color: 'rgba(230,234,242,0.82)',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
   },
   trialCard: {
     marginHorizontal: 20,

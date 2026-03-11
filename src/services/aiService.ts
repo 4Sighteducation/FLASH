@@ -9,6 +9,7 @@ export interface CardGenerationParams {
   questionType: 'multiple_choice' | 'short_answer' | 'essay' | 'acronym';
   numCards: number;
   contentGuidance?: string;
+  avoidQuestions?: string[];
   isOverview?: boolean;
   childrenTopics?: string[];
 }
@@ -114,6 +115,14 @@ const cardExamples = {
   }
 };
 
+function normalizeQuestionKey(value: string | null | undefined): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s]/g, '');
+}
+
 export class AIService {
   private apiUrl: string;
 
@@ -156,6 +165,7 @@ export class AIService {
           questionType: params.questionType,
           numCards: params.numCards,
           contentGuidance: params.contentGuidance,
+          avoidQuestions: params.avoidQuestions || [],
           isOverview: params.isOverview || false,
           childrenTopics: params.childrenTopics || [],
           // Debugging/telemetry only (backend can ignore safely)
@@ -191,6 +201,8 @@ export class AIService {
   }
 
   private processGeneratedCards(cards: any[], params: CardGenerationParams): GeneratedCard[] {
+    const seenQuestions = new Set<string>();
+
     return cards.map(card => {
       const processedCard: GeneratedCard = {
         question: card.question || 'No question generated'
@@ -222,6 +234,11 @@ export class AIService {
       }
 
       return processedCard;
+    }).filter((card) => {
+      const key = normalizeQuestionKey(card.question);
+      if (!key || seenQuestions.has(key)) return false;
+      seenQuestions.add(key);
+      return true;
     });
   }
 
