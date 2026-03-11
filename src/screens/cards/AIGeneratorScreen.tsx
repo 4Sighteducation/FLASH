@@ -100,21 +100,23 @@ export default function AIGeneratorScreen() {
   const [previousQuestionPool, setPreviousQuestionPool] = useState<string[]>([]);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const hasAdditionalGuidance = additionalGuidance.trim().length > 0;
 
   useEffect(() => {
     setPreviousQuestionPool([]);
   }, [subject, topic, examBoard, examType, selectedType]);
 
-  const getGenerationStatuses = (type: CardType | null) => {
+  const getGenerationStatuses = (type: CardType | null, withContext: boolean) => {
     if (type === 'essay') {
       return [
         { progress: 8, message: 'Connecting to AI...' },
         { progress: 18, message: 'Reading the topic closely...' },
         { progress: 32, message: 'Planning essay-style questions...' },
-        { progress: 48, message: 'Building essay structures...' },
+        { progress: 48, message: withContext ? 'Weaving in your extra context...' : 'Building essay structures...' },
         { progress: 63, message: 'Writing richer explanations...' },
         { progress: 76, message: 'Checking quality and exam fit...' },
         { progress: 86, message: 'Essay cards take longer, still working...' },
+        { progress: 92, message: 'Phew, this is a meaty topic... nearly there.' },
       ];
     }
 
@@ -123,9 +125,22 @@ export default function AIGeneratorScreen() {
         { progress: 10, message: 'Connecting to AI...' },
         { progress: 24, message: 'Analyzing topic...' },
         { progress: 38, message: 'Generating short-answer questions...' },
-        { progress: 54, message: 'Building mark-point answers...' },
+        { progress: 54, message: withContext ? 'Fitting your added context into each card...' : 'Building mark-point answers...' },
         { progress: 70, message: 'Adding detailed explanations...' },
         { progress: 84, message: 'Almost there...' },
+        { progress: 92, message: 'Still cooking the details... not long now.' },
+      ];
+    }
+
+    if (withContext) {
+      return [
+        { progress: 12, message: 'Connecting to AI...' },
+        { progress: 26, message: 'Reading your extra guidance...' },
+        { progress: 42, message: 'Generating context-aware questions...' },
+        { progress: 58, message: 'Working your context into every card...' },
+        { progress: 74, message: 'Polishing answers and explanations...' },
+        { progress: 86, message: 'Extra context can take a little longer...' },
+        { progress: 92, message: 'Phew, this is a tricky one... nearly there though.' },
       ];
     }
 
@@ -140,11 +155,22 @@ export default function AIGeneratorScreen() {
   };
 
   const generationSlowHint =
-    selectedType === 'essay'
+    hasAdditionalGuidance
+      ? 'You added extra context, so we are trying to weave that through the full set. That can make generation a little slower.'
+      : selectedType === 'essay'
       ? 'Essay-style cards usually take longer because each one needs structure, analysis, and fuller explanations.'
       : selectedType === 'short_answer'
         ? 'Short-answer cards can take a little longer because we build examiner-style mark points and fuller explanations.'
         : 'Generating your flashcards now.';
+
+  const generationReassurance =
+    generationProgress >= 92
+      ? 'Still working behind the scenes. The app has not crashed.'
+      : generationProgress >= 80
+        ? 'Nearly there now.'
+        : generationProgress >= 55
+          ? 'Working through the harder bits now.'
+          : 'This usually only takes a moment.';
 
   // Simulate progress during generation
   useEffect(() => {
@@ -168,7 +194,7 @@ export default function AIGeneratorScreen() {
         ])
       ).start();
 
-      const timeoutIds = getGenerationStatuses(selectedType).map((status, index) =>
+      const timeoutIds = getGenerationStatuses(selectedType, hasAdditionalGuidance).map((status, index) =>
         setTimeout(() => {
           if (isGenerating) {
             setGenerationProgress(status.progress);
@@ -179,7 +205,7 @@ export default function AIGeneratorScreen() {
               useNativeDriver: false,
             }).start();
           }
-        }, index * (selectedType === 'essay' ? 2600 : 1800))
+        }, index * ((selectedType === 'essay' || hasAdditionalGuidance) ? 2600 : 1800))
       );
 
       return () => {
@@ -189,7 +215,7 @@ export default function AIGeneratorScreen() {
       glowAnim.stopAnimation();
       setGenerationProgress(0);
     }
-  }, [isGenerating, progressAnim, glowAnim, selectedType]);
+  }, [isGenerating, progressAnim, glowAnim, selectedType, hasAdditionalGuidance]);
 
   const handleGenerateCards = async () => {
     if (!selectedType || selectedType === 'notes') return;
@@ -645,6 +671,7 @@ export default function AIGeneratorScreen() {
                 <Text style={styles.loadingTitle}>AI Generation In Progress</Text>
                 <Text style={styles.loadingStatus}>{generationStatus}</Text>
                 <Text style={styles.loadingHint}>{generationSlowHint}</Text>
+                <Text style={styles.loadingReassurance}>{generationReassurance}</Text>
 
                 {/* Progress Bar Container */}
                 <View style={styles.progressBarContainer}>
@@ -992,8 +1019,16 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#94A3B8',
     marginTop: -16,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  loadingReassurance: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#CBD5E1',
     marginBottom: 24,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   progressBarContainer: {
     width: '100%',
