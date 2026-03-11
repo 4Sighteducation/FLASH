@@ -318,7 +318,7 @@ CONTENT GUIDANCE:
           // Remove one or more leading labels like "a) ", "A. ", "B - ", "c: "
           // Apply repeatedly to handle accidental double-labels.
           for (let i = 0; i < 3; i++) {
-            const next = s.replace(/^\s*[A-Da-d]\s*[\)\.\:\-]\s*/u, '');
+            const next = s.replace(/^\s*[A-Da-d]\s*[).:-]\s*/u, '');
             if (next === s) break;
             s = next;
           }
