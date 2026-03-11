@@ -1,0 +1,10 @@
+---
+description: Keep normal commit flow on main
+alwaysApply: true
+---
+
+# Default Branch Rule
+
+- For normal `FLASH` work, use `main` as the default branch for commits and pushes.
+- Do not create or keep working on feature branches unless the user explicitly asks for a separate branch.
+- Before committing, prefer confirming that the intended work should land on `main`.
